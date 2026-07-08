@@ -4,17 +4,37 @@ import '../site-components/global.css';
 import '../styles/global.css';
 
 const { pageClass = '' } = Astro.props;
+const siteUrl = 'https://www.jobdues.sk';
+const siteTitle = 'Job & Dues - Prispevky, Eurofondy a HR poradenstvo';
+const siteDescription = 'Job & Dues - Prispevky, eurofondy, uctovnictvo a HR pod jednou strechou.';
+const previewImage = `${siteUrl}/assets/images/job-dues-social-preview.jpg`;
 ---
 
 <html lang="sk" class={pageClass}>
 <head>
 <meta charset="utf-8" />
-<link rel="icon" type="image/png" href="/favicon.ico" />
+<link rel="icon" type="image/png" href="/assets/images/logo.png" />
+<link rel="apple-touch-icon" href="/assets/images/logo.png" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="description" content="Job & Dues - Príspevky, eurofondy, účtovníctvo a HR pod jednou strechou. Postaráme sa o byrokraciu, vy sa sústreďte na podnikanie." />
 <meta name="keywords" content="príspevky, eurofondy, účtovníctvo, HR, Job & Dues, personálna agentúra, verejné obstarávanie, Prešov" />
 <meta name="generator" content={Astro.generator} />
 <title>Job & Dues - Príspevky, Eurofondy a HR poradenstvo</title>
+
+<meta property="og:type" content="website" />
+<meta property="og:locale" content="sk_SK" />
+<meta property="og:url" content={siteUrl} />
+<meta property="og:site_name" content="Job & Dues" />
+<meta property="og:title" content={siteTitle} />
+<meta property="og:description" content={siteDescription} />
+<meta property="og:image" content={previewImage} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Job & Dues logo" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={siteTitle} />
+<meta name="twitter:description" content={siteDescription} />
+<meta name="twitter:image" content={previewImage} />
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
