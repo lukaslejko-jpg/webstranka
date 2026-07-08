@@ -1,0 +1,20 @@
+/* Fonts */
+
+@import url("https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700&subset=latin");
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("https://cdn.prod.website-files.com/69df8417564a7dee64a7868a/69df8418564a7dee64a786e9_Satoshi-Variable.ttf")
+    format("truetype");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Satoshi Italic";
+  src: url("https://cdn.prod.website-files.com/69df8417564a7dee64a7868a/69df8418564a7dee64a786ea_Satoshi-VariableItalic.ttf")
+    format("truetype");
+  font-weight: 300 900;
+  font-style: italic;
+  font-display: swap;
+}

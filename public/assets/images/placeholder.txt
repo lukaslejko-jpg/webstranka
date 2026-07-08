@@ -1,0 +1,6 @@
+Placeholder for images:
+- image-1774873002187.png (logo)
+- hero_women_professional.png (hero background)
+- app_logo.png (app logo)
+
+These images should be uploaded to this directory.

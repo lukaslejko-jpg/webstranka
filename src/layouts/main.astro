@@ -1,0 +1,52 @@
+---
+import '../../generated/fonts.css';
+import '../site-components/global.css';
+import '../styles/global.css';
+
+const { pageClass = '' } = Astro.props;
+---
+
+<html lang="sk" class={pageClass}>
+<head>
+<meta charset="utf-8" />
+<link rel="icon" type="image/png" href="/favicon.ico" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Job & Dues - Príspevky, eurofondy, účtovníctvo a HR pod jednou strechou. Postaráme sa o byrokraciu, vy sa sústreďte na podnikanie." />
+<meta name="keywords" content="príspevky, eurofondy, účtovníctvo, HR, Job & Dues, personálna agentúra, verejné obstarávanie, Prešov" />
+<meta name="generator" content={Astro.generator} />
+<title>Job & Dues - Príspevky, Eurofondy a HR poradenstvo</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&family=Fraunces:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&display=swap" rel="stylesheet" />
+</head>
+<body>
+<slot />
+</body>
+</html>
+
+<style is:global>
+/* Ensure smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  font-family: 'DM Sans', var(--font-body), sans-serif;
+  background-color: var(--cream, #F8F6F1);
+  color: var(--foreground, #1C1C1C);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display {
+  font-family: 'Fraunces', var(--font-heading), serif;
+}
+</style>
