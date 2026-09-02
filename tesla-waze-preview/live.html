@@ -7,7 +7,15 @@
 <title>Tesla Waze 2.0</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.css" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lukaslejko-jpg/webstranka@tesla-waze-preview-v1/tesla-waze-preview/app.css?v=live1" /><style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}#panel{display:none!important}#app{grid-template-columns:1fr!important;height:100vh!important}.topbar #panelBtn{display:none!important}.music-fab{right:22px!important;bottom:82px!important}#preSearchDock{position:fixed;top:14px;left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 220px));z-index:5500}</style>
+<style>
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
+#panel{display:none!important}
+#app{grid-template-columns:1fr!important;height:100vh!important;width:100vw!important}
+.topbar #panelBtn{display:none!important}
+#preSearchDock{position:fixed!important;top:18px!important;left:18px!important;right:auto!important;transform:none!important;width:min(520px,calc(100vw - 180px))!important;z-index:5500!important}
+.music-fab{display:flex!important;position:fixed!important;right:24px!important;bottom:96px!important;z-index:7000!important;opacity:.78!important;width:54px!important;height:54px!important;border-radius:50%!important;align-items:center!important;justify-content:center!important;font-size:26px!important}
+#map{width:100%!important;height:100%!important}
+</style>
 </head>
 <body>
 <main id="app" class="app">
@@ -16,22 +24,10 @@
     <div class="quickbar"><button id="pairBtn" class="btn">Prepojiť mobil</button><button id="homeBtn" class="btn" disabled>Domov</button><button id="workBtn" class="btn" disabled>Práca</button></div>
     <div class="searchbox"><div class="row"><input id="searchInput" placeholder="Adresa, mesto, firma alebo bod záujmu"/><button id="searchBtn" class="btn">Hľadať</button></div><small id="searchStatus"></small><div id="searchResults" class="results"></div></div>
     <div id="gpsNotice" class="gpsnotice"><b>GPS</b><span>Získavam GPS polohu…</span></div>
-    <details class="fold"><summary><span class="foldtitle"><b>Waze routing</b><small id="routingStatus">známka zap.</small></span><span class="foldchev">›</span></summary><div class="foldbody">
-      <label><span>Diaľničná známka / subscription</span><input id="useVignette" type="checkbox" checked></label>
-      <label><span>Vyhnúť sa spoplatneným cestám</span><input id="avoidTolls" type="checkbox"></label>
-      <label><span>Vyhnúť sa trajektom</span><input id="avoidFerries" type="checkbox"></label>
-    </div></details>
-    <div id="destinationCard" class="card hidden"></div>
-    <div id="routeCard" class="card hidden"></div>
-    <details class="fold"><summary><span class="foldtitle"><b>Hlas navigácie</b><small id="voiceStatus">Jemný ženský</small></span><span class="foldchev">›</span></summary><div class="foldbody">
-      <label><span>Hlasové pokyny</span><input id="voiceEnabled" type="checkbox" checked></label>
-      <div class="chips"><button class="chip active" data-voice="soft">Jemný ženský</button><button class="chip" data-voice="clear">Jasný ženský</button></div>
-      <button id="voiceTest" class="btn wide">Vyskúšať hlas</button>
-    </div></details>
-    <details class="fold"><summary><span class="foldtitle"><b>Nabíjačky</b><small id="chargerStatus">vyp.</small></span><span class="foldchev">›</span></summary><div class="foldbody">
-      <button id="chargerToggle" class="btn wide">Nabíjačky vyp.</button>
-      <div id="chargerControls" class="hidden"><div class="chips" id="chargerFilters"></div><button id="chargerSearch" class="btn wide">Hľadať v tejto oblasti</button><small id="chargerMsg"></small></div>
-    </div></details>
+    <details class="fold"><summary><span class="foldtitle"><b>Waze routing</b><small id="routingStatus">známka zap.</small></span><span class="foldchev">›</span></summary><div class="foldbody"><label><span>Diaľničná známka / subscription</span><input id="useVignette" type="checkbox" checked></label><label><span>Vyhnúť sa spoplatneným cestám</span><input id="avoidTolls" type="checkbox"></label><label><span>Vyhnúť sa trajektom</span><input id="avoidFerries" type="checkbox"></label></div></details>
+    <div id="destinationCard" class="card hidden"></div><div id="routeCard" class="card hidden"></div>
+    <details class="fold"><summary><span class="foldtitle"><b>Hlas navigácie</b><small id="voiceStatus">Jemný ženský</small></span><span class="foldchev">›</span></summary><div class="foldbody"><label><span>Hlasové pokyny</span><input id="voiceEnabled" type="checkbox" checked></label><div class="chips"><button class="chip active" data-voice="soft">Jemný ženský</button><button class="chip" data-voice="clear">Jasný ženský</button></div><button id="voiceTest" class="btn wide">Vyskúšať hlas</button></div></details>
+    <details class="fold"><summary><span class="foldtitle"><b>Nabíjačky</b><small id="chargerStatus">vyp.</small></span><span class="foldchev">›</span></summary><div class="foldbody"><button id="chargerToggle" class="btn wide">Nabíjačky vyp.</button><div id="chargerControls" class="hidden"><div class="chips" id="chargerFilters"></div><button id="chargerSearch" class="btn wide">Hľadať v tejto oblasti</button><small id="chargerMsg"></small></div></div></details>
     <details class="fold music-fold"><summary><span class="foldtitle"><b>🎵 Hudba</b><small>Smart Music</small></span><span class="foldchev">›</span></summary><div class="foldbody"><button id="openMusic" class="btn wide primary">Otvoriť prehrávač</button><small id="musicMiniStatus">lukaslejko@gmail.com · YouTube nepripojený</small></div></details>
     <details class="fold"><summary><span class="foldtitle"><b>Obľúbené miesta</b><small id="favCount">0</small></span><span class="foldchev">›</span></summary><div id="favorites" class="foldbody"></div></details>
     <details class="fold"><summary><span class="foldtitle"><b>Posledné ciele</b><small id="recentCount">0</small></span><span class="foldchev">›</span></summary><div id="recents" class="foldbody"></div></details>
@@ -43,6 +39,19 @@
 <div id="musicModal" class="music-modal hidden"><section class="music-shell"><div class="music-head"><div class="music-icon">🎵</div><div><h2>Smart Music</h2><small id="musicStatus">Učím sa tvoju hudbu</small></div><div class="spacer"></div><button id="closeMusic" class="btn">Späť na mapu</button></div><div class="music-body"><div class="music-card"><div id="musicAccount" class="music-account"></div><button id="youtubeSync" class="btn primary wide">Prepojiť / synchronizovať YouTube</button><small>YouTube „Páči sa mi“ používame ako profil preferencií. Google heslo sa v aplikácii neukladá.</small></div><div class="music-card"><div class="row"><input id="musicSearch" placeholder="Skladba alebo interpret"><button id="musicSearchBtn" class="btn primary">Hľadať</button></div><div id="musicSearchResults"></div></div><div class="music-tabs"><button class="chip active" data-mtab="forYou">✨ Pre teba</button><button class="chip" data-mtab="likes">♥ Obľúbené</button><button class="chip" data-mtab="recent">🕘 Nedávno</button></div><div id="musicList"></div><div id="musicSources"></div></div><div id="musicPlayer" class="music-player"></div></section></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
-<script>(()=>{const PROD='https://tesla-waze.vercel.app',API='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twapi',nf=window.fetch.bind(window);window.fetch=(i,o)=>{try{const s=typeof i==='string'?i:(i&&i.url)||'',u=new URL(s,location.href);if(u.origin===location.origin&&u.pathname.startsWith('/api/'))return nf(API+'?p='+encodeURIComponent(u.pathname+u.search),o)}catch{}return nf(i,o)};window.addEventListener('load',()=>{let d=document.getElementById('preSearchDock');if(!d){d=document.createElement('div');d.id='preSearchDock';document.body.appendChild(d)}const keep=()=>{const sb=document.querySelector('.searchbox');if(sb&&!document.body.classList.contains('tesla-navigating')&&sb.parentNode!==d)d.appendChild(sb)};setTimeout(keep,400);new MutationObserver(keep).observe(document.body,{attributes:true,attributeFilter:['class']});setTimeout(()=>{const y=document.getElementById('youtubeSync');if(y)y.onclick=()=>location.href=PROD+'/api/music/google/start'},600)})})();</script>
-<script src="https://cdn.jsdelivr.net/gh/lukaslejko-jpg/webstranka@tesla-waze-preview-v1/tesla-waze-preview/app.js?v=live1"></script>
+<script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+<script>
+(async()=>{try{
+ const RAW='https://raw.githubusercontent.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/';
+ const PROD='https://tesla-waze.vercel.app';
+ const API='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twapi';
+ const nf=window.fetch.bind(window);
+ window.fetch=(i,o)=>{try{const s=typeof i==='string'?i:(i&&i.url)||'',u=new URL(s,location.href);if(u.origin===location.origin&&u.pathname.startsWith('/api/'))return nf(API+'?p='+encodeURIComponent(u.pathname+u.search),o)}catch{}return nf(i,o)};
+ const ung=b=>new TextDecoder().decode(pako.ungzip(Uint8Array.from(atob(b.trim()),c=>c.charCodeAt(0))));
+ const [css64,js64]=await Promise.all([nf(RAW+'app.css.gz.b64?live=7',{cache:'no-store'}).then(r=>r.text()),nf(RAW+'app.js.gz.b64?live=7',{cache:'no-store'}).then(r=>r.text())]);
+ const st=document.createElement('style');st.textContent=ung(css64);document.head.appendChild(st);
+ const dock=document.createElement('div');dock.id='preSearchDock';document.body.appendChild(dock);const sb=document.querySelector('.searchbox');if(sb)dock.appendChild(sb);
+ const blob=new Blob([ung(js64)],{type:'text/javascript'});const url=URL.createObjectURL(blob);const sc=document.createElement('script');sc.src=url;sc.onload=()=>{URL.revokeObjectURL(url);setTimeout(()=>{const y=document.getElementById('youtubeSync');if(y)y.onclick=()=>location.href=PROD+'/api/music/google/start';const f=document.getElementById('musicFab');if(f){f.style.display='flex';f.style.position='fixed';f.style.right='24px';f.style.bottom='96px';f.style.zIndex='7000'}},300)};document.body.appendChild(sc);
+}catch(e){document.body.innerHTML='<div style="padding:24px;color:white;background:#111">Tesla Waze chyba: '+String(e.message||e)+'</div>'}})();
+</script>
 </body></html>
