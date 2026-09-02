@@ -1,0 +1,99 @@
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id), LS={fav:'teslaWaze:favorites:v1',recent:'teslaWaze:recent:v1',routing:'teslaWaze:routing:v1',voice:'teslaWaze:voice:v1',voiceMode:'teslaWaze:voiceMode:v1',device:'teslaWaze:pairedDevice:v1',alerts:'teslaWaze:alerts:v1',chargeFilter:'teslaWaze:chargeFilter:v1',music:'teslaWaze:musicProfile:v2',queue:'teslaWaze:musicQueue:v2'};
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??d}catch{return d}}, save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const dist=(a,b)=>{const r=Math.PI/180,dlat=(b.lat-a.lat)*r,dlng=(b.lng-a.lng)*r;return 12742000*Math.asin(Math.sqrt(Math.sin(dlat/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dlng/2)**2))};
+const fmtD=m=>m<1000?`${Math.max(0,Math.round(m/10)*10)} m`:`${(m/1000).toLocaleString('sk-SK',{maximumFractionDigits:1})} km`;
+const fmtT=s=>s<3600?`${Math.max(1,Math.round(s/60))} min`:`${Math.floor(s/3600)} h ${Math.round((s%3600)/60)} min`;
+const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+function bearing(a,b){const p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180,dl=(b.lng-a.lng)*Math.PI/180;return (Math.atan2(Math.sin(dl)*Math.cos(p2),Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl))*180/Math.PI+360)%360}
+function smoothHeading(prev,next,alpha=.24){if(prev==null)return next;let d=((next-prev+540)%360)-180;return (prev+d*alpha+360)%360}
+function instruction(step){const op=String(step?.opcode||'').toUpperCase(), street=step?.street?` na ${step.street}`:'';if(op.includes('TURN_RIGHT'))return `Odbočte doprava${street}.`;if(op.includes('TURN_LEFT'))return `Odbočte doľava${street}.`;if(op.includes('ROUNDABOUT'))return `Pokračujte cez kruhový objazd${street}.`;if(op.includes('DESTINATION'))return 'Cieľ je pred vami.';if(op.includes('KEEP_RIGHT'))return `Držte sa vpravo${street}.`;if(op.includes('KEEP_LEFT'))return `Držte sa vľavo${street}.`;return `Pokračujte rovno${street}.`}
+function maneuverIcon(step){const op=String(step?.opcode||'').toUpperCase();if(op.includes('ROUNDABOUT'))return '↻';if(op.includes('TURN_RIGHT'))return '↱';if(op.includes('TURN_LEFT'))return '↰';if(op.includes('KEEP_RIGHT'))return '↗';if(op.includes('KEEP_LEFT'))return '↖';if(op.includes('DESTINATION'))return '◆';return '↑'}
+function nearest(p,coords,start=0){if(!coords?.length)return null;let best=null;const cos=111320*Math.cos(p.lat*Math.PI/180);for(let i=Math.max(0,start-20);i<Math.min(coords.length-1,start+600);i++){const a=coords[i],b=coords[i+1],ax=(a.lng-p.lng)*cos,ay=(a.lat-p.lat)*111320,bx=(b.lng-p.lng)*cos,by=(b.lat-p.lat)*111320,dx=bx-ax,dy=by-ay,l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/l)):0,d=Math.hypot(ax+t*dx,ay+t*dy);if(!best||d<best.distance)best={index:i,t,distance:d,point:{lat:a.lat+(b.lat-a.lat)*t,lng:a.lng+(b.lng-a.lng)*t}}}return best}
+function cumulative(c){const a=[0];for(let i=1;i<c.length;i++)a.push(a[i-1]+dist(c[i-1],c[i]));return a}
+
+const state={pos:null,accuracy:null,speed:null,gpsHeading:null,lastPos:null,heading:null,map:null,L:null,car:null,destMarker:null,routeLines:[],alertMarkers:[],chargerMarkers:[],trafficLines:[],routes:[],routeIndex:0,navigating:false,overview:false,routeCursor:0,routeProgress:null,dest:null,alerts:[],alertsOn:load(LS.alerts,true),jams:[],chargers:[],chargersOn:false,chargeFilter:load(LS.chargeFilter,'all'),routing:{useVignette:true,avoidTolls:false,avoidFerries:false,...load(LS.routing,{})},voice:load(LS.voice,true),voiceMode:load(LS.voiceMode,'soft'),favorites:load(LS.fav,[]),recents:load(LS.recent,[]),panelHidden:false,lastVoice:'',lastReroute:0,offRouteHits:0,overviewTimer:null,searchHome:null};
+
+function renderPlaces(){const fav=$('favorites'),rec=$('recents');$('favCount').textContent=state.favorites.length;$('recentCount').textContent=state.recents.length;fav.innerHTML=state.favorites.length?state.favorites.map(x=>`<button class="result" data-place="fav:${esc(x.id)}"><b>${esc(x.name)}</b><small>${esc(x.address)}</small></button>`).join(''):'<small>Zatiaľ bez uložených miest.</small>';rec.innerHTML=state.recents.length?state.recents.slice(0,10).map(x=>`<button class="result" data-place="rec:${esc(x.id)}"><b>${esc(x.name)}</b><small>${esc(x.address)}</small></button>`).join(''):'<small>História je prázdna.</small>';document.querySelectorAll('[data-place]').forEach(b=>b.onclick=()=>{const [kind,id]=b.dataset.place.split(':');const a=kind==='fav'?state.favorites:state.recents;const x=a.find(z=>String(z.id)===id);if(x)selectDestination(x)});const home=state.favorites.find(x=>x.kind==='home'),work=state.favorites.find(x=>x.kind==='work');$('homeBtn').disabled=!home;$('workBtn').disabled=!work;$('homeBtn').onclick=()=>home&&selectDestination(home);$('workBtn').onclick=()=>work&&selectDestination(work)}
+function routingStatus(){ $('routingStatus').textContent=state.routing.avoidTolls?'bez mýta':state.routing.useVignette?'známka zap.':'štandard'; }
+function showPanel(show=true){state.panelHidden=!show;$('app').classList.toggle('panel-off',!show);$('panel').classList.toggle('hidden',!show);$('panelBtn').textContent=show?'Skryť panel':'Panel';setTimeout(()=>state.map?.invalidateSize(),100)}
+
+async function initMap(){const L=window.L;state.L=L;state.map=L.map('map',{zoomControl:true,attributionControl:true,rotate:true,bearing:0,rotateControl:false,dragRotate:false,touchRotate:false,shiftKeyRotate:false}).setView([48.9984,21.2393],12);L.tileLayer('https://www.waze.com/row-tiles/live/base/{z}/{x}/{y}/tile.png',{maxZoom:20,attribution:'Waze'}).addTo(state.map);startGPS();setInterval(loadAlerts,30000);setTimeout(loadAlerts,2200)}
+function carIcon(){return state.L.divIcon({className:'car-wrap',html:'<div class="car-arrow">▲</div>',iconSize:[40,40],iconAnchor:[20,20]})}
+function startGPS(){if(!navigator.geolocation){$('gpsNotice').querySelector('span').textContent='GPS nie je dostupné.';return}let lastTs=Date.now(),watch;const restart=()=>{if(watch)navigator.geolocation.clearWatch(watch);watch=navigator.geolocation.watchPosition(g=>{lastTs=Date.now();const p={lat:g.coords.latitude,lng:g.coords.longitude}, sp=Number.isFinite(g.coords.speed)?g.coords.speed:null, raw=Number.isFinite(g.coords.heading)?g.coords.heading:null;let h=raw;if((h==null||sp!=null&&sp<.8)&&state.lastPos&&dist(state.lastPos,p)>4)h=bearing(state.lastPos,p);if(h!=null)state.heading=smoothHeading(state.heading,h);state.lastPos=state.pos||p;state.pos=p;state.accuracy=g.coords.accuracy;state.speed=sp;state.gpsHeading=raw;$('speed').textContent=`${sp==null?'—':Math.max(0,Math.round(sp*3.6))} km/h`;$('gpsNotice').querySelector('span').textContent=`GPS aktívne · presnosť približne ${Math.round(g.coords.accuracy)} m`;if(state.car)state.car.setLatLng(p);else{state.car=state.L.marker(p,{icon:carIcon(),zIndexOffset:1000,rotation:0,rotateWithView:false}).addTo(state.map);state.map.setView(p,16)}if(state.navigating)updateNavigation();},e=>$('gpsNotice').querySelector('span').textContent=e.code===1?'Poloha bola zamietnutá.':'GPS momentálne nie je dostupné.',{enableHighAccuracy:true,timeout:12000,maximumAge:0})};restart();setInterval(()=>{if(Date.now()-lastTs>10000){$('gpsNotice').querySelector('span').textContent='GPS neposiela novú polohu. Obnovujem sledovanie.';restart()}},3000)}
+function applyHeadingUp(center,zoom){if(!state.map||!state.navigating)return;if(state.heading!=null&&typeof state.map.setHeading==='function')state.map.setHeading(state.heading,{ease:.18,deadzone:1});else if(state.heading!=null&&typeof state.map.setBearing==='function')state.map.setBearing(-state.heading);if(center)state.map.setView(center,zoom,{animate:true})}
+function stopHeadingUp(reset=true){if(typeof state.map?.setHeading==='function')state.map.setHeading(null);if(typeof state.map?.stopHeadingUp==='function')state.map.stopHeadingUp();if(reset&&typeof state.map?.setBearing==='function')state.map.setBearing(0)}
+
+let searchTimer=null,searchSeq=0;async function searchPlaces(force=false){const q=$('searchInput').value.trim();if(q.length<(force?2:3)){$('searchResults').innerHTML='';$('searchStatus').textContent='';return}const seq=++searchSeq;$('searchStatus').textContent='Vyhľadávam…';try{const u=new URLSearchParams({q});if(state.pos){u.set('lat',state.pos.lat);u.set('lng',state.pos.lng)}const r=await fetch('/api/search?'+u,{cache:'no-store'}),d=await r.json();if(seq!==searchSeq)return;renderSearch(d.results||[])}catch{$('searchStatus').textContent='Vyhľadávanie zlyhalo.'}}
+function renderSearch(a){$('searchStatus').textContent='';$('searchResults').innerHTML=a.slice(0,6).map((x,i)=>`<button class="result" data-sr="${i}"><b>${esc(x.name)}</b><small>${esc(x.address)}</small></button>`).join('');document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>selectDestination(a[+b.dataset.sr]))}
+async function selectDestination(x){state.dest=x;$('searchInput').value=x.name;$('searchResults').innerHTML='';state.recents=[{...x,lastUsedAt:new Date().toISOString()},...state.recents.filter(z=>z.id!==x.id)].slice(0,10);save(LS.recent,state.recents);renderPlaces();if(state.destMarker)state.destMarker.remove();state.destMarker=state.L.marker(x.location).addTo(state.map).bindTooltip(x.name);state.map.setView(x.location,15);renderDestination();if(state.pos)await calculateRoute(true)}
+function renderDestination(){const c=$('destinationCard');if(!state.dest||state.navigating){c.classList.add('hidden');return}c.classList.remove('hidden');c.innerHTML=`<b>Cieľ: ${esc(state.dest.name)}</b><small>${esc(state.dest.address)}</small><div class="grid2"><button class="btn" data-d="save">Uložiť</button><button class="btn" data-d="route">Prepočítať trasu</button></div><div class="grid2"><button class="btn" data-d="home">Nastaviť Domov</button><button class="btn" data-d="work">Nastaviť Prácu</button></div>`;c.querySelector('[data-d=save]').onclick=()=>saveFav('custom');c.querySelector('[data-d=home]').onclick=()=>saveFav('home');c.querySelector('[data-d=work]').onclick=()=>saveFav('work');c.querySelector('[data-d=route]').onclick=()=>calculateRoute(false)}
+function saveFav(kind){if(!state.dest)return;const id=kind==='custom'?`custom-${Date.now()}`:`favorite-${kind}`,x={...state.dest,id,kind,name:kind==='home'?'Domov':kind==='work'?'Práca':state.dest.name};state.favorites=[x,...state.favorites.filter(z=>z.kind!==kind&&z.id!==id)];save(LS.fav,state.favorites);renderPlaces()}
+
+function ensureTeslaNavUI(){
+  if($('teslaNavManeuver'))return;
+  const wrap=document.createElement('div');
+  wrap.id='teslaNavUI';
+  wrap.innerHTML=`
+    <div id="teslaSearchDock" class="tesla-search-dock hidden"></div>
+    <section id="teslaNavManeuver" class="tesla-maneuver hidden"></section>
+    <section id="teslaTripCard" class="tesla-trip hidden"></section>
+    <button id="teslaSettingsClose" class="hidden"></button>
+    <section id="teslaSettings" class="tesla-settings hidden"></section>`;
+  document.body.appendChild(wrap);
+  state.searchHome=document.createComment('search-home');
+  const sb=document.querySelector('.searchbox');
+  sb?.parentNode?.insertBefore(state.searchHome,sb);
+}
+function moveSearchToNavigation(on){
+  ensureTeslaNavUI();
+  const sb=document.querySelector('.searchbox'),dock=$('teslaSearchDock');
+  if(!sb||!dock)return;
+  if(on){dock.classList.remove('hidden');if(sb.parentNode!==dock)dock.appendChild(sb)}
+  else{dock.classList.add('hidden');if(state.searchHome?.parentNode&&sb.parentNode===dock)state.searchHome.parentNode.insertBefore(sb,state.searchHome.nextSibling)}
+}
+function setNavigationShell(on){
+  ensureTeslaNavUI();
+  document.body.classList.toggle('tesla-navigating',on);
+  $('app').classList.toggle('tesla-nav-active',on);
+  $('panel').classList.toggle('hidden',on);
+  moveSearchToNavigation(on);
+  $('teslaNavManeuver').classList.toggle('hidden',!on);
+  $('teslaTripCard').classList.toggle('hidden',!on);
+  if(!on)$('teslaSettings').classList.add('hidden');
+  setTimeout(()=>state.map?.invalidateSize(),80);
+}
+function routeTotalDistance(r){if(!r?.coords?.length)return r?.distance||0;const c=cumulative(r.coords);return c.at(-1)||r.distance||0}
+function renderTeslaNavigation(){
+  ensureTeslaNavUI();
+  const r=state.routes[state.routeIndex],p=state.routeProgress;
+  if(!state.navigating||!r){$('teslaNavManeuver').classList.add('hidden');$('teslaTripCard').classList.add('hidden');return}
+  const step=r.steps?.[p?.stepIdx||0],next=r.steps?.[(p?.stepIdx||0)+1];
+  const man=$('teslaNavManeuver');
+  const distTo=p?.distanceToManeuver??0;
+  man.innerHTML=`<div class="tesla-man-main"><span class="tesla-turn">${maneuverIcon(step)}</span><div><b>${fmtD(distTo)}</b><span>${esc(step?.street||instruction(step).replace(/[.]/g,''))}</span></div></div>${next?`<div class="tesla-man-next"><span>${maneuverIcon(next)}</span><b>${esc(next.street||instruction(next).replace(/[.]/g,''))}</b></div>`:''}`;
+  const total=routeTotalDistance(r)||1,remaining=p?.remainingDistance??r.distance??0,ratio=Math.max(0,Math.min(1,1-remaining/total));
+  const time=p?.remainingTime??r.time??0,arr=new Date(Date.now()+time*1000).toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'});
+  const trip=$('teslaTripCard');
+  trip.innerHTML=`<div class="tesla-trip-stats"><b>${arr}</b><span>${fmtT(time)}</span><span>${fmtD(remaining)}</span></div><div class="tesla-progress"><i style="width:${Math.round(ratio*100)}%"></i></div><div class="tesla-trip-actions"><button class="tesla-end" data-tesla-stop>Ukončiť trasu</button><button class="tesla-dots" data-tesla-settings aria-label="Nastavenia">•••</button></div>`;
+  trip.querySelector('[data-tesla-stop]').onclick=stopNavigation;
+  trip.querySelector('[data-tesla-settings]').onclick=toggleTeslaSettings;
+}
+function renderTeslaSettings(){
+  ensureTeslaNavUI();
+  const box=$('teslaSettings'),home=state.favorites.find(x=>x.kind==='home'),work=state.favorites.find(x=>x.kind==='work');
+  const favs=state.favorites.filter(x=>!['home','work'].includes(x.kind)).slice(0,5),recs=state.recents.slice(0,5);
+  const fs=['all','tesla','ccs2','type2','kw50','kw100','kw150'];
+  box.innerHTML=`<header><b>Nastavenia</b><button class="btn" data-ts-close>✕</button></header>
+  <section class="tesla-setting-block"><b>Trasa</b><button class="btn wide" data-ts-overview>${state.overview?'Späť na navigovanie':'Celá trasa'}</button><div class="chips">${state.routes.map((x,i)=>`<button class="chip ${i===state.routeIndex?'active':''}" data-ts-route="${i}">${i+1} · ${fmtT(x.time||0)} · ${fmtD(x.distance||0)}</button>`).join('')}</div></section>
+  <label><span>Diaľničná známka</span><input type="checkbox" data-ts-vig ${state.routing.useVignette?'checked':''}></label>
+  <label><span>Vyhnúť sa mýtu</span><input type="checkbox" data-ts-toll ${state.routing.avoidTolls?'checked':''}></label>
+  <label><span>Vyhnúť sa trajektom</span><input type="checkbox" data-ts-ferry ${state.routing.avoidFerries?'checked':''}></label>
+  <section class="tesla-setting-block"><b>Hlas</b><label><span>Hlasové pokyny</span><input type="checkbox" data-ts-voice ${state.voice?'checked':''}></label><div class="chips"><button class="chip ${state.voiceMode==='soft'?'active':''}" data-ts-vmode="soft">Jemný ženský</button><button class="chip ${state.voiceMode==='clear'?'active':''}" data-ts-vmode="clear">Jasný ženský</button></div></section>
+  <section class="tesla-setting-block"><b>Upozornenia</b><label><span>Polícia / nehody / riziká</span><input type="checkbox" data-ts-alerts ${state.alertsOn?'checked':''}></label><small>${state.alerts.length?`Aktívnych hlásení v oblasti: ${state.alerts.length}`:'Momentálne bez live hlásení v oblasti'}</small></section>
+  <section class="tesla-setting-block"><b>Nabíjačky</b><button class="btn wide" data-ts-chargers>⚡ ${state.chargersOn?'Skryť nabíjačky':'Zobraziť nabíjačky'}</button><div class="chips">${fs.map(f=>`<button class="chip ${f===state.chargeFilter?'active':''}" data-ts-cf="${f}">${{all:'Všetky',tesla:'Tesla',ccs2:'CCS2',type2:'Type 2',kw50:'≥50 kW',kw100:'≥100 kW',kw150:'≥150 kW'}[f]}</button>`).join('')}</div></section>
+  <section class="tesla-setting-block"><b>Miesta</b><div class="grid2"><button class="btn" data-ts-place="home" ${home?'':'disabled'}>Domov</button><button class="btn" data-ts-place="work" ${work?'':'disabled'}>Práca</button></div></section>`;
+  box.querySelector('[data-ts-close]').onclick=()=>box.classList.add('hidden');
+}
