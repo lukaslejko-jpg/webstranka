@@ -43,5 +43,5 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-<script src="https://raw.githubusercontent.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/loader-v2.js?3"></script>
+<script src="https://cdn.jsdelivr.net/gh/lukaslejko-jpg/webstranka@4a4038c4f273cc7076ee32dd277b525ac6ff7748/tesla-waze-preview/loader-v2.js"></script>
 </body></html>
