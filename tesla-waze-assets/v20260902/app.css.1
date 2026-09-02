@@ -1,0 +1,28 @@
+g:16px;border-bottom:1px solid #334155}.music-icon{font-size:28px}.music-head h2{margin:0}.spacer{flex:1}.music-body{padding:16px;overflow:auto;display:flex;flex-direction:column;gap:12px}.music-card{background:#121d28;border:1px solid #2b3a47;border-radius:14px;padding:14px}.music-card small{color:#94a3b8}.music-card input{width:100%;min-height:48px;border-radius:10px;border:1px solid #334556;background:#0b141d;color:#fff;padding:0 12px}.music-account{font-size:13px;margin-bottom:8px}.music-tabs{display:flex;gap:8px;overflow:auto}.music-track{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;margin:8px 0;border-radius:12px;background:#0d1721;border:1px solid #263442}.music-art{width:56px;height:56px;border-radius:10px;background:#1e293b;object-fit:cover}.music-title{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.music-sub{font-size:12px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.music-source{font-size:10px;padding:4px 7px;border-radius:999px;background:#173248;color:#7dd3fc;font-weight:900;display:inline-block;margin-top:5px}.music-player{border-top:1px solid #334155;background:#0b141d;padding:12px 16px}.music-controls{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}.music-now{display:flex;gap:10px;align-items:center}.music-empty{font-size:13px;color:#94a3b8}.heading-badge{border-color:#22d3ee;color:#a5f3fc}
+@media(max-width:900px){.app{grid-template-columns:1fr;grid-template-rows:minmax(280px,48dvh) 1fr}.app.panel-off{grid-template-rows:1fr}.panel{grid-row:1}.mapwrap{grid-row:2;height:auto;min-height:52dvh}.panel-off .mapwrap{grid-row:1;height:100dvh}.routebox{max-width:calc(100% - 28px);top:132px}.topbar{left:14px;right:14px;justify-content:space-between}.music-shell{width:100vw}.music-track{grid-template-columns:48px minmax(0,1fr)}.music-art{width:48px;height:48px}.music-track>.btn{grid-column:1/-1}}
+
+/* Smart Music playback/layout hotfix */
+.music-track{grid-template-columns:56px minmax(0,1fr) 104px;overflow:hidden;cursor:pointer}
+.music-track>.btn{width:104px;max-width:104px;min-width:0;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music-track>div{min-width:0}
+.yt-player{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;margin:10px 0;background:#000}
+@media(max-width:900px){.music-track{grid-template-columns:48px minmax(0,1fr) 88px}.music-track>.btn{grid-column:auto;width:88px;max-width:88px;font-size:12px}.music-art{width:48px;height:48px}}
+.music-controls-6{grid-template-columns:repeat(6,minmax(0,1fr))}.music-controls-6 .btn{min-width:0;padding:0 6px;font-size:12px}.music-track{grid-template-columns:56px minmax(0,1fr) 92px!important}.music-track>.btn{width:92px!important;max-width:92px!important;min-width:0!important;padding:0 7px!important;overflow:hidden;text-overflow:ellipsis}.yt-player iframe,.yt-player{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000}@media(max-width:900px){.music-controls-6{grid-template-columns:repeat(3,minmax(0,1fr))}.music-track{grid-template-columns:48px minmax(0,1fr) 78px!important}.music-track>.btn{width:78px!important;max-width:78px!important;font-size:11px!important}}
+
+/* ===== Tesla navigation shell ===== */
+body.tesla-navigating .app{grid-template-columns:1fr!important}
+body.tesla-navigating #panel{display:none!important}
+body.tesla-navigating .topbar{display:none!important}
+body.tesla-navigating #routeBox,body.tesla-navigating #routeCard,body.tesla-navigating #destinationCard{display:none!important}
+body.tesla-navigating .mapwrap{position:fixed;inset:0;z-index:1}
+#teslaNavUI{position:fixed;inset:0;z-index:2500;pointer-events:none}
+.tesla-search-dock{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 700px));min-width:320px;pointer-events:auto;z-index:4}
+.tesla-search-dock .searchbox{margin:0;background:rgba(250,250,249,.94);border:1px solid rgba(0,0,0,.14);box-shadow:0 4px 18px rgba(0,0,0,.16);backdrop-filter:blur(12px);border-radius:12px;padding:6px}
+.tesla-search-dock .row input{height:44px;background:#fff;color:#111;border:1px solid #d7d7d4;font-size:16px}
+.tesla-search-dock .btn{height:44px;background:#ececea;color:#111;border-color:#d0d0cd}
+.tesla-search-dock small{color:#555}
+.tesla-search-dock .results{max-height:42vh;overflow:auto;background:rgba(255,255,255,.98);border-radius:10px;margin-top:6px}
+.tesla-search-dock .result{background:#fff;color:#111;border-color:#dededb;text-align:left}
+.tesla-search-dock .result small{color:#666}
+.tesla-maneuver{position:absolute;top:14px;left:18px;width:min(340px,calc(100vw - 36px));background:rgba(246,246,244,.94);color:#1c1c1c;border:1px solid rgba(0,0,0,.13);border-radius:12px;box-shadow:0 4px 18px rgba(0,0,0,.18);backdrop-filter:blur(10px);pointer-events:auto;overflow:hidden}
+.tesla-man-main{display:flex;align-items:center;gap:14px;padding:14px 16px 10px}.tesla-turn{font-size:54px;line-height:1;font-weight:600;width:60px;text-align:center}.tesla-man-main div{display:flex;flex-direction:column;min-width:0}.tesla-man-main b{font-size:30px;line-height:1.05}.tesla-man-main span:not(.tesla-turn){font-size:17px;color:#4d4d4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}.tesla-man-next{border-top:1px solid #d7d7d3;display:flex;align-items:center;gap:12px;padding:9px 16px;font-si
