@@ -1,0 +1,20 @@
+name: Check Tesla Waze Supabase backends
+on:
+  push:
+    branches:
+      - debug/tesla-waze-bundle-1-9
+    paths:
+      - .github/workflows/check-tesla-waze-supabase-backends.yml
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Google secret presence
+        run: |
+          curl --fail --silent --show-error 'https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twsecretscheck'
+      - name: Check charger service around Presov
+        run: |
+          curl --fail --silent --show-error 'https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twapi?p=%2Fapi%2Fchargers%3Fleft%3D21.10%26right%3D21.40%26bottom%3D48.90%26top%3D49.10' | head -c 800
+      - name: Check traffic service around Presov
+        run: |
+          curl --fail --silent --show-error 'https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twtraffic?left=21.10&right=21.40&bottom=48.90&top=49.10' | head -c 800
