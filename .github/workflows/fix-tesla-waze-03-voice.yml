@@ -1,0 +1,55 @@
+name: Fix Tesla Waze 03 voice
+
+on:
+  push:
+    branches:
+      - debug/tesla-waze-decode-20260903
+    paths:
+      - .github/workflows/fix-tesla-waze-03-voice.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout live Tesla Waze branch
+        uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+          fetch-depth: 0
+      - name: Restore robust speech synthesis
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip, base64
+          p = Path('tesla-waze-preview/app.js')
+          s = p.read_text(encoding='utf-8')
+          old = "function speak(text){if(!state.voice||!('speechSynthesis'in window))return;const v=speechSynthesis.getVoices(),female=['zuzana','vlasta','tereza','lucia','lucie','viktoria','victoria','alena','iveta','jana','katka','monika','zdenka','veronika','maria','marie','eva','hana','female','woman','žena'],male=['filip','martin','jakub','petr','peter','michal','tomas','tomáš','ondrej','matej','jiri','jan ','adam','daniel','david','male','man'];const voice=v.filter(x=>/^sk|^cs|^cz/i.test(x.lang||'')).filter(x=>female.some(n=>(x.name||'').toLowerCase().includes(n))&&!male.some(n=>(x.name||'').toLowerCase().includes(n)))[0];if(!voice)return;const u=new SpeechSynthesisUtterance(text);u.voice=voice;u.lang=voice.lang;u.rate=state.voiceMode==='soft'?.9:.96;u.pitch=state.voiceMode==='soft'?1.02:1;speechSynthesis.speak(u)}"
+          new = "function speak(text,force=false){if((!state.voice&&!force)||!('speechSynthesis'in window)||!('SpeechSynthesisUtterance'in window))return;const synth=window.speechSynthesis;let done=false;const say=()=>{if(done)return;done=true;const v=synth.getVoices()||[],female=['zuzana','vlasta','tereza','lucia','lucie','viktoria','victoria','alena','iveta','jana','katka','monika','zdenka','veronika','maria','marie','eva','hana','female','woman','žena','female voice'],male=['filip','martin','jakub','petr','peter','michal','tomas','tomáš','ondrej','matej','jiri','jan ','adam','daniel','david','male','man'];const isFemale=x=>female.some(n=>(x.name||'').toLowerCase().includes(n))&&!male.some(n=>(x.name||'').toLowerCase().includes(n)),local=x=>/^sk|^cs|^cz/i.test(x.lang||'');const voice=v.find(x=>local(x)&&isFemale(x))||v.find(x=>isFemale(x))||v.find(local)||v[0]||null;const u=new SpeechSynthesisUtterance(text);if(voice){u.voice=voice;u.lang=voice.lang||'sk-SK'}else u.lang='sk-SK';u.rate=state.voiceMode==='soft'?.9:.96;u.pitch=state.voiceMode==='soft'?1.02:1;try{synth.cancel()}catch{}try{synth.resume()}catch{}synth.speak(u)};if((synth.getVoices()||[]).length)say();else{const ready=()=>{try{synth.removeEventListener('voiceschanged',ready)}catch{}say()};try{synth.addEventListener('voiceschanged',ready,{once:true})}catch{}setTimeout(say,350)}}"
+          if s.count(old) != 1:
+              raise SystemExit(f'Expected exactly one speak function, found {s.count(old)}')
+          s = s.replace(old, new, 1)
+          old_test = "$('voiceTest').onclick=()=>speak('O 300 metrov odbočte doprava. Polícia pred vami, približne 800 metrov.');"
+          new_test = "$('voiceTest').onclick=()=>speak('O 300 metrov odbočte doprava. Polícia pred vami, približne 800 metrov.',true);"
+          if s.count(old_test) != 1:
+              raise SystemExit(f'Expected exactly one voice test binding, found {s.count(old_test)}')
+          s = s.replace(old_test, new_test, 1)
+          old_nav = "state.navigating=true;state.overview=true;state.offRouteHits=0;state.routeCursor=0;state.routeProgress=null;"
+          new_nav = "state.navigating=true;state.overview=true;state.offRouteHits=0;state.routeCursor=0;state.routeProgress=null;state.lastVoice='';"
+          if s.count(old_nav) != 1:
+              raise SystemExit(f'Expected exactly one navigation reset, found {s.count(old_nav)}')
+          s = s.replace(old_nav, new_nav, 1)
+          p.write_text(s, encoding='utf-8')
+          packed = gzip.compress(s.encode('utf-8'), compresslevel=9, mtime=0)
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(packed).decode('ascii'), encoding='ascii')
+          PY
+      - name: Commit live asset only
+        run: |
+          git config user.name "lukaslejko-jpg"
+          git config user.email "lukaslejko@gmail.com"
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git diff --cached --check
+          git commit -m "Fix 03 restore voice guidance" || exit 0
+          git push origin HEAD:tesla-waze-preview-v1
