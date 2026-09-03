@@ -15,18 +15,23 @@ jobs:
       - name: Prepare live branch
         run: |
           cp tools/patch_tesla_waze_bundle_1_9.py /tmp/patch_tesla_waze_bundle_1_9.py
+          sed -i "s/css=cp.read_text(encoding='utf-8')/css=cp.read_text(encoding='latin-1')/" /tmp/patch_tesla_waze_bundle_1_9.py
+          sed -i "s/cp.write_text(css,encoding='utf-8')/cp.write_text(css,encoding='latin-1')/" /tmp/patch_tesla_waze_bundle_1_9.py
           git fetch origin tesla-waze-preview-v1
           git checkout -B live origin/tesla-waze-preview-v1
-      - name: Restore plain CSS from the live gzip asset
+      - name: Prefer clean CSS from live gzip asset when valid
         run: |
           python - <<'PY'
           from pathlib import Path
           import base64, gzip
           p=Path('tesla-waze-preview/app.css.gz.b64')
-          raw=gzip.decompress(base64.b64decode(p.read_text(encoding='ascii').strip()))
-          raw.decode('utf-8')
-          Path('tesla-waze-preview/app.css').write_bytes(raw)
-          print('restored css bytes',len(raw))
+          try:
+              raw=gzip.decompress(base64.b64decode(p.read_text(encoding='ascii').strip()))
+              raw.decode('utf-8')
+              Path('tesla-waze-preview/app.css').write_bytes(raw)
+              print('restored clean css bytes',len(raw))
+          except Exception as e:
+              print('keeping existing css bytes:',type(e).__name__)
           PY
       - name: Apply patch
         run: python /tmp/patch_tesla_waze_bundle_1_9.py
@@ -34,8 +39,9 @@ jobs:
         run: node --check tesla-waze-preview/app.js
       - name: Commit live assets
         run: |
-          git config user.name lukaslejko-jpg
-          git config user.email lukaslejko@gmail.com
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
+          git diff --cached --quiet && exit 0
           git commit -m "Fix UX bundle: camera, traffic, chargers, places, recents and music FAB"
           git push origin HEAD:tesla-waze-preview-v1
