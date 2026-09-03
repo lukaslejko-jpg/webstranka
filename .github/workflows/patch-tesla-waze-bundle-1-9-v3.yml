@@ -1,0 +1,31 @@
+name: Run Tesla Waze UX bundle patcher v3
+on:
+  push:
+    branches: [debug/tesla-waze-bundle-1-9]
+    paths: [.github/workflows/patch-tesla-waze-bundle-1-9-v3.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare patcher and live branch
+        run: |
+          cp tools/patch_tesla_waze_bundle_1_9.py /tmp/patch_tesla_waze_bundle_1_9.py
+          sed -i "s/css=cp.read_text(encoding='utf-8')/css=cp.read_text(encoding='latin-1')/" /tmp/patch_tesla_waze_bundle_1_9.py
+          sed -i "s/cp.write_text(css,encoding='utf-8')/cp.write_text(css,encoding='latin-1')/" /tmp/patch_tesla_waze_bundle_1_9.py
+          git fetch origin tesla-waze-preview-v1
+          git checkout -B live origin/tesla-waze-preview-v1
+      - name: Apply patch
+        run: python /tmp/patch_tesla_waze_bundle_1_9.py
+      - name: Syntax check
+        run: node --check tesla-waze-preview/app.js
+      - name: Commit live assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
+          git diff --cached --quiet && exit 0
+          git commit -m "Bundle Tesla Waze UX fixes 1-9"
+          git push origin HEAD:tesla-waze-preview-v1
