@@ -18,23 +18,26 @@ jobs:
         with:
           ref: debug/tesla-waze-decode-20260903
           path: debugsrc
-      - name: Validate Waze traffic bridge
+      - name: Validate route traffic source
         run: >-
-          curl -fsS --get https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twtraffic
-          --data-urlencode left=21.05
-          --data-urlencode right=21.45
-          --data-urlencode bottom=48.90
-          --data-urlencode top=49.15
-          -o /tmp/traffic.json
-      - name: Validate traffic JSON
-        run: python -c "import json;d=json.load(open('/tmp/traffic.json'));assert not d.get('error'),d.get('error');assert isinstance(d.get('alerts'),list);assert isinstance(d.get('jams'),list);print('traffic OK',len(d['alerts']),len(d['jams']))"
+          curl -fsS --get https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twroute
+          --data-urlencode fromLat=48.9984
+          --data-urlencode fromLng=21.2393
+          --data-urlencode toLat=48.7164
+          --data-urlencode toLng=21.2611
+          --data-urlencode useVignette=true
+          --data-urlencode avoidTolls=false
+          --data-urlencode avoidFerries=false
+          -o /tmp/route.json
+      - name: Validate route traffic JSON
+        run: python -c "import json;d=json.load(open('/tmp/route.json'));assert not d.get('error'),d.get('error');assert isinstance(d.get('routes'),list) and d['routes'];r=d['routes'][0];assert isinstance(r.get('trafficJams'),list);print('route traffic OK',len(d['routes']),len(r['trafficJams']))"
       - uses: actions/checkout@v4
         with:
           ref: tesla-waze-preview-v1
           fetch-depth: 0
           path: live
-      - name: Patch live asset
-        run: cd live && python ../debugsrc/.github/scripts/fix-tesla-waze-04-traffic.py
+      - name: Patch live traffic
+        run: cd live && python ../debugsrc/.github/scripts/fix-tesla-waze-04-route-traffic.py
       - name: Commit live asset only
         working-directory: live
         run: |
@@ -42,5 +45,5 @@ jobs:
           git config user.email "lukaslejko@gmail.com"
           git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
           git diff --cached --check
-          git commit -m "Fix 04 restore live traffic and voice warnings" || exit 0
+          git commit -m "Fix 04 restore route traffic and voice warnings" || exit 0
           git push origin HEAD:tesla-waze-preview-v1
