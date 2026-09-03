@@ -105,3 +105,16 @@ body.tesla-navigating #alertBox{left:auto;right:18px;bottom:18px;width:min(380px
 .music-now{gap:8px!important}.music-now .music-art{width:40px!important;height:40px!important;border-radius:8px!important}
 .music-controls{gap:5px!important;margin-top:6px!important}.music-controls .btn{min-height:36px!important;padding:0 5px!important}
 @media(max-width:650px){.music-head{padding:8px 9px!important}.music-icon{width:28px;height:28px;flex-basis:28px}.music-head h2{font-size:17px!important}.music-min-btn,#closeMusic{min-width:88px;padding:0 8px!important}.music-body{padding:8px!important}.music-card{padding:8px!important}}
+
+/* Compact glass search controls. */
+#preSearchDock .searchbox{padding:7px!important;background:rgba(11,20,29,.91)!important;border:1px solid rgba(148,184,201,.24)!important;border-radius:14px!important;box-shadow:0 9px 26px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.05)!important;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+#preSearchDock .row{gap:7px!important}
+#preSearchDock .row input{min-height:44px!important;height:44px!important;border-radius:9px!important;border:1px solid rgba(148,184,201,.23)!important;background:rgba(5,13,20,.58)!important;color:#f3f8fa!important;padding:0 12px!important;font-size:13px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
+#preSearchDock .row input:focus{outline:2px solid rgba(34,211,238,.36)!important;outline-offset:1px;border-color:rgba(103,232,249,.45)!important}
+#preSearchDock #searchBtn{min-height:44px!important;height:44px!important;border-radius:9px!important;border:1px solid rgba(103,232,249,.48)!important;background:rgba(20,184,180,.78)!important;color:#041b1d!important;font-size:12px!important;font-weight:800!important;padding:0 13px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 5px 14px rgba(9,165,161,.16)!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#preSearchDock #searchBtn:active{transform:scale(.98)}
+#preSearchDock .search-quick-places{gap:6px!important;margin-top:6px!important}
+#preSearchDock .quick-place{min-height:36px!important;height:36px!important;border-radius:9px!important;border:1px solid rgba(148,184,201,.22)!important;background:rgba(35,53,66,.58)!important;color:#edf7fa!important;font-size:12px!important;font-weight:750!important;padding:0 9px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 10px rgba(0,0,0,.1);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#preSearchDock .quick-place:not(.is-unset){background:rgba(18,91,96,.5)!important;border-color:rgba(75,203,207,.3)!important}
+#preSearchDock .quick-place:active{transform:scale(.985)}
+@media(max-width:600px){#preSearchDock .searchbox{padding:6px!important}#preSearchDock .row input,#preSearchDock #searchBtn{height:42px!important;min-height:42px!important}#preSearchDock #searchBtn{padding:0 10px!important}#preSearchDock .quick-place{height:34px!important;min-height:34px!important}}
