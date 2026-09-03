@@ -215,7 +215,7 @@ function renderChargers(){state.chargerMarkers.forEach(x=>x.remove());state.char
 
 // Pairing
 const PROD_ORIGIN='https://tesla-waze.vercel.app';
-const MOBILE_PAIR_PAGE='https://raw.githack.com/lukaslejko-jpg/webstranka/3978358940b3894a51a53054d0a004cc56cd7969/tesla-waze-preview/live3.html';
+const MOBILE_PAIR_PAGE=PROD_ORIGIN;
 const PAIR_API='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twpair';
 let pairPollTimer=null;
 function stopPairPolling(){if(pairPollTimer){clearInterval(pairPollTimer);pairPollTimer=null}}
@@ -228,7 +228,7 @@ async function beginNewPair(body){
   const d=await pairing('start');
   const dev={version:2,deviceId:d.deviceId,deviceSecret:d.deviceSecret,paired:false};save(LS.device,dev);
   const rawPairUrl=d.pairingUrl||d.pairUrl||'';let pairUrl='';
-  try{const raw=new URL(rawPairUrl),code=String(d.pairingCode||raw.searchParams.get('pair')||''),token=String(raw.searchParams.get('pt')||'');if(code&&token){const safe=new URL(MOBILE_PAIR_PAGE);safe.hash=new URLSearchParams({pair:code,pt:token}).toString();pairUrl=safe.toString()}}catch{}
+  try{const raw=new URL(rawPairUrl),code=String(d.pairingCode||raw.searchParams.get('pair')||''),token=String(raw.searchParams.get('pt')||'');if(code&&token){const safe=new URL(MOBILE_PAIR_PAGE);safe.search=new URLSearchParams({pair:code,pt:token}).toString();pairUrl=safe.toString()}}catch{}
   body.innerHTML=`${pairUrl?'<div id="pairQr" class="pair-local-qr" aria-label="QR kód na prepojenie mobilu"></div>':''}<div class="code">${esc(d.pairingCode||'')}</div><p><b>Naskenujte QR kód iPhonom.</b><br>Po potvrdení sa spojenie na tejto obrazovke aktivuje automaticky.</p><p id="pairStatus">Čakám na mobil…</p>`;
   renderLocalQr(pairUrl).catch(()=>{const s=$('pairStatus');if(s)s.textContent='QR kód sa nepodarilo vytvoriť. Skúste nový kód.'});
   const expires=Date.parse(d.expiresAt||'')||Date.now()+10*60*1000;
@@ -256,7 +256,7 @@ function ensureMusicWindowControls(){
   const bindResize=(node,mode)=>node.addEventListener('pointerdown',e=>{e.preventDefault();node.setPointerCapture?.(e.pointerId);const cfg=musicWindowState(),sx=e.clientX,sy=e.clientY,sw=shell.getBoundingClientRect().width,sh=shell.getBoundingClientRect().height;const move=ev=>{if(mode==='w'){const w=Math.max(340,Math.min(Math.min(window.innerWidth-20,760),sw+(sx-ev.clientX)));shell.style.width=w+'px'}else{const h=Math.max(360,Math.min(window.innerHeight-20,sh+(sy-ev.clientY)));shell.style.height=h+'px'}};const up=ev=>{node.releasePointerCapture?.(ev.pointerId);node.removeEventListener('pointermove',move);node.removeEventListener('pointerup',up);node.removeEventListener('pointercancel',up);saveMusicWindow({width:Math.round(shell.getBoundingClientRect().width),height:Math.round(shell.getBoundingClientRect().height),minimized:false})};node.addEventListener('pointermove',move);node.addEventListener('pointerup',up);node.addEventListener('pointercancel',up)});
   bindResize(left,'w');bindResize(top,'h');applyMusicWindow();window.addEventListener('resize',applyMusicWindow);
 }
-function syncMusicFab(){const f=$('musicFab'),m=$('musicModal');if(!f||!m)return;f.style.setProperty('display',m.classList.contains('hidden')?'flex':'none','important')}
+function syncMusicFab(){const f=$('musicFab'),m=$('musicModal');if(!f||!m)return;const open=!m.classList.contains('hidden');document.documentElement.classList.toggle('music-window-open',open);document.body.classList.toggle('music-window-open',open);f.classList.toggle('hidden',open);f.style.setProperty('display',open?'none':'flex','important')}
 function setMusicWindowOpen(on){const m=$('musicModal');if(!m)return;m.classList.toggle('hidden',!on);syncMusicFab()}
 function openMusicWindow(){ensureMusicWindowControls();setMusicWindowOpen(true);applyMusicWindow();renderMusicStatus();renderMusicList();renderPlayer()}
 
@@ -283,3 +283,4 @@ function bind(){ensureTeslaNavUI();ensureMusicWindowControls();renderPlaces();ro
 
 if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫';$('musicFab').setAttribute('aria-label','Otvoriť hudbu')}initMap();startDeviceInbox()}
 })();
+
