@@ -1,0 +1,55 @@
+name: Patch Tesla Waze search and routing
+on:
+  push:
+    branches:
+      - debug/tesla-waze-decode-20260903
+    paths:
+      - .github/workflows/patch-tesla-waze-search-route.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+          fetch-depth: 0
+      - name: Patch production JS asset safely
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64, gzip
+
+          asset = Path('tesla-waze-preview/app.js.gz.b64')
+          src = gzip.decompress(base64.b64decode(asset.read_text().strip())).decode('utf-8')
+
+          replacements = [
+            ("searchHome:null};", "searchHome:null,routeLoading:false};"),
+            ("if(state.navigating)updateNavigation();},e=>$('gpsNotice')", "if(state.navigating)updateNavigation();else if(state.dest&&!state.routes.length&&!state.routeLoading)calculateRoute(true);},e=>$('gpsNotice')"),
+            ("async function selectDestination(x){state.dest=x;$('searchInput').value=x.name;$('searchResults').innerHTML='';", "async function selectDestination(x){state.dest=x;state.routes=[];state.routeIndex=0;state.routeProgress=null;state.routeCursor=0;$('searchInput').value=x.searchLabel||x.name;$('searchResults').innerHTML='';"),
+            ("async function calculateRoute(autoStart=false){if(!state.pos||!state.dest)return;const q=new URLSearchParams({fromLat:state.pos.lat,fromLng:state.pos.lng,toLat:state.dest.location.lat,toLng:state.dest.location.lng,useVignette:String(state.routing.useVignette),avoidTolls:String(state.routing.avoidTolls),avoidFerries:String(state.routing.avoidFerries)});try{const r=await fetch('/api/waze-route?'+q,{cache:'no-store'}),d=await r.json();state.routes=d.routes||[];state.routeIndex=0;state.routeProgress=null;state.routeCursor=0;drawRoutes(true);renderRouteCard();if(autoStart&&state.routes.length){beginNavigationOverview()}}catch(e){$('gpsNotice').querySelector('span').textContent='Trasu sa nepodarilo načítať.'}}", "async function calculateRoute(autoStart=false){if(!state.pos||!state.dest||state.routeLoading)return;state.routeLoading=true;const q=new URLSearchParams({fromLat:state.pos.lat,fromLng:state.pos.lng,toLat:state.dest.location.lat,toLng:state.dest.location.lng,useVignette:String(state.routing.useVignette),avoidTolls:String(state.routing.avoidTolls),avoidFerries:String(state.routing.avoidFerries)});try{const r=await fetch('/api/waze-route?'+q,{cache:'no-store'});if(!r.ok)throw Error('route '+r.status);const d=await r.json();state.routes=Array.isArray(d.routes)?d.routes:[];state.routeIndex=0;state.routeProgress=null;state.routeCursor=0;if(!state.routes.length)throw Error(d.error||'no routes');drawRoutes(true);renderRouteCard();if(autoStart)beginNavigationOverview()}catch(e){$('gpsNotice').querySelector('span').textContent='Trasu sa nepodarilo načítať.'}finally{state.routeLoading=false}}"),
+          ]
+
+          for old, new in replacements:
+              count = src.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one match, got {count}: {old[:80]}')
+              src = src.replace(old, new, 1)
+
+          Path('tesla-waze-preview/app.js').write_text(src, encoding='utf-8')
+          packed = gzip.compress(src.encode('utf-8'), compresslevel=9, mtime=0)
+          asset.write_text(base64.b64encode(packed).decode('ascii'), encoding='ascii')
+          print('Patched JS bytes:', len(src.encode('utf-8')))
+          PY
+          node --check tesla-waze-preview/app.js
+          git diff --check
+      - name: Commit only verified asset changes
+        shell: bash
+        run: |
+          git config user.name "lukaslejko-jpg"
+          git config user.email "lukaslejko@gmail.com"
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m "Fix full address retention and GPS-triggered Waze routing"
+          git push origin HEAD:tesla-waze-preview-v1
