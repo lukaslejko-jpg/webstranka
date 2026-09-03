@@ -1,0 +1,76 @@
+name: Patch Tesla Waze traffic alert and Slovak voice distance
+on:
+  push:
+    branches:
+      - debug/tesla-waze-bundle-1-9
+    paths:
+      - .github/workflows/patch-tesla-waze-traffic-voice-gap.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare live branch and checkpoint
+        run: |
+          git fetch origin tesla-waze-preview-v1
+          git checkout -B live origin/tesla-waze-preview-v1
+          git push origin HEAD:refs/heads/backup/tesla-waze-20260903-pre-traffic-voice-gap || true
+      - name: Apply two focused fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64, gzip
+
+          js_path=Path('tesla-waze-preview/app.js')
+          css_path=Path('tesla-waze-preview/app.css')
+          js=js_path.read_text(encoding='utf-8')
+          css=css_path.read_text(encoding='latin-1')
+
+          if 'const fmtSpeechD=' not in js:
+              marker='const fmtT=s=>'
+              assert js.count(marker)==1, f'fmtT marker count={js.count(marker)}'
+              helper="""const fmtSpeechD=m=>{const meters=Math.max(0,Math.round(Number(m)||0));if(meters<1000){const n=Math.max(0,Math.round(meters/10)*10);return n===1?'1 meter':n>=2&&n<=4?`${n} metre`:`${n} metrov`}const km=Math.round(meters/100)/10;if(Number.isInteger(km))return km===1?'1 kilometer':km>=2&&km<=4?`${km} kilometre`:`${km} kilometrov`;return `${String(km).replace('.',',')} kilometra`};\n"""
+              js=js.replace(marker,helper+marker,1)
+
+          old_nav="speak(p.distanceToManeuver>700?`O ${fmtD(p.distanceToManeuver)}. ${instruction(s)}`:instruction(s))"
+          new_nav="speak(p.distanceToManeuver>700?`O ${fmtSpeechD(p.distanceToManeuver)}. ${instruction(s)}`:instruction(s))"
+          assert old_nav in js or new_nav in js, 'navigation speech anchor missing'
+          js=js.replace(old_nav,new_nav,1)
+
+          old_traffic="speak(`${label} o ${fmtD(best.ahead)}${street?' na '+street:''}.`)"
+          new_traffic="speak(`${label} o ${fmtSpeechD(best.ahead)}${street?' na '+street:''}.`)"
+          assert old_traffic in js or new_traffic in js, 'traffic speech anchor missing'
+          js=js.replace(old_traffic,new_traffic,1)
+
+          css_marker='/* Tesla Waze traffic alert alignment 2026-09-03 */'
+          if css_marker not in css:
+              css += """\n\n/* Tesla Waze traffic alert alignment 2026-09-03 */\n.tesla-navigating .alertbox{left:18px!important;top:164px!important}\n@media(max-width:760px){.tesla-navigating .alertbox{left:10px!important;top:198px!important}}\n"""
+
+          js_path.write_text(js,encoding='utf-8')
+          css_path.write_text(css,encoding='latin-1')
+
+          for p in (js_path,css_path):
+              raw=p.read_bytes()
+              packed=gzip.compress(raw,mtime=0)
+              Path(str(p)+'.gz.b64').write_text(base64.b64encode(packed).decode('ascii'),encoding='ascii')
+
+          assert 'fmtSpeechD(best.ahead)' in js
+          assert 'fmtSpeechD(p.distanceToManeuver)' in js
+          assert 'left:18px!important;top:164px!important' in css
+          print('focused patch applied')
+          PY
+      - name: Syntax check
+        run: node --check tesla-waze-preview/app.js
+      - name: Commit and deploy live branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "Align traffic alert and fix Slovak distance speech"
+          git push origin HEAD:tesla-waze-preview-v1
