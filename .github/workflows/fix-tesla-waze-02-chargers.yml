@@ -1,0 +1,45 @@
+name: Fix Tesla Waze 02 chargers
+
+on:
+  push:
+    branches:
+      - debug/tesla-waze-decode-20260903
+    paths:
+      - .github/workflows/fix-tesla-waze-02-chargers.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout live Tesla Waze branch
+        uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+          fetch-depth: 0
+      - name: Route charger search through Supabase bridge
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip, base64
+          p = Path('tesla-waze-preview/app.js')
+          s = p.read_text(encoding='utf-8')
+          old = "https://tesla-waze-assets-v20.vercel.app/api/chargers?"
+          new = "/api/chargers?"
+          if s.count(old) != 1:
+              raise SystemExit(f'Expected exactly one charger endpoint, found {s.count(old)}')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          packed = gzip.compress(s.encode('utf-8'), compresslevel=9, mtime=0)
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(packed).decode('ascii'), encoding='ascii')
+          PY
+      - name: Commit live asset only
+        run: |
+          git config user.name "lukaslejko-jpg"
+          git config user.email "lukaslejko@gmail.com"
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git diff --cached --check
+          git commit -m "Fix 02 charger search without Vercel dependency" || exit 0
+          git push origin HEAD:tesla-waze-preview-v1
