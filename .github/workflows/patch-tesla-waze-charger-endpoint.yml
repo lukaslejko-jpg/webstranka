@@ -1,0 +1,40 @@
+name: Patch Tesla Waze charger endpoint
+on:
+  push:
+    branches:
+      - debug/tesla-waze-bundle-1-9
+    paths:
+      - .github/workflows/patch-tesla-waze-charger-endpoint.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare live branch
+        run: |
+          git fetch origin tesla-waze-preview-v1
+          git checkout -B live origin/tesla-waze-preview-v1
+      - name: Patch verified charger endpoint
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text(encoding='utf-8')
+          old="const r=await fetch('/api/chargers?'+q,{cache:'no-store'});"
+          new="const r=await fetch('https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twchargers?'+q,{cache:'no-store'});"
+          if s.count(old)!=1: raise SystemExit(f'charger endpoint matches={s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(s.encode(),9,mtime=0)).decode(),encoding='ascii')
+          PY
+      - run: node --check tesla-waze-preview/app.js
+      - name: Commit live assets
+        run: |
+          git config user.name lukaslejko-jpg
+          git config user.email lukaslejko@gmail.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m "Use verified Supabase charger endpoint"
+          git push origin HEAD:tesla-waze-preview-v1
