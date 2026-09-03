@@ -245,7 +245,7 @@ function ensureMusicWindowControls(){
   const bindResize=(node,mode)=>node.addEventListener('pointerdown',e=>{e.preventDefault();node.setPointerCapture?.(e.pointerId);const cfg=musicWindowState(),sx=e.clientX,sy=e.clientY,sw=shell.getBoundingClientRect().width,sh=shell.getBoundingClientRect().height;const move=ev=>{if(mode==='w'){const w=Math.max(340,Math.min(Math.min(window.innerWidth-20,760),sw+(sx-ev.clientX)));shell.style.width=w+'px'}else{const h=Math.max(360,Math.min(window.innerHeight-20,sh+(sy-ev.clientY)));shell.style.height=h+'px'}};const up=ev=>{node.releasePointerCapture?.(ev.pointerId);node.removeEventListener('pointermove',move);node.removeEventListener('pointerup',up);node.removeEventListener('pointercancel',up);saveMusicWindow({width:Math.round(shell.getBoundingClientRect().width),height:Math.round(shell.getBoundingClientRect().height),minimized:false})};node.addEventListener('pointermove',move);node.addEventListener('pointerup',up);node.addEventListener('pointercancel',up)});
   bindResize(left,'w');bindResize(top,'h');applyMusicWindow();window.addEventListener('resize',applyMusicWindow);
 }
-function syncMusicFab(){const f=$('musicFab'),m=$('musicModal');if(!f||!m)return;f.style.display=m.classList.contains('hidden')?'flex':'none'}
+function syncMusicFab(){const f=$('musicFab'),m=$('musicModal');if(!f||!m)return;f.style.setProperty('display',m.classList.contains('hidden')?'flex':'none','important')}
 function setMusicWindowOpen(on){const m=$('musicModal');if(!m)return;m.classList.toggle('hidden',!on);syncMusicFab()}
 function openMusicWindow(){ensureMusicWindowControls();setMusicWindowOpen(true);applyMusicWindow();renderMusicStatus();renderMusicList();renderPlayer()}
 
