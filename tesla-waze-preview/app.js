@@ -223,7 +223,9 @@ async function beginNewPair(body){
   stopPairPolling();body.innerHTML='<p>Pripravujem bezpečné prepojenie…</p>';
   const d=await pairing('start');
   const dev={version:2,deviceId:d.deviceId,deviceSecret:d.deviceSecret,paired:false};save(LS.device,dev);
-  const pairUrl=d.pairingUrl||d.pairUrl||'',qrUrl=d.qrDataUrl||(pairUrl?`https://quickchart.io/qr?size=260&margin=2&text=${encodeURIComponent(pairUrl)}`:'');
+  const rawPairUrl=d.pairingUrl||d.pairUrl||'';let pairUrl='';
+  try{const raw=new URL(rawPairUrl),code=String(d.pairingCode||raw.searchParams.get('pair')||''),token=String(raw.searchParams.get('pt')||'');if(code&&token){const safe=new URL(PAIR_API);safe.searchParams.set('pair',code);safe.searchParams.set('pt',token);pairUrl=safe.toString()}}catch{}
+  const qrUrl=pairUrl?`https://quickchart.io/qr?size=260&margin=2&text=${encodeURIComponent(pairUrl)}`:'';
   body.innerHTML=`${qrUrl?`<img src="${esc(qrUrl)}" alt="QR kód na prepojenie mobilu" style="max-width:260px;width:80%;height:auto">`:''}<div class="code">${esc(d.pairingCode||'')}</div><p><b>Naskenujte QR kód iPhonom.</b><br>Po potvrdení sa spojenie na tejto obrazovke aktivuje automaticky.</p><p id="pairStatus">Čakám na mobil…</p>`;
   const expires=Date.parse(d.expiresAt||'')||Date.now()+10*60*1000;
   const check=async()=>{try{const st=await pairing('status',dev),paired=st.paired||['paired','connected','claimed'].includes(String(st.status||'').toLowerCase());if(paired){stopPairPolling();const saved={...dev,paired:true,claimedAt:st.claimedAt||new Date().toISOString()};save(LS.device,saved);body.innerHTML='<div style="font-size:32px;color:#22d3ee">✓</div><h3>Mobil je prepojený</h3><p>Prepojenie bolo úspešne potvrdené.</p><button id="pairAgain" class="btn">Spárovať iný mobil</button>';const a=$('pairAgain');if(a)a.onclick=()=>beginNewPair(body);try{renderTeslaSettings()}catch{};return}if(st.status==='expired'||Date.now()>expires){stopPairPolling();body.innerHTML='<p>Párovací kód vypršal.</p><button id="pairAgain" class="btn">Vytvoriť nový kód</button>';const a=$('pairAgain');if(a)a.onclick=()=>beginNewPair(body)}}catch{}};
