@@ -7,6 +7,7 @@
 <title>Tesla Waze 2.0</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.css" />
+
 <style>
 html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
 #panel{display:none!important}
@@ -51,6 +52,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
 <div id="musicModal" class="music-modal hidden"><section class="music-shell"><div class="music-head"><div class="music-icon">🎵</div><div><h2>Smart Music</h2><small id="musicStatus">Učím sa tvoju hudbu</small></div><div class="spacer"></div><button id="closeMusic" class="btn">Späť na mapu</button></div><div class="music-body"><div class="music-card"><div id="musicAccount" class="music-account"></div><button id="youtubeSync" class="btn primary wide">Prepojiť / synchronizovať YouTube</button><small>YouTube „Páči sa mi“ používame ako profil preferencií. Google heslo sa v aplikácii neukladá.</small></div><div class="music-card"><div class="row"><input id="musicSearch" placeholder="Skladba alebo interpret"><button id="musicSearchBtn" class="btn primary">Hľadať</button></div><div id="musicSearchResults"></div></div><div class="music-tabs"><button class="chip active" data-mtab="forYou">✨ Pre teba</button><button class="chip" data-mtab="likes">♥ Obľúbené</button><button class="chip" data-mtab="recent">🕘 Nedávno</button></div><div id="musicList"></div><div id="musicSources"></div></div><div id="musicPlayer" class="music-player"></div></section></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 <script>
 (async()=>{try{
@@ -58,15 +60,18 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
  const PROD='https://tesla-waze.vercel.app';
  const API='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twapi';
  const nf=window.fetch.bind(window);
+ document.addEventListener('click',e=>{const t=e.target&&e.target.closest?e.target.closest('#youtubeSync'):null;if(!t)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();window.open(PROD+'/api/music/google/start','teslaWazeYouTube','width=520,height=760,noopener,noreferrer')},true);
+ const gpsWatchers=new Map();let gpsSeq=1,lastGps=null;
+ const gpsObj=d=>({coords:{latitude:Number(d.lat),longitude:Number(d.lng),accuracy:Number(d.accuracy)||30,speed:Number.isFinite(Number(d.speed))?Number(d.speed):null,heading:Number.isFinite(Number(d.heading))?Number(d.heading):null},timestamp:Date.now()});
+ window.addEventListener('message',e=>{const d=e.data;if(!d||d.type!=='tesla-gps')return;lastGps=d;for(const cb of gpsWatchers.values())try{cb(gpsObj(d))}catch{}});
+ try{
+   Object.defineProperty(navigator,'geolocation',{configurable:true,value:{
+     watchPosition(ok,err,opt){const id=gpsSeq++;gpsWatchers.set(id,ok);if(lastGps)queueMicrotask(()=>ok(gpsObj(lastGps)));try{parent.postMessage({type:'tesla-gps-request'},'*')}catch{}return id},
+     clearWatch(id){gpsWatchers.delete(id)},
+     getCurrentPosition(ok,err,opt){if(lastGps){ok(gpsObj(lastGps));return}const id=gpsSeq++;gpsWatchers.set(id,g=>{gpsWatchers.delete(id);ok(g)});try{parent.postMessage({type:'tesla-gps-request'},'*')}catch{};setTimeout(()=>{if(gpsWatchers.has(id)){gpsWatchers.delete(id);if(err)err({code:3,message:'GPS timeout'})}},10000)}
+   }});
+ }catch{}
  window.fetch=(i,o)=>{try{const s=typeof i==='string'?i:(i&&i.url)||'',u=new URL(s,location.href);if(u.origin===location.origin&&u.pathname.startsWith('/api/'))return nf(API+'?p='+encodeURIComponent(u.pathname+u.search),o)}catch{}return nf(i,o)};
- document.addEventListener('click',e=>{
-   const t=e.target&&e.target.closest?e.target.closest('#youtubeSync'):null;
-   if(!t)return;
-   e.preventDefault();
-   e.stopPropagation();
-   e.stopImmediatePropagation();
-   window.open(PROD+'/api/music/google/start','teslaWazeYouTube','width=520,height=760,noopener,noreferrer');
- },true);
  const ung=b=>new TextDecoder().decode(pako.ungzip(Uint8Array.from(atob(b.trim()),c=>c.charCodeAt(0))));
  const [css64,js64]=await Promise.all([
    nf(RAW+'app.css.gz.b64?live=9',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('css '+r.status);return r.text()}),
@@ -75,7 +80,11 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
  const st=document.createElement('style');st.textContent=ung(css64);document.head.appendChild(st);
  const dock=document.createElement('div');dock.id='preSearchDock';document.body.appendChild(dock);const sb=document.querySelector('.searchbox');if(sb)dock.appendChild(sb);
  const blob=new Blob([ung(js64)],{type:'text/javascript'}),url=URL.createObjectURL(blob),sc=document.createElement('script');
- sc.src=url;sc.onload=()=>{URL.revokeObjectURL(url);setTimeout(()=>{const f=document.getElementById('musicFab');if(f){f.style.display='flex';f.style.position='fixed';f.style.right='24px';f.style.bottom='96px';f.style.zIndex='7000'}},250)};document.body.appendChild(sc);
+ sc.src=url;sc.onload=()=>{URL.revokeObjectURL(url);setTimeout(()=>{
+   const f=document.getElementById('musicFab'),m=document.getElementById('musicModal');
+   const syncFab=()=>{if(!f||!m)return;f.style.display=m.classList.contains('hidden')?'flex':'none';f.style.position='fixed';f.style.right='24px';f.style.bottom='96px';f.style.zIndex='7000'};
+   syncFab();if(m)new MutationObserver(syncFab).observe(m,{attributes:true,attributeFilter:['class']});
+ },250)};document.body.appendChild(sc);
 }catch(e){document.body.innerHTML='<div style="padding:24px;color:white;background:#111">Tesla Waze chyba: '+String(e.message||e)+'</div>'}})();
 </script>
 </body></html>
