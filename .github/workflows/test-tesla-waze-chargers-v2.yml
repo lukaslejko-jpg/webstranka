@@ -1,0 +1,37 @@
+name: Test Tesla Waze chargers v2
+on:
+  push:
+    branches:
+      - debug/tesla-waze-bundle-1-9
+    paths:
+      - .github/workflows/test-tesla-waze-chargers-v2.yml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: First charger request
+        run: |
+          set -euo pipefail
+          URL='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twchargers?left=21.10&right=21.40&bottom=48.90&top=49.10'
+          curl --fail --max-time 30 --silent --show-error "$URL" -o /tmp/c1.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/c1.json'))
+          assert len(d.get('stations',[]))>0,d
+          print('first',d.get('source'),d.get('endpoint'),len(d['stations']))
+          PY
+      - name: Cached charger request
+        run: |
+          set -euo pipefail
+          URL='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twchargers?left=21.10&right=21.40&bottom=48.90&top=49.10'
+          START=$(date +%s%3N)
+          curl --fail --max-time 8 --silent --show-error "$URL" -o /tmp/c2.json
+          END=$(date +%s%3N)
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/c2.json'))
+          assert len(d.get('stations',[]))>0,d
+          assert d.get('cached') is True,d
+          print('second',d.get('source'),len(d['stations']))
+          PY
+          echo "cached_ms=$((END-START))"
