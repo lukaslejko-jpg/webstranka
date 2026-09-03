@@ -1,0 +1,28 @@
+name: Test Google Device OAuth for Tesla Waze
+
+on:
+  push:
+    branches:
+      - debug/tesla-waze-decode-20260903
+    paths:
+      - .github/workflows/test-google-device-oauth.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test existing Google client with device flow
+        run: |
+          code=$(curl -sS -o /tmp/device.json -w '%{http_code}' -X POST 'https://oauth2.googleapis.com/device/code' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode 'client_id=94811584476-2n3jg4qrl41b3jfg568okeu0uvln8hhi.apps.googleusercontent.com' \
+            --data-urlencode 'scope=openid email https://www.googleapis.com/auth/youtube.readonly')
+          echo "HTTP=$code"
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/device.json'))
+          safe={k:v for k,v in d.items() if k not in ('device_code',)}
+          print(safe)
+          if 'error' in d: raise SystemExit(2)
+          assert d.get('user_code') and d.get('verification_url')
+          PY
