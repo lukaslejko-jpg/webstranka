@@ -215,7 +215,7 @@ function renderChargers(){state.chargerMarkers.forEach(x=>x.remove());state.char
 
 // Pairing
 const PROD_ORIGIN='https://tesla-waze.vercel.app';
-const PAIR_API=PROD_ORIGIN+'/api/pairing';
+const PAIR_API='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twpair';
 let pairPollTimer=null;
 function stopPairPolling(){if(pairPollTimer){clearInterval(pairPollTimer);pairPollTimer=null}}
 async function pairing(action,payload={}){const r=await fetch(PAIR_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,...payload}),cache:'no-store'}),d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'pairing');return d}
