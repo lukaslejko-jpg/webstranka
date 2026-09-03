@@ -51,8 +51,13 @@ function moveSearchToNavigation(on){
   ensureTeslaNavUI();
   const sb=document.querySelector('.searchbox'),dock=$('teslaSearchDock');
   if(!sb||!dock)return;
-  if(on){dock.classList.remove('hidden');if(sb.parentNode!==dock)dock.appendChild(sb)}
-  else{dock.classList.add('hidden');if(state.searchHome?.parentNode&&sb.parentNode===dock)state.searchHome.parentNode.insertBefore(sb,state.searchHome.nextSibling)}
+  dock.classList.add('hidden');
+  if(on){
+    sb.classList.add('hidden');
+  }else{
+    if(state.searchHome?.parentNode&&sb.parentNode===dock)state.searchHome.parentNode.insertBefore(sb,state.searchHome.nextSibling);
+    sb.classList.remove('hidden');
+  }
 }
 function setNavigationShell(on){
   ensureTeslaNavUI();
