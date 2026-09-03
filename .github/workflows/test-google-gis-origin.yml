@@ -1,0 +1,55 @@
+name: Test Google GIS origin for Tesla Waze
+
+on:
+  push:
+    branches:
+      - debug/tesla-waze-decode-20260903
+    paths:
+      - .github/workflows/test-google-gis-origin.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install browser controller only
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Check Google OAuth origin in Chrome
+        env:
+          TEST_URL: https://raw.githack.com/lukaslejko-jpg/webstranka/5c3e0c10e0600a18d2fba7c03f963d10e457505d/.debug/oauth-origin-test.html
+        run: |
+          cat > /tmp/test.cjs <<'NODE'
+          const {chromium}=require('playwright-core');
+          (async()=>{
+            const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+            const ctx=await browser.newContext();
+            const page=await ctx.newPage();
+            const errors=[];
+            page.on('console',m=>{ if(m.type()==='error') errors.push(m.text()); });
+            await page.goto(process.env.TEST_URL,{waitUntil:'networkidle',timeout:30000});
+            let popup=null;
+            try {
+              [popup]=await Promise.all([
+                page.waitForEvent('popup',{timeout:10000}),
+                page.click('#go')
+              ]);
+            } catch(e) {
+              await page.waitForTimeout(3000);
+            }
+            let info={mainOut:await page.locator('#out').textContent().catch(()=>''),errors};
+            if(popup){
+              await popup.waitForLoadState('domcontentloaded',{timeout:15000}).catch(()=>{});
+              await popup.waitForTimeout(2500);
+              info.popupUrl=popup.url();
+              info.popupTitle=await popup.title().catch(()=> '');
+              info.popupText=(await popup.locator('body').innerText().catch(()=>'' )).slice(0,1200);
+            }
+            const blob=JSON.stringify(info).toLowerCase();
+            console.log(JSON.stringify(info,null,2));
+            if(blob.includes('origin_mismatch')||blob.includes('error 400')&&blob.includes('origin')) process.exit(2);
+            if(!popup && !info.mainOut) process.exit(3);
+            if(popup && (info.popupUrl.includes('accounts.google.com')||blob.includes('sign in')||blob.includes('choose an account')||blob.includes('prihlásiť'))) process.exit(0);
+            if(info.mainOut && !info.mainOut.includes('INIT_ERROR')) process.exit(0);
+            process.exit(4);
+          })().catch(e=>{console.error(e);process.exit(5)});
+          NODE
+          node /tmp/test.cjs
