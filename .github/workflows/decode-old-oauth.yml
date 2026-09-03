@@ -1,0 +1,36 @@
+name: Decode old Tesla Waze OAuth JS
+
+on:
+  push:
+    branches:
+      - debug/tesla-waze-decode-20260903
+    paths:
+      - .github/workflows/decode-old-oauth.yml
+
+permissions:
+  contents: write
+
+jobs:
+  decode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 426afed499c0e9c27caed96ea72cb727be303977
+          path: old
+      - uses: actions/checkout@v4
+        with:
+          ref: debug/tesla-waze-decode-20260903
+          path: debug
+      - name: Decode historical app
+        run: |
+          mkdir -p debug/.debug
+          base64 -d old/tesla-waze-preview/app.js.gz.b64 | gunzip > debug/.debug/app-426afed.js
+      - name: Commit diagnostic only to debug branch
+        working-directory: debug
+        run: |
+          git config user.name "lukaslejko-jpg"
+          git config user.email "lukaslejko@gmail.com"
+          git add .debug/app-426afed.js
+          git commit -m "Debug: decode historical OAuth app JS" || exit 0
+          git push origin HEAD:debug/tesla-waze-decode-20260903
