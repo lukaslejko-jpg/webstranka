@@ -60,7 +60,6 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
  const PROD='https://tesla-waze.vercel.app';
  const API='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twapi';
  const nf=window.fetch.bind(window);
- document.addEventListener('click',e=>{const t=e.target&&e.target.closest?e.target.closest('#youtubeSync'):null;if(!t)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();window.open(PROD+'/api/music/google/start','teslaWazeYouTube','width=520,height=760,noopener,noreferrer')},true);
  const gpsWatchers=new Map();let gpsSeq=1,lastGps=null;
  const gpsObj=d=>({coords:{latitude:Number(d.lat),longitude:Number(d.lng),accuracy:Number(d.accuracy)||30,speed:Number.isFinite(Number(d.speed))?Number(d.speed):null,heading:Number.isFinite(Number(d.heading))?Number(d.heading):null},timestamp:Date.now()});
  window.addEventListener('message',e=>{const d=e.data;if(!d||d.type!=='tesla-gps')return;lastGps=d;for(const cb of gpsWatchers.values())try{cb(gpsObj(d))}catch{}});
@@ -74,17 +73,18 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
  window.fetch=(i,o)=>{try{const s=typeof i==='string'?i:(i&&i.url)||'',u=new URL(s,location.href);if(u.origin===location.origin&&u.pathname.startsWith('/api/'))return nf(API+'?p='+encodeURIComponent(u.pathname+u.search),o)}catch{}return nf(i,o)};
  const ung=b=>new TextDecoder().decode(pako.ungzip(Uint8Array.from(atob(b.trim()),c=>c.charCodeAt(0))));
  const [css64,js64]=await Promise.all([
-   nf(RAW+'app.css.gz.b64?live=9',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('css '+r.status);return r.text()}),
-   nf(RAW+'app.js.gz.b64?live=9',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('js '+r.status);return r.text()})
+   nf(RAW+'app.css.gz.b64?v='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('css '+r.status);return r.text()}),
+   nf(RAW+'app.js.gz.b64?v='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('js '+r.status);return r.text()})
  ]);
  const st=document.createElement('style');st.textContent=ung(css64);document.head.appendChild(st);
  const dock=document.createElement('div');dock.id='preSearchDock';document.body.appendChild(dock);const sb=document.querySelector('.searchbox');if(sb)dock.appendChild(sb);
  const blob=new Blob([ung(js64)],{type:'text/javascript'}),url=URL.createObjectURL(blob),sc=document.createElement('script');
  sc.src=url;sc.onload=()=>{URL.revokeObjectURL(url);setTimeout(()=>{
    const f=document.getElementById('musicFab'),m=document.getElementById('musicModal');
-   const syncFab=()=>{if(!f||!m)return;f.style.display=m.classList.contains('hidden')?'flex':'none';f.style.position='fixed';f.style.right='24px';f.style.bottom='96px';f.style.zIndex='7000'};
+   const syncFab=()=>{if(!f||!m)return;f.style.setProperty('display',m.classList.contains('hidden')?'flex':'none','important');f.style.position='fixed';f.style.right='24px';f.style.bottom='96px';f.style.zIndex='7000'};
    syncFab();if(m)new MutationObserver(syncFab).observe(m,{attributes:true,attributeFilter:['class']});
  },250)};document.body.appendChild(sc);
 }catch(e){document.body.innerHTML='<div style="padding:24px;color:white;background:#111">Tesla Waze chyba: '+String(e.message||e)+'</div>'}})();
 </script>
 </body></html>
+
