@@ -219,14 +219,17 @@ const PAIR_API='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twpair';
 let pairPollTimer=null;
 function stopPairPolling(){if(pairPollTimer){clearInterval(pairPollTimer);pairPollTimer=null}}
 async function pairing(action,payload={}){const r=await fetch(PAIR_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,...payload}),cache:'no-store'}),d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'pairing');return d}
+let qrLibraryPromise=null;
+function loadQrLibrary(){if(window.QRCode)return Promise.resolve();if(qrLibraryPromise)return qrLibraryPromise;qrLibraryPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s)});return qrLibraryPromise}
+async function renderLocalQr(url){const host=$('pairQr');if(!host||!url)return;await loadQrLibrary();host.innerHTML='';new QRCode(host,{text:url,width:260,height:260,colorDark:'#071016',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}
 async function beginNewPair(body){
   stopPairPolling();body.innerHTML='<p>Pripravujem bezpečné prepojenie…</p>';
   const d=await pairing('start');
   const dev={version:2,deviceId:d.deviceId,deviceSecret:d.deviceSecret,paired:false};save(LS.device,dev);
   const rawPairUrl=d.pairingUrl||d.pairUrl||'';let pairUrl='';
   try{const raw=new URL(rawPairUrl),code=String(d.pairingCode||raw.searchParams.get('pair')||''),token=String(raw.searchParams.get('pt')||'');if(code&&token){const safe=new URL(PROD_ORIGIN);safe.searchParams.set('pair',code);safe.searchParams.set('pt',token);pairUrl=safe.toString()}}catch{}
-  const qrUrl=pairUrl?`https://quickchart.io/qr?size=260&margin=2&text=${encodeURIComponent(pairUrl)}`:'';
-  body.innerHTML=`${qrUrl?`<img src="${esc(qrUrl)}" alt="QR kód na prepojenie mobilu" style="max-width:260px;width:80%;height:auto">`:''}<div class="code">${esc(d.pairingCode||'')}</div><p><b>Naskenujte QR kód iPhonom.</b><br>Po potvrdení sa spojenie na tejto obrazovke aktivuje automaticky.</p><p id="pairStatus">Čakám na mobil…</p>`;
+  body.innerHTML=`${pairUrl?'<div id="pairQr" class="pair-local-qr" aria-label="QR kód na prepojenie mobilu"></div>':''}<div class="code">${esc(d.pairingCode||'')}</div><p><b>Naskenujte QR kód iPhonom.</b><br>Po potvrdení sa spojenie na tejto obrazovke aktivuje automaticky.</p><p id="pairStatus">Čakám na mobil…</p>`;
+  renderLocalQr(pairUrl).catch(()=>{const s=$('pairStatus');if(s)s.textContent='QR kód sa nepodarilo vytvoriť. Skúste nový kód.'});
   const expires=Date.parse(d.expiresAt||'')||Date.now()+10*60*1000;
   const check=async()=>{try{const st=await pairing('status',dev),paired=st.paired||['paired','connected','claimed'].includes(String(st.status||'').toLowerCase());if(paired){stopPairPolling();const saved={...dev,paired:true,claimedAt:st.claimedAt||new Date().toISOString()};save(LS.device,saved);body.innerHTML='<div style="font-size:32px;color:#22d3ee">✓</div><h3>Mobil je prepojený</h3><p>Prepojenie bolo úspešne potvrdené.</p><button id="pairAgain" class="btn">Spárovať iný mobil</button>';const a=$('pairAgain');if(a)a.onclick=()=>beginNewPair(body);try{renderTeslaSettings()}catch{};return}if(st.status==='expired'||Date.now()>expires){stopPairPolling();body.innerHTML='<p>Párovací kód vypršal.</p><button id="pairAgain" class="btn">Vytvoriť nový kód</button>';const a=$('pairAgain');if(a)a.onclick=()=>beginNewPair(body)}}catch{}};
   pairPollTimer=setInterval(check,1800);setTimeout(check,350);
