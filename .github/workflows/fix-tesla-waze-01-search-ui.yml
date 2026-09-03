@@ -20,40 +20,21 @@ jobs:
           ref: tesla-waze-preview-v1
           fetch-depth: 0
       - name: Hide search while navigating and restore on stop
-        shell: python
         run: |
+          python - <<'PY'
           from pathlib import Path
           import gzip, base64
-
           p = Path('tesla-waze-preview/app.js')
           s = p.read_text(encoding='utf-8')
-          old = """function moveSearchToNavigation(on){
-  ensureTeslaNavUI();
-  const sb=document.querySelector('.searchbox'),dock=$('teslaSearchDock');
-  if(!sb||!dock)return;
-  if(on){dock.classList.remove('hidden');if(sb.parentNode!==dock)dock.appendChild(sb)}
-  else{dock.classList.add('hidden');if(state.searchHome?.parentNode&&sb.parentNode===dock)state.searchHome.parentNode.insertBefore(sb,state.searchHome.nextSibling)}
-}"""
-          new = """function moveSearchToNavigation(on){
-  ensureTeslaNavUI();
-  const sb=document.querySelector('.searchbox'),dock=$('teslaSearchDock');
-  if(!sb||!dock)return;
-  dock.classList.add('hidden');
-  if(on){
-    sb.classList.add('hidden');
-  }else{
-    if(state.searchHome?.parentNode&&sb.parentNode===dock)state.searchHome.parentNode.insertBefore(sb,state.searchHome.nextSibling);
-    sb.classList.remove('hidden');
-  }
-}"""
+          old = "function moveSearchToNavigation(on){\n  ensureTeslaNavUI();\n  const sb=document.querySelector('.searchbox'),dock=$('teslaSearchDock');\n  if(!sb||!dock)return;\n  if(on){dock.classList.remove('hidden');if(sb.parentNode!==dock)dock.appendChild(sb)}\n  else{dock.classList.add('hidden');if(state.searchHome?.parentNode&&sb.parentNode===dock)state.searchHome.parentNode.insertBefore(sb,state.searchHome.nextSibling)}\n}"
+          new = "function moveSearchToNavigation(on){\n  ensureTeslaNavUI();\n  const sb=document.querySelector('.searchbox'),dock=$('teslaSearchDock');\n  if(!sb||!dock)return;\n  dock.classList.add('hidden');\n  if(on){\n    sb.classList.add('hidden');\n  }else{\n    if(state.searchHome?.parentNode&&sb.parentNode===dock)state.searchHome.parentNode.insertBefore(sb,state.searchHome.nextSibling);\n    sb.classList.remove('hidden');\n  }\n}"
           if s.count(old) != 1:
               raise SystemExit(f'Expected exactly one search UI block, found {s.count(old)}')
           s = s.replace(old, new, 1)
           p.write_text(s, encoding='utf-8')
-
-          raw = s.encode('utf-8')
-          packed = gzip.compress(raw, compresslevel=9, mtime=0)
+          packed = gzip.compress(s.encode('utf-8'), compresslevel=9, mtime=0)
           Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(packed).decode('ascii'), encoding='ascii')
+          PY
       - name: Commit live asset only
         run: |
           git config user.name "lukaslejko-jpg"
