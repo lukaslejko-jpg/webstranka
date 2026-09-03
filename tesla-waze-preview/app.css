@@ -47,6 +47,7 @@ body.tesla-navigating #alertBox{left:auto;right:18px;bottom:18px;width:min(380px
 @media(max-width:650px){.music-modal{padding:4px}.music-shell{max-width:calc(100vw - 8px);max-height:calc(100vh - 8px);min-width:300px}.music-min-btn{font-size:11px;padding:7px}}
 
 .music-fab{position:fixed;right:22px;bottom:22px;z-index:5600;width:44px;height:44px;border-radius:12px;border:1px solid rgba(148,163,184,.34);background:rgba(15,23,32,.82);backdrop-filter:blur(12px);color:#67e8f9;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.22);opacity:.84;transition:.18s}.music-fab:hover,.music-fab:focus{opacity:1;transform:translateY(-1px)}.music-modal:not(.hidden)~.music-fab{display:none!important}@media(max-width:760px){.music-fab{right:14px;bottom:14px;width:42px;height:42px;font-size:19px}}
+.music-window-open .music-fab{display:none!important}
 
 
 /* Tesla Waze UX bundle 2026-09-03 */
@@ -147,3 +148,4 @@ body.tesla-navigating #alertBox{left:auto;right:18px;bottom:18px;width:min(380px
 .pair-local-qr{display:flex;align-items:center;justify-content:center;width:276px;max-width:100%;min-height:276px;box-sizing:border-box;margin:0 auto 12px;padding:8px;border-radius:12px;background:#fff}.pair-local-qr img,.pair-local-qr canvas{display:block;max-width:100%;height:auto!important}
 .leaflet-control-zoom{border:1px solid var(--glass-border)!important;border-radius:10px!important;overflow:hidden;box-shadow:var(--glass-shadow)!important}.leaflet-control-zoom a{background:var(--glass-bg)!important;color:var(--glass-text)!important;border-bottom-color:var(--glass-border)!important}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:rgba(11,20,29,.94)!important;color:var(--glass-text)!important}.leaflet-popup-content-wrapper{border:1px solid var(--glass-border);border-radius:12px!important;box-shadow:var(--glass-shadow)!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 @media(max-width:760px){.topbar .btn,.topbar .badge{height:40px!important;min-height:40px!important;padding:0 10px!important}.tesla-man-main b{font-size:22px!important}.tesla-turn{font-size:38px!important;width:42px!important}}
+
