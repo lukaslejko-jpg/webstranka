@@ -17,6 +17,17 @@ jobs:
           cp tools/patch_tesla_waze_bundle_1_9.py /tmp/patch_tesla_waze_bundle_1_9.py
           git fetch origin tesla-waze-preview-v1
           git checkout -B live origin/tesla-waze-preview-v1
+      - name: Restore plain CSS from the live gzip asset
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64, gzip
+          p=Path('tesla-waze-preview/app.css.gz.b64')
+          raw=gzip.decompress(base64.b64decode(p.read_text(encoding='ascii').strip()))
+          raw.decode('utf-8')
+          Path('tesla-waze-preview/app.css').write_bytes(raw)
+          print('restored css bytes',len(raw))
+          PY
       - name: Apply patch
         run: python /tmp/patch_tesla_waze_bundle_1_9.py
       - name: Syntax check
