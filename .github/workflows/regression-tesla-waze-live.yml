@@ -1,0 +1,56 @@
+name: Tesla Waze live regression
+on:
+  push:
+    branches:
+      - debug/tesla-waze-bundle-1-9
+    paths:
+      - .github/workflows/regression-tesla-waze-live.yml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout live asset branch
+        run: |
+          git fetch origin tesla-waze-preview-v1
+          git checkout -B live origin/tesla-waze-preview-v1
+      - name: Validate JS and gzip assets
+        run: |
+          node --check tesla-waze-preview/app.js
+          python - <<'PY'
+          from pathlib import Path
+          import base64,gzip
+          js=Path('tesla-waze-preview/app.js').read_text(encoding='utf-8')
+          css=Path('tesla-waze-preview/app.css').read_text(encoding='utf-8')
+          decjs=gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.js.gz.b64').read_text().strip())).decode()
+          deccss=gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.css.gz.b64').read_text().strip())).decode()
+          assert js==decjs
+          assert css==deccss
+          required_js=[
+            "slice(0,20)","tesla-recents-scroll","Uložiť ako Domov","Uložiť ako Práca",
+            "lastCameraAt","panTo(center","trafficPaintSig","syncMusicFab","setMusicWindowOpen",
+            "functions/v1/twchargers","functions/v1/twpair","Mobil je prepojený","pairPollTimer"
+          ]
+          required_css=[".tesla-navigating .alertbox","left:12px","top:154px",".tesla-recents-scroll","max-height:304px"]
+          for x in required_js: assert x in js,x
+          for x in required_css: assert x in css,x
+          print('asset_regression=OK')
+          PY
+      - name: Validate charger backend
+        run: |
+          curl --fail --max-time 25 --silent --show-error 'https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twchargers?left=21.10&right=21.40&bottom=48.90&top=49.10' -o /tmp/c.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/c.json'))
+          assert len(d.get('stations',[]))>0,d
+          print('chargers=',len(d['stations']))
+          PY
+      - name: Validate pairing backend
+        run: |
+          curl --fail --max-time 10 --silent --show-error -X POST 'https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twpair' -H 'content-type: application/json' --data '{"action":"start"}' -o /tmp/p.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/p.json'))
+          assert d.get('deviceId') and d.get('pairingCode') and d.get('qrDataUrl'),d
+          print('pairing_start=OK')
+          PY
