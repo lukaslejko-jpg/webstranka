@@ -1,0 +1,42 @@
+name: Patch Tesla Waze live traffic off Vercel
+on:
+  push:
+    branches: [debug/tesla-waze-fix04b-traffic]
+    paths: [.github/workflows/patch-tesla-waze-traffic-supabase.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Patch app.js and regenerate gzip asset
+        shell: python
+        run: |
+          from pathlib import Path
+          import gzip, base64
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("alerts:[],alertsOn:load(LS.alerts,true),jams:[],chargers:[]", "alerts:[],alertsOn:load(LS.alerts,true),jams:[],liveJams:[],chargers:[]")
+          s=s.replace("state.jams=state.routes[0]?.trafficJams||[];", "state.jams=[...(state.routes[0]?.trafficJams||[]),...(state.liveJams||[])];")
+          s=s.replace("state.jams=state.routes[i]?.trafficJams||[];", "state.jams=[...(state.routes[i]?.trafficJams||[]),...(state.liveJams||[])];")
+          s=s.replace("state.jams=state.routes[state.routeIndex]?.trafficJams||[];", "state.jams=[...(state.routes[state.routeIndex]?.trafficJams||[]),...(state.liveJams||[])];")
+          old="async function loadAlerts(){if(!state.map)return;const b=state.map.getBounds(),q=new URLSearchParams({left:b.getWest(),right:b.getEast(),bottom:b.getSouth(),top:b.getNorth()});try{const r=await fetch('https://tesla-waze-assets-v20.vercel.app/api/alerts?'+q,{cache:'no-store'}),d=await r.json();state.alerts=d.alerts||[];renderAlertMarkers();renderTraffic();findAheadAlert()}catch{}}"
+          new="async function loadAlerts(){if(!state.map)return;const b=state.map.getBounds(),q=new URLSearchParams({left:b.getWest(),right:b.getEast(),bottom:b.getSouth(),top:b.getNorth()});try{const r=await fetch('https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twtraffic?'+q,{cache:'no-store'});if(!r.ok)throw Error('traffic '+r.status);const d=await r.json();state.alerts=Array.isArray(d.alerts)?d.alerts:[];state.liveJams=Array.isArray(d.jams)?d.jams:[];state.jams=[...(state.routes[state.routeIndex]?.trafficJams||[]),...state.liveJams];renderAlertMarkers();renderTraffic();findAheadAlert();findAheadTraffic()}catch{}}"
+          if old not in s:
+              raise SystemExit('loadAlerts pattern not found')
+          s=s.replace(old,new)
+          p.write_text(s,encoding='utf-8')
+          raw=s.encode('utf-8')
+          b64=base64.b64encode(gzip.compress(raw,compresslevel=9,mtime=0)).decode('ascii')
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(b64,encoding='ascii')
+      - name: Commit target branch
+        run: |
+          git config user.name lukaslejko-jpg
+          git config user.email lukaslejko@gmail.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m "Fix 04b move live traffic and alerts off Vercel"
+          git push origin HEAD:tesla-waze-preview-v1
