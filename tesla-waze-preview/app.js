@@ -126,7 +126,7 @@ function renderTeslaSettings(){
   box.querySelector('[data-ts-voice]').onchange=e=>{state.voice=e.target.checked;save(LS.voice,state.voice)};
   box.querySelectorAll('[data-ts-vmode]').forEach(b=>b.onclick=()=>{state.voiceMode=b.dataset.tsVmode;save(LS.voiceMode,state.voiceMode);renderTeslaSettings()});
   box.querySelector('[data-ts-alerts]').onchange=e=>{state.alertsOn=e.target.checked;save(LS.alerts,state.alertsOn);state.alertPaintSig='';renderAlertMarkers();findAheadAlert()};
-  box.querySelector('[data-ts-chargers]').onclick=()=>{state.chargersOn=!state.chargersOn;if(state.chargersOn)searchChargers().finally(()=>renderTeslaSettings());else{renderChargers();renderTeslaSettings()}};
+  box.querySelector('[data-ts-chargers]').onclick=()=>{state.chargersOn=!state.chargersOn;renderTeslaSettings();if(state.chargersOn)searchChargers().finally(()=>renderTeslaSettings());else renderChargers()};
   box.querySelectorAll('[data-ts-cf]').forEach(b=>b.onclick=()=>{state.chargeFilter=b.dataset.tsCf;save(LS.chargeFilter,state.chargeFilter);renderChargers();renderTeslaSettings()});
   box.querySelectorAll('[data-ts-save-place]').forEach(b=>b.onclick=()=>{if(!state.dest)return;saveFav(b.dataset.tsSavePlace);renderTeslaSettings()});
   box.querySelectorAll('[data-ts-delete-place]').forEach(b=>b.onclick=()=>{const kind=b.dataset.tsDeletePlace,label=kind==='home'?'Domov':'Prácu';if(confirm(`Vymazať uložené miesto ${label}?`)){deleteFav(kind);renderTeslaSettings()}});
@@ -272,4 +272,3 @@ function bind(){ensureTeslaNavUI();ensureMusicWindowControls();renderPlaces();ro
 
 bind();if($('musicFab')){$('musicFab').textContent='♫';$('musicFab').setAttribute('aria-label','Otvoriť hudbu')}initMap();
 })();
-
