@@ -17,7 +17,7 @@ jobs:
         env:
           TEST_URL: https://raw.githack.com/lukaslejko-jpg/webstranka/5c3e0c10e0600a18d2fba7c03f963d10e457505d/.debug/oauth-origin-test.html
         run: |
-          cat > /tmp/test.cjs <<'NODE'
+          cat > test-gis-origin.cjs <<'NODE'
           const {chromium}=require('playwright-core');
           (async()=>{
             const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
@@ -45,6 +45,7 @@ jobs:
             }
             const blob=JSON.stringify(info).toLowerCase();
             console.log(JSON.stringify(info,null,2));
+            await browser.close();
             if(blob.includes('origin_mismatch')||blob.includes('error 400')&&blob.includes('origin')) process.exit(2);
             if(!popup && !info.mainOut) process.exit(3);
             if(popup && (info.popupUrl.includes('accounts.google.com')||blob.includes('sign in')||blob.includes('choose an account')||blob.includes('prihlásiť'))) process.exit(0);
@@ -52,4 +53,4 @@ jobs:
             process.exit(4);
           })().catch(e=>{console.error(e);process.exit(5)});
           NODE
-          node /tmp/test.cjs
+          node test-gis-origin.cjs
