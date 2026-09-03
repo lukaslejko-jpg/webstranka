@@ -1,0 +1,33 @@
+name: Test Tesla Waze mobile pairing
+on:
+  push:
+    branches:
+      - debug/tesla-waze-bundle-1-9
+    paths:
+      - .github/workflows/test-tesla-waze-pairing.yml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Full pairing cycle
+        run: |
+          set -euo pipefail
+          URL='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twpair'
+          START=$(curl --fail --silent --show-error -X POST "$URL" -H 'content-type: application/json' --data '{"action":"start"}')
+          export START URL
+          python - <<'PY'
+          import os,json,subprocess
+          d=json.loads(os.environ['START'])
+          assert d['status']=='pending'
+          assert d['pairingCode'] and d['deviceId'] and d['deviceSecret'] and d['pairUrl']
+          def post(body):
+              r=subprocess.run(['curl','--fail','--silent','--show-error','-X','POST',os.environ['URL'],'-H','content-type: application/json','--data',json.dumps(body)],capture_output=True,text=True,check=True)
+              return json.loads(r.stdout)
+          s=post({'action':'status','deviceId':d['deviceId'],'deviceSecret':d['deviceSecret']})
+          assert s['status']=='pending' and s['paired'] is False, s
+          c=post({'action':'claim','pairingCode':d['pairingCode'],'pairToken':d['pairUrl'].split('pt=',1)[1]})
+          assert c['status']=='claimed', c
+          s=post({'action':'status','deviceId':d['deviceId'],'deviceSecret':d['deviceSecret']})
+          assert s['status']=='claimed' and s['paired'] is True, s
+          print('pairing_cycle=OK')
+          PY
