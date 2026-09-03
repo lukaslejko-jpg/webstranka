@@ -63,4 +63,5 @@ body.tesla-navigating #alertBox{left:auto;right:18px;bottom:18px;width:min(380px
 /* Tesla Waze traffic alert alignment 2026-09-03 */
 .tesla-navigating .alertbox{left:18px!important;top:164px!important}
 @media(max-width:760px){.tesla-navigating .alertbox{left:10px!important;top:198px!important}}
+@media(max-width:520px){.search-quick-places{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px}.quick-place{min-width:0;padding:0 5px;gap:4px;font-size:13px}.quick-place-icon{font-size:20px}}
 
