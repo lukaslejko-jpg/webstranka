@@ -1,0 +1,29 @@
+name: Decode Tesla Waze JS
+on:
+  push:
+    branches:
+      - debug/tesla-waze-decode-20260903
+permissions:
+  contents: read
+jobs:
+  decode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode current production JS asset
+        shell: bash
+        run: |
+          python - <<'PY'
+          import base64, gzip
+          from pathlib import Path
+          src = Path('tesla-waze-preview/app.js.gz.b64').read_text().strip()
+          raw = base64.b64decode(src)
+          out = gzip.decompress(raw)
+          Path('decoded-app-current.js').write_bytes(out)
+          print('decoded bytes:', len(out))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: decoded-tesla-waze-js
+          path: decoded-app-current.js
+          if-no-files-found: error
