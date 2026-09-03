@@ -1,0 +1,47 @@
+name: Test extra Google redirects for Tesla Waze
+
+on:
+  push:
+    branches:
+      - debug/tesla-waze-decode-20260903
+    paths:
+      - .github/workflows/test-google-extra-redirects.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm install --no-save playwright-core@1.55.0
+      - name: Classify extra redirect URIs
+        run: |
+          cat > test-google-extra-redirects.cjs <<'NODE'
+          const {chromium}=require('playwright-core');
+          const client='94811584476-2n3jg4qrl41b3jfg568okeu0uvln8hhi.apps.googleusercontent.com';
+          const redirects=[
+            ['old-immutable','https://tesla-waze-7amlbdyyk-lukaslejko-9932s-projects.vercel.app/api/music/google/callback'],
+            ['project-alias','https://tesla-waze-lukaslejko-9932s-projects.vercel.app/api/music/google/callback'],
+            ['supabase-twapi','https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twapi'],
+            ['supabase-music','https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twmusic']
+          ];
+          (async()=>{
+            const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+            const ctx=await browser.newContext();
+            let valid=[];
+            for(const [name,redirect] of redirects){
+              const p=await ctx.newPage();
+              const q=new URLSearchParams({client_id:client,redirect_uri:redirect,response_type:'token',scope:'openid email https://www.googleapis.com/auth/youtube.readonly',include_granted_scopes:'true',state:'teslawaze-test',prompt:'consent'});
+              await p.goto('https://accounts.google.com/o/oauth2/v2/auth?'+q,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
+              await p.waitForTimeout(1000);
+              const text=(await p.locator('body').innerText().catch(()=>'' )).slice(0,700);
+              const url=p.url();
+              const blob=(text+' '+url).toLowerCase();
+              const mismatch=blob.includes('redirect_uri_mismatch')||blob.includes('error 400')&&blob.includes('redirect');
+              console.log(JSON.stringify({name,redirect,mismatch,url,text:text.slice(0,350)}));
+              if(!mismatch) valid.push(name);
+              await p.close();
+            }
+            await browser.close();
+            console.log('VALID='+valid.join(','));
+          })().catch(e=>{console.error(e);process.exit(5)});
+          NODE
+          node test-google-extra-redirects.cjs
