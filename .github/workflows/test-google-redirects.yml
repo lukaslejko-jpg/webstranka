@@ -1,0 +1,49 @@
+name: Test Google redirects for Tesla Waze
+
+on:
+  push:
+    branches:
+      - debug/tesla-waze-decode-20260903
+    paths:
+      - .github/workflows/test-google-redirects.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm install --no-save playwright-core@1.55.0
+      - name: Classify redirect URIs
+        run: |
+          cat > test-google-redirects.cjs <<'NODE'
+          const {chromium}=require('playwright-core');
+          const client='94811584476-2n3jg4qrl41b3jfg568okeu0uvln8hhi.apps.googleusercontent.com';
+          const redirects=[
+            ['stable-callback','https://tesla-waze.vercel.app/api/music/google/callback'],
+            ['stable-root','https://tesla-waze.vercel.app/'],
+            ['live3','https://raw.githack.com/lukaslejko-jpg/webstranka/3978358940b3894a51a53054d0a004cc56cd7969/tesla-waze-preview/live3.html']
+          ];
+          (async()=>{
+            const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+            const ctx=await browser.newContext();
+            let valid=[];
+            for(const [name,redirect] of redirects){
+              const p=await ctx.newPage();
+              const q=new URLSearchParams({client_id:client,redirect_uri:redirect,response_type:'token',scope:'openid email https://www.googleapis.com/auth/youtube.readonly',include_granted_scopes:'true',state:'teslawaze-test',prompt:'consent'});
+              await p.goto('https://accounts.google.com/o/oauth2/v2/auth?'+q,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
+              await p.waitForTimeout(1800);
+              const title=await p.title().catch(()=> '');
+              const text=(await p.locator('body').innerText().catch(()=>'' )).slice(0,1500);
+              const url=p.url();
+              const blob=(title+' '+text+' '+url).toLowerCase();
+              const mismatch=blob.includes('redirect_uri_mismatch')||blob.includes('error 400')&&blob.includes('redirect');
+              const login=blob.includes('sign in')||blob.includes('choose an account')||blob.includes('prihlásiť')||blob.includes('accounts.google.com');
+              console.log(JSON.stringify({name,redirect,mismatch,login,title,url,text:text.slice(0,500)}));
+              if(!mismatch && login) valid.push(name);
+              await p.close();
+            }
+            await browser.close();
+            console.log('VALID='+valid.join(','));
+            if(!valid.includes('stable-callback')) process.exit(2);
+          })().catch(e=>{console.error(e);process.exit(5)});
+          NODE
+          node test-google-redirects.cjs
