@@ -387,20 +387,28 @@ function seekMusicTo(seconds){try{const d=musicDuration(),v=Math.max(0,Math.min(
 function updateMiniSeek(){const seek=$('musicMiniSeek'),now=$('musicMiniNow'),total=$('musicMiniTotal');if(!seek)return;const d=musicDuration(),p=musicCurrentTime();if(now)now.textContent=fmtMusicClock(p);if(total)total.textContent=d>0?fmtMusicClock(d):'--:--';seek.disabled=!(d>0);if(d>0&&document.activeElement!==seek)seek.value=String(Math.max(0,Math.min(1000,Math.round(p/d*1000))))}
 function miniQueueMarkup(q,currentId){return q.slice(0,40).map((t,i)=>{const s=mt(t),active=s.id===currentId;return `<button type="button" class="music-mini-track ${active?'active':''}" data-mini-play="${esc(s.id)}"><span class="music-mini-index">${i+1}</span><img class="music-mini-art" src="${esc(t.artwork||s.artwork||'')}" onerror="this.style.visibility='hidden'"><span class="music-mini-meta"><b>${esc(t.title||s.title||'Bez názvu')}</b><small>${esc(t.artist||s.artist||'')}</small></span>${active?'<span class="music-mini-playing">▶</span>':''}</button>`}).join('')}
 
+/* MUSIC_MINI_SEARCH_V6 */
+function wireMiniQueue(container,q,currentId){if(!container)return;container.innerHTML=miniQueueMarkup(q,currentId||'');const byId=new Map(q.map(t=>[mt(t).id,t]));container.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)})}
+function wireMiniSearch(root){
+  const input=root?.querySelector?.('#musicMiniSearch'),btn=root?.querySelector?.('#musicMiniSearchBtn');if(!input||!btn)return;
+  const run=async()=>{const q=input.value.trim();if(!q)return;const full=$('musicSearch');if(full)full.value=q;btn.disabled=true;btn.textContent='Hľadám…';try{await musicSearch();const box=root.querySelector('.music-mini-queue'),cur=music.current?mt(music.current).id:'';wireMiniQueue(box,Array.isArray(music.queue)?music.queue:[],cur)}finally{btn.disabled=false;btn.textContent='Hľadať'}};
+  btn.onclick=run;input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();run()}};
+}
 function renderPlayer(){
   const r=$('musicPlayer');
   if(!music.current){
     const q=musicItems();music.queue=q;save(LS.queue,music.queue);
-    r.innerHTML=`<div class="music-empty music-mini-empty">Vyber skladbu.</div><div class="music-mini-panel"><div class="music-mini-queue" style="flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,'')}</div></div>`;
+    r.innerHTML=`<div class="music-mini-search"><input id="musicMiniSearch" type="search" placeholder="Hľadať skladbu…" autocomplete="off"><button id="musicMiniSearchBtn" type="button" class="btn primary">Hľadať</button></div><div class="music-empty music-mini-empty">Vyber skladbu.</div><div class="music-mini-panel"><div class="music-mini-queue" style="flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,'')}</div></div>`;
     music.audio=null;music.ytPlayer=null;stopMediaSessionRefresh();
     const byId=new Map(q.map(t=>[mt(t).id,t]));
     r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});
+    wireMiniSearch(r);
     return;
   }
   const s=mt(music.current),yt=music.current.youtubeId||s.youtubeId||(String(music.current.id||'').startsWith('youtube:')?String(music.current.id).slice(8):''),q=ensureMusicQueue(),curId=s.id;
   const media=yt?`<div id="ytPlayerHost" class="yt-player"></div>`:'<audio controls></audio>';
   const controls=`<div class="music-controls music-controls-6"><button class="btn" data-ma="prev" title="Predchádzajúca skladba">Späť</button><button class="btn primary" data-ma="toggle">Prehrať</button><button class="btn" data-ma="next" title="Ďalšia skladba">Ďalšia</button><button class="btn ${music.shuffle?'primary':''}" data-ma="shuffle">Náhodne</button><button class="btn ${music.autoNext?'primary':''}" data-ma="auto">Auto</button><button class="btn ${s.liked?'primary':''}" data-ma="like">Obľúbiť</button></div>`;
-  r.innerHTML=`<div class="music-now"><img class="music-art" src="${esc(music.current.artwork||'')}"><div><div class="music-title">${esc(music.current.title)}</div><div class="music-sub">${esc(music.current.artist||'')} · ${esc(music.current.source||'')}</div></div></div>${media}${controls}<div class="music-mini-panel"><div class="music-mini-seekrow"><span id="musicMiniNow">0:00</span><input id="musicMiniSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Pozícia skladby"><span id="musicMiniTotal">--:--</span></div><div class="music-mini-queue" style="flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,curId)}</div></div>`;
+  r.innerHTML=`<div class="music-mini-search"><input id="musicMiniSearch" type="search" placeholder="Hľadať skladbu…" autocomplete="off"><button id="musicMiniSearchBtn" type="button" class="btn primary">Hľadať</button></div><div class="music-now"><img class="music-art" src="${esc(music.current.artwork||'')}"><div><div class="music-title">${esc(music.current.title)}</div><div class="music-sub">${esc(music.current.artist||'')} · ${esc(music.current.source||'')}</div></div></div>${media}${controls}<div class="music-mini-panel"><div class="music-mini-seekrow"><span id="musicMiniNow">0:00</span><input id="musicMiniSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Pozícia skladby"><span id="musicMiniTotal">--:--</span></div><div class="music-mini-queue" style="flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,curId)}</div></div>`;
   music.audio=r.querySelector('audio');music.ytPlayer=null;
   if(music.audio){music.audio.src=music.current.streamUrl||'';wireAudio()}else if(yt){setupYoutubePlayer(yt)}
   r.querySelector('[data-ma=toggle]').onclick=toggleMusicPlayback;
@@ -411,6 +419,7 @@ function renderPlayer(){
   r.querySelector('[data-ma=like]').onclick=()=>{mev('like',music.current);renderMusicList();r.querySelector('[data-ma=like]').classList.toggle('primary',mt(music.current).liked)};
   const byId=new Map(q.map(t=>[mt(t).id,t]));
   r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});
+  wireMiniSearch(r);
   const seek=$('musicMiniSeek');if(seek){seek.oninput=()=>{const d=musicDuration(),now=$('musicMiniNow');if(d>0&&now)now.textContent=fmtMusicClock(d*(Number(seek.value)||0)/1000)};seek.onchange=()=>{const d=musicDuration();if(d>0)seekMusicTo(d*(Number(seek.value)||0)/1000);updateMiniSeek()}}
   syncMediaSession();setTimeout(updateMiniSeek,250);
 }
