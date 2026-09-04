@@ -8,6 +8,7 @@ on:
       - 'tesla-waze-preview/app.js'
       - 'tesla-waze-preview/app.css'
       - 'tesla-waze-preview/music-mini-patch.py'
+      - 'tesla-waze-preview/navigation-fix-patch.py'
       - '.github/workflows/rebuild-tesla-waze-assets.yml'
 
 permissions:
@@ -29,6 +30,12 @@ jobs:
           set -euo pipefail
           grep -q 'TMY_VIEWPORT_V1' tesla-waze-preview/app.js
 
+      - name: Apply navigation stability and voice fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/navigation-fix-patch.py
+
       - name: Apply Smart Music layout patch
         shell: bash
         run: |
@@ -41,9 +48,10 @@ jobs:
           set -euo pipefail
           node --check tesla-waze-preview/app.js
           grep -q 'TMY_VIEWPORT_V1' tesla-waze-preview/app.js
+          grep -q 'NAV_ROUTE_HEADING_V9' tesla-waze-preview/app.js
+          grep -q 'NAV_VOICE_CANCEL_V10' tesla-waze-preview/app.js
           grep -q 'MUSIC_MINI_RESIZE_V4' tesla-waze-preview/app.js
           grep -q 'MUSIC_LAYOUT_NO_RESTART_V5' tesla-waze-preview/app.js
-          grep -q "size.textContent='Rozmer'" tesla-waze-preview/app.js
 
       - name: Build and verify JS and CSS gzip/base64
         shell: bash
@@ -69,5 +77,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'music: preserve playback across window layout changes'
+          git commit -m 'nav: stabilize heading camera and hard-stop voice'
           git push origin HEAD:tesla-waze-preview-v1
