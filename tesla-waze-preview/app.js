@@ -354,13 +354,13 @@ function applyMusicWindow(){const shell=document.querySelector('.music-shell');i
 function saveMusicWindow(patch){const cfg={...musicWindowState(),...patch};save(MUSIC_WIN_KEY,cfg);applyMusicWindow()}
 function ensureMusicWindowControls(){
   const shell=document.querySelector('.music-shell'),head=document.querySelector('.music-head');if(!shell||!head||$('musicMinimize'))return;
-  const size=document.createElement('button');size.id='musicSize';size.className='btn music-size-btn';size.textContent='Veľkosť';head.insertBefore(size,$('closeMusic'));
+  const size=document.createElement('button');size.id='musicSize';size.className='btn music-size-btn';size.textContent='Rozmer';head.insertBefore(size,$('closeMusic'));
   const min=document.createElement('button');min.id='musicMinimize';min.className='btn music-min-btn';min.textContent='Minimalizovať';head.insertBefore(min,$('closeMusic'));
   const left=document.createElement('div');left.className='music-resize music-resize-left';left.setAttribute('aria-hidden','true');shell.appendChild(left);
   const top=document.createElement('div');top.className='music-resize music-resize-top';top.setAttribute('aria-hidden','true');shell.appendChild(top);
   const corner=document.createElement('div');corner.className='music-resize music-resize-corner';corner.setAttribute('aria-label','Zmeniť veľkosť hudobného okna');shell.appendChild(corner);
-  min.onclick=()=>{saveMusicWindow({minimized:!musicWindowState().minimized});renderPlayer()};
-  size.onclick=()=>{const w=shell.getBoundingClientRect().width,maxW=Math.min(window.innerWidth-20,760),maxH=window.innerHeight-20;if(w<500)saveMusicWindow({width:560,height:Math.min(maxH,700),minimized:false});else if(w<680)saveMusicWindow({width:maxW,height:maxH,minimized:false});else saveMusicWindow({width:420,height:Math.min(maxH,520),minimized:false})};
+  min.onclick=()=>{saveMusicWindow({minimized:!musicWindowState().minimized});updateMiniSeek()};/* MUSIC_LAYOUT_NO_RESTART_V5 */
+  size.onclick=()=>{const cfg=musicWindowState(),mini=!!cfg.minimized,w=shell.getBoundingClientRect().width,maxW=Math.min(window.innerWidth-20,760),maxH=window.innerHeight-20,nextW=w<500?560:w<680?maxW:420,nextH=w<500?Math.min(maxH,700):w<680?maxH:Math.min(maxH,520);saveMusicWindow(mini?{width:nextW,miniHeight:Math.max(360,nextH),minimized:true}:{width:nextW,height:Math.max(360,nextH),minimized:false})};
   const bindResize=(node,mode)=>node.addEventListener('pointerdown',e=>{e.preventDefault();node.setPointerCapture?.(e.pointerId);const sx=e.clientX,sy=e.clientY,sw=shell.getBoundingClientRect().width,sh=shell.getBoundingClientRect().height;const move=ev=>{if(mode==='w'||mode==='both'){const w=Math.max(340,Math.min(Math.min(window.innerWidth-20,760),sw+(sx-ev.clientX)));shell.style.width=w+'px'}if(mode==='h'||mode==='both'){const h=Math.max(360,Math.min(window.innerHeight-20,sh+(sy-ev.clientY)));shell.style.height=h+'px'}};const up=ev=>{node.releasePointerCapture?.(ev.pointerId);node.removeEventListener('pointermove',move);node.removeEventListener('pointerup',up);node.removeEventListener('pointercancel',up);(()=>{const rect=shell.getBoundingClientRect(),mini=musicWindowState().minimized;saveMusicWindow(mini?{width:Math.round(rect.width),miniHeight:Math.round(rect.height),minimized:true}:{width:Math.round(rect.width),height:Math.round(rect.height),minimized:false})})()};node.addEventListener('pointermove',move);node.addEventListener('pointerup',up);node.addEventListener('pointercancel',up)});
   bindResize(left,'w');bindResize(top,'h');bindResize(corner,'both');applyMusicWindow();window.addEventListener('resize',applyMusicWindow);
 }
@@ -389,12 +389,9 @@ function miniQueueMarkup(q,currentId){return q.slice(0,40).map((t,i)=>{const s=m
 
 function renderPlayer(){
   const r=$('musicPlayer');
-  const mini=!!musicWindowState().minimized;
-  const miniStyle=mini?' style="display:flex!important;flex:1 1 auto;min-height:0;flex-direction:column"':'';
-  /* MUSIC_MINI_QUEUE_V3 */
   if(!music.current){
     const q=musicItems();music.queue=q;save(LS.queue,music.queue);
-    r.innerHTML=`<div class="music-empty music-mini-empty">Vyber skladbu.</div><div class="music-mini-panel"${miniStyle}><div class="music-mini-queue" style="display:block;flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,'')}</div></div>`;
+    r.innerHTML=`<div class="music-empty music-mini-empty">Vyber skladbu.</div><div class="music-mini-panel"><div class="music-mini-queue" style="flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,'')}</div></div>`;
     music.audio=null;music.ytPlayer=null;stopMediaSessionRefresh();
     const byId=new Map(q.map(t=>[mt(t).id,t]));
     r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});
@@ -402,18 +399,16 @@ function renderPlayer(){
   }
   const s=mt(music.current),yt=music.current.youtubeId||s.youtubeId||(String(music.current.id||'').startsWith('youtube:')?String(music.current.id).slice(8):''),q=ensureMusicQueue(),curId=s.id;
   const media=yt?`<div id="ytPlayerHost" class="yt-player"></div>`:'<audio controls></audio>';
-  const controls=mini
-    ? `<div class="music-controls music-controls-6"><button class="btn" data-ma="prev">Späť</button><button class="btn primary" data-ma="toggle">Prehrať</button><button class="btn" data-ma="next">Ďalšia</button><button class="btn ${s.liked?'primary':''}" data-ma="like">Obľúbiť</button></div>`
-    : `<div class="music-controls music-controls-6"><button class="btn" data-ma="prev" title="Predchádzajúca skladba">Späť</button><button class="btn primary" data-ma="toggle">Prehrať</button><button class="btn" data-ma="next" title="Ďalšia skladba">Ďalšia</button><button class="btn ${music.shuffle?'primary':''}" data-ma="shuffle">Náhodne</button><button class="btn ${music.autoNext?'primary':''}" data-ma="auto">Auto</button><button class="btn ${s.liked?'primary':''}" data-ma="like">Obľúbiť</button></div>`;
-  r.innerHTML=`<div class="music-now"><img class="music-art" src="${esc(music.current.artwork||'')}"><div><div class="music-title">${esc(music.current.title)}</div><div class="music-sub">${esc(music.current.artist||'')} · ${esc(music.current.source||'')}</div></div></div>${media}${controls}<div class="music-mini-panel"${miniStyle}><div class="music-mini-seekrow"><span id="musicMiniNow">0:00</span><input id="musicMiniSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Pozícia skladby"><span id="musicMiniTotal">--:--</span></div><div class="music-mini-queue" style="flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,curId)}</div></div>`;
+  const controls=`<div class="music-controls music-controls-6"><button class="btn" data-ma="prev" title="Predchádzajúca skladba">Späť</button><button class="btn primary" data-ma="toggle">Prehrať</button><button class="btn" data-ma="next" title="Ďalšia skladba">Ďalšia</button><button class="btn ${music.shuffle?'primary':''}" data-ma="shuffle">Náhodne</button><button class="btn ${music.autoNext?'primary':''}" data-ma="auto">Auto</button><button class="btn ${s.liked?'primary':''}" data-ma="like">Obľúbiť</button></div>`;
+  r.innerHTML=`<div class="music-now"><img class="music-art" src="${esc(music.current.artwork||'')}"><div><div class="music-title">${esc(music.current.title)}</div><div class="music-sub">${esc(music.current.artist||'')} · ${esc(music.current.source||'')}</div></div></div>${media}${controls}<div class="music-mini-panel"><div class="music-mini-seekrow"><span id="musicMiniNow">0:00</span><input id="musicMiniSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Pozícia skladby"><span id="musicMiniTotal">--:--</span></div><div class="music-mini-queue" style="flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,curId)}</div></div>`;
   music.audio=r.querySelector('audio');music.ytPlayer=null;
   if(music.audio){music.audio.src=music.current.streamUrl||'';wireAudio()}else if(yt){setupYoutubePlayer(yt)}
   r.querySelector('[data-ma=toggle]').onclick=toggleMusicPlayback;
   r.querySelector('[data-ma=prev]').onclick=mprev;
   r.querySelector('[data-ma=next]').onclick=mnext;
-  const sh=r.querySelector('[data-ma=shuffle]');if(sh)sh.onclick=()=>{music.shuffle=!music.shuffle;save('teslaWaze:musicShuffle:v1',music.shuffle);renderPlayer()};
-  const au=r.querySelector('[data-ma=auto]');if(au)au.onclick=()=>{music.autoNext=!music.autoNext;save('teslaWaze:musicAutoNext:v1',music.autoNext);renderPlayer()};
-  r.querySelector('[data-ma=like]').onclick=()=>{mev('like',music.current);renderMusicList();renderPlayer()};
+  r.querySelector('[data-ma=shuffle]').onclick=()=>{music.shuffle=!music.shuffle;save('teslaWaze:musicShuffle:v1',music.shuffle);r.querySelector('[data-ma=shuffle]').classList.toggle('primary',music.shuffle)};
+  r.querySelector('[data-ma=auto]').onclick=()=>{music.autoNext=!music.autoNext;save('teslaWaze:musicAutoNext:v1',music.autoNext);r.querySelector('[data-ma=auto]').classList.toggle('primary',music.autoNext)};
+  r.querySelector('[data-ma=like]').onclick=()=>{mev('like',music.current);renderMusicList();r.querySelector('[data-ma=like]').classList.toggle('primary',mt(music.current).liked)};
   const byId=new Map(q.map(t=>[mt(t).id,t]));
   r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});
   const seek=$('musicMiniSeek');if(seek){seek.oninput=()=>{const d=musicDuration(),now=$('musicMiniNow');if(d>0&&now)now.textContent=fmtMusicClock(d*(Number(seek.value)||0)/1000)};seek.onchange=()=>{const d=musicDuration();if(d>0)seekMusicTo(d*(Number(seek.value)||0)/1000);updateMiniSeek()}}
