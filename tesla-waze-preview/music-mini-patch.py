@@ -10,7 +10,6 @@ if '/* MUSIC_MINI_QUEUE_V1 */' not in js:
 if '/* MUSIC_MINI_QUEUE_V1 */' not in css:
     raise SystemExit('MUSIC_MINI_QUEUE_V1 missing from app.css')
 
-# V2: keep minimized state while dragging/resizing.
 old_resize="saveMusicWindow({width:Math.round(shell.getBoundingClientRect().width),height:Math.round(shell.getBoundingClientRect().height),minimized:false})"
 new_resize="saveMusicWindow({width:Math.round(shell.getBoundingClientRect().width),height:Math.round(shell.getBoundingClientRect().height),minimized:musicWindowState().minimized})"
 if old_resize in js:
@@ -18,11 +17,10 @@ if old_resize in js:
 elif new_resize not in js:
     raise SystemExit('music resize anchor not found')
 
-# V2: when minimized before any track is selected, render a clickable queue instead of a blank player.
 marker='/* MUSIC_MINI_QUEUE_V2 */'
 if marker not in js:
     old_empty="function renderPlayer(){const r=$('musicPlayer');if(!music.current){r.innerHTML='<div class=\"music-empty\">Vyber skladbu.</div>';music.audio=null;music.ytPlayer=null;stopMediaSessionRefresh();return}"
-    new_empty="""function renderPlayer(){const r=$('musicPlayer');/* MUSIC_MINI_QUEUE_V2 */if(!music.current){const q=musicItems();music.queue=q;save(LS.queue,music.queue);r.innerHTML=`<div class=\"music-empty music-mini-empty\">Vyber skladbu.</div><div class=\"music-mini-panel\"><div class=\"music-mini-queue\">${miniQueueMarkup(q,'')}</div></div>`;music.audio=null;music.ytPlayer=null;stopMediaSessionRefresh();const byId=new Map(q.map(t=>[mt(t).id,t]));r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});return}"
+    new_empty='''function renderPlayer(){const r=$('musicPlayer');/* MUSIC_MINI_QUEUE_V2 */if(!music.current){const q=musicItems();music.queue=q;save(LS.queue,music.queue);r.innerHTML=`<div class="music-empty music-mini-empty">Vyber skladbu.</div><div class="music-mini-panel"><div class="music-mini-queue">${miniQueueMarkup(q,'')}</div></div>`;music.audio=null;music.ytPlayer=null;stopMediaSessionRefresh();const byId=new Map(q.map(t=>[mt(t).id,t]));r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});return}'''
     if old_empty not in js:
         raise SystemExit('renderPlayer empty-state anchor not found')
     js=js.replace(old_empty,new_empty,1)
@@ -33,15 +31,14 @@ if marker not in js:
         raise SystemExit('music minimize button anchor not found')
     js=js.replace(old_min,new_min,1)
 
-# Small visual cleanup for the empty minimized state.
 css_marker='/* MUSIC_MINI_QUEUE_V2 */'
 if css_marker not in css:
-    css += """
+    css += '''
 
 /* MUSIC_MINI_QUEUE_V2 */
 .music-shell.music-minimized .music-mini-empty{flex:0 0 auto;margin:2px 0 6px;color:#a8bac7}
 .music-shell.music-minimized .music-mini-panel>.music-mini-queue{flex:1;min-height:0}
-"""
+'''
 
 for needle in ['MUSIC_MINI_QUEUE_V2','musicMiniSeek','music-mini-queue','TMY_VIEWPORT_V1']:
     if needle not in js and needle not in css:
