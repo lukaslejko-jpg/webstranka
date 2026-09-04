@@ -4,7 +4,7 @@ const BACKUP='https://raw.githubusercontent.com/lukaslejko-jpg/webstranka/tesla-
 const L=window.L;
 if(!L||!window.pako){console.error('TM-Y viewport bootstrap: Leaflet/pako unavailable');return;}
 
-let map=null, car=null, lastPos=null, heading=null, lastCameraAt=0, lastBearingAt=0, lastAppliedHeading=null;
+let map=null, car=null, lastPos=null, heading=null, lastCameraAt=0, lastBearingAt=0, lastAppliedHeading=null, routeCursor=0, routeLayerId=null;
 
 const origMap=L.map;
 L.map=function(...args){
@@ -60,7 +60,7 @@ function flattenLatLngs(x,out=[]){
   return out;
 }
 function activeRoute(){
-  if(!map)return [];
+  if(!map)return {pts:[],id:null};
   let best=null;
   map.eachLayer(layer=>{
     try{
@@ -71,10 +71,10 @@ function activeRoute(){
       const pts=flattenLatLngs(layer.getLatLngs?.());
       if(pts.length<2)return;
       const score=(color==='#14b8e6'?100:0)+weight;
-      if(!best||score>best.score)best={score,pts};
+      if(!best||score>best.score)best={score,pts,id:layer._leaflet_id??null};
     }catch{}
   });
-  return best?.pts||[];
+  return best||{pts:[],id:null};
 }
 function nearest(p,coords,start=0){
   if(!p||coords.length<2)return null;
@@ -151,10 +151,13 @@ function control(g){
     if(derived!=null)heading=smooth(heading,derived,.35);
     lastPos=p;
 
-    const route=activeRoute();
+    const active=activeRoute(),route=active.pts;
     if(route.length<2)return;
-    const n=nearest(p,route,0);
+    if(active.id!==routeLayerId){routeLayerId=active.id;routeCursor=0;}
+    let n=nearest(p,route,routeCursor);
+    if(!n||n.distance>2000)n=nearest(p,route,0);
     if(!n)return;
+    routeCursor=Math.max(routeCursor,n.index);
 
     if(heading==null){
       const ahead=pointAhead(route,n,30);
@@ -169,7 +172,7 @@ function control(g){
     if(car){
       car.setLatLng(markerPosition);
       if(typeof car.setRotationAngle==='function')car.setRotationAngle(0);
-      if(typeof car.setZIndexOffset==='function')car.setZindexOffset(1000);
+      if(typeof car.setZIndexOffset==='function')car.setZIndexOffset(1000);
     }
 
     const info=maneuverInfo();
