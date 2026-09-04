@@ -1,48 +1,80 @@
 from pathlib import Path
+import re
 
 js_path=Path('tesla-waze-preview/app.js')
 css_path=Path('tesla-waze-preview/app.css')
 js=js_path.read_text(encoding='utf-8')
 css=css_path.read_text(encoding='utf-8')
 
-if '/* MUSIC_MINI_QUEUE_V1 */' not in js:
-    raise SystemExit('MUSIC_MINI_QUEUE_V1 missing from app.js')
+for need in ['/* MUSIC_MINI_QUEUE_V1 */','/* MUSIC_MINI_QUEUE_V2 */','/* TMY_VIEWPORT_V1 */']:
+    if need not in js:
+        raise SystemExit(f'missing JS marker: {need}')
 if '/* MUSIC_MINI_QUEUE_V1 */' not in css:
     raise SystemExit('MUSIC_MINI_QUEUE_V1 missing from app.css')
 
+# Preserve minimized state during manual resize.
 old_resize="saveMusicWindow({width:Math.round(shell.getBoundingClientRect().width),height:Math.round(shell.getBoundingClientRect().height),minimized:false})"
 new_resize="saveMusicWindow({width:Math.round(shell.getBoundingClientRect().width),height:Math.round(shell.getBoundingClientRect().height),minimized:musicWindowState().minimized})"
 if old_resize in js:
     js=js.replace(old_resize,new_resize,1)
-elif new_resize not in js:
-    raise SystemExit('music resize anchor not found')
 
-marker='/* MUSIC_MINI_QUEUE_V2 */'
-if marker not in js:
-    old_empty="function renderPlayer(){const r=$('musicPlayer');if(!music.current){r.innerHTML='<div class=\"music-empty\">Vyber skladbu.</div>';music.audio=null;music.ytPlayer=null;stopMediaSessionRefresh();return}"
-    new_empty='''function renderPlayer(){const r=$('musicPlayer');/* MUSIC_MINI_QUEUE_V2 */if(!music.current){const q=musicItems();music.queue=q;save(LS.queue,music.queue);r.innerHTML=`<div class="music-empty music-mini-empty">Vyber skladbu.</div><div class="music-mini-panel"><div class="music-mini-queue">${miniQueueMarkup(q,'')}</div></div>`;music.audio=null;music.ytPlayer=null;stopMediaSessionRefresh();const byId=new Map(q.map(t=>[mt(t).id,t]));r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});return}'''
-    if old_empty not in js:
-        raise SystemExit('renderPlayer empty-state anchor not found')
-    js=js.replace(old_empty,new_empty,1)
-
-    old_min="min.onclick=()=>saveMusicWindow({minimized:!musicWindowState().minimized});"
-    new_min="min.onclick=()=>{saveMusicWindow({minimized:!musicWindowState().minimized});renderPlayer()};"
-    if old_min not in js:
-        raise SystemExit('music minimize button anchor not found')
+# Re-render immediately when minimize / expand is toggled.
+old_min="min.onclick=()=>saveMusicWindow({minimized:!musicWindowState().minimized});"
+new_min="min.onclick=()=>{saveMusicWindow({minimized:!musicWindowState().minimized});renderPlayer()};"
+if old_min in js:
     js=js.replace(old_min,new_min,1)
 
-css_marker='/* MUSIC_MINI_QUEUE_V2 */'
-if css_marker not in css:
-    css += '''
+# V3: render mini UI explicitly based on saved minimized state, with inline display forcing.
+marker='/* MUSIC_MINI_QUEUE_V3 */'
+if marker not in js:
+    start=js.find('function renderPlayer(){')
+    end=js.find('\nlet mediaSessionRefreshTimer=null;',start)
+    if start<0 or end<0:
+        raise SystemExit('renderPlayer block not found')
 
-/* MUSIC_MINI_QUEUE_V2 */
-.music-shell.music-minimized .music-mini-empty{flex:0 0 auto;margin:2px 0 6px;color:#a8bac7}
-.music-shell.music-minimized .music-mini-panel>.music-mini-queue{flex:1;min-height:0}
-'''
+    render=r'''function renderPlayer(){
+  const r=$('musicPlayer');
+  const mini=!!musicWindowState().minimized;
+  const miniStyle=mini?' style="display:flex!important;flex:1 1 auto;min-height:0;flex-direction:column"':'';
+  /* MUSIC_MINI_QUEUE_V3 */
+  if(!music.current){
+    const q=musicItems();music.queue=q;save(LS.queue,music.queue);
+    r.innerHTML=`<div class="music-empty music-mini-empty">Vyber skladbu.</div><div class="music-mini-panel"${miniStyle}><div class="music-mini-queue" style="display:block;flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,'')}</div></div>`;
+    music.audio=null;music.ytPlayer=null;stopMediaSessionRefresh();
+    const byId=new Map(q.map(t=>[mt(t).id,t]));
+    r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});
+    return;
+  }
+  const s=mt(music.current),yt=music.current.youtubeId||s.youtubeId||(String(music.current.id||'').startsWith('youtube:')?String(music.current.id).slice(8):''),q=ensureMusicQueue(),curId=s.id;
+  const media=yt?`<div id="ytPlayerHost" class="yt-player"></div>`:'<audio controls></audio>';
+  const controls=mini
+    ? `<div class="music-controls music-controls-6"><button class="btn" data-ma="prev">Späť</button><button class="btn primary" data-ma="toggle">Prehrať</button><button class="btn" data-ma="next">Ďalšia</button><button class="btn ${s.liked?'primary':''}" data-ma="like">Obľúbiť</button></div>`
+    : `<div class="music-controls music-controls-6"><button class="btn" data-ma="prev" title="Predchádzajúca skladba">Späť</button><button class="btn primary" data-ma="toggle">Prehrať</button><button class="btn" data-ma="next" title="Ďalšia skladba">Ďalšia</button><button class="btn ${music.shuffle?'primary':''}" data-ma="shuffle">Náhodne</button><button class="btn ${music.autoNext?'primary':''}" data-ma="auto">Auto</button><button class="btn ${s.liked?'primary':''}" data-ma="like">Obľúbiť</button></div>`;
+  r.innerHTML=`<div class="music-now"><img class="music-art" src="${esc(music.current.artwork||'')}"><div><div class="music-title">${esc(music.current.title)}</div><div class="music-sub">${esc(music.current.artist||'')} · ${esc(music.current.source||'')}</div></div></div>${media}${controls}<div class="music-mini-panel"${miniStyle}><div class="music-mini-seekrow"><span id="musicMiniNow">0:00</span><input id="musicMiniSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Pozícia skladby"><span id="musicMiniTotal">--:--</span></div><div class="music-mini-queue" style="flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,curId)}</div></div>`;
+  music.audio=r.querySelector('audio');music.ytPlayer=null;
+  if(music.audio){music.audio.src=music.current.streamUrl||'';wireAudio()}else if(yt){setupYoutubePlayer(yt)}
+  r.querySelector('[data-ma=toggle]').onclick=toggleMusicPlayback;
+  r.querySelector('[data-ma=prev]').onclick=mprev;
+  r.querySelector('[data-ma=next]').onclick=mnext;
+  const sh=r.querySelector('[data-ma=shuffle]');if(sh)sh.onclick=()=>{music.shuffle=!music.shuffle;save('teslaWaze:musicShuffle:v1',music.shuffle);renderPlayer()};
+  const au=r.querySelector('[data-ma=auto]');if(au)au.onclick=()=>{music.autoNext=!music.autoNext;save('teslaWaze:musicAutoNext:v1',music.autoNext);renderPlayer()};
+  r.querySelector('[data-ma=like]').onclick=()=>{mev('like',music.current);renderMusicList();renderPlayer()};
+  const byId=new Map(q.map(t=>[mt(t).id,t]));
+  r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});
+  const seek=$('musicMiniSeek');if(seek){seek.oninput=()=>{const d=musicDuration(),now=$('musicMiniNow');if(d>0&&now)now.textContent=fmtMusicClock(d*(Number(seek.value)||0)/1000)};seek.onchange=()=>{const d=musicDuration();if(d>0)seekMusicTo(d*(Number(seek.value)||0)/1000);updateMiniSeek()}}
+  syncMediaSession();setTimeout(updateMiniSeek,250);
+}'''
+    js=js[:start]+render+js[end:]
 
-for needle in ['MUSIC_MINI_QUEUE_V2','musicMiniSeek','music-mini-queue','TMY_VIEWPORT_V1']:
-    if needle not in js and needle not in css:
-        raise SystemExit(f'missing required marker: {needle}')
+# Force mini panel visibility with !important as a CSS fallback.
+css=css.replace('.music-shell.music-minimized .music-mini-panel{display:flex;flex:1;min-height:0;flex-direction:column;gap:7px;margin-top:7px}',
+                '.music-shell.music-minimized .music-mini-panel{display:flex!important;flex:1;min-height:0;flex-direction:column;gap:7px;margin-top:7px}')
+if '/* MUSIC_MINI_QUEUE_V3 */' not in css:
+    css += '\n/* MUSIC_MINI_QUEUE_V3 */\n.music-shell.music-minimized .music-mini-panel{display:flex!important}\n'
+
+for needle in ['MUSIC_MINI_QUEUE_V3','musicMiniSeek','miniQueueMarkup','TMY_VIEWPORT_V1']:
+    if needle not in js:
+        raise SystemExit(f'missing required JS marker: {needle}')
 
 js_path.write_text(js,encoding='utf-8')
 css_path.write_text(css,encoding='utf-8')
