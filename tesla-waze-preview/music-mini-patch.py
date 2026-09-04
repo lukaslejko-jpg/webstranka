@@ -24,7 +24,6 @@ function wireMiniSearch(root){
         raise SystemExit('renderPlayer insertion point not found')
     js=js[:idx]+helper+js[idx:]
 
-    # Add the compact search row to both empty and active player states.
     search_html='<div class="music-mini-search"><input id="musicMiniSearch" type="search" placeholder="Hľadať skladbu…" autocomplete="off"><button id="musicMiniSearchBtn" type="button" class="btn primary">Hľadať</button></div>'
     old_empty='r.innerHTML=`<div class="music-empty music-mini-empty">Vyber skladbu.</div><div class="music-mini-panel">'
     new_empty='r.innerHTML=`'+search_html+'<div class="music-empty music-mini-empty">Vyber skladbu.</div><div class="music-mini-panel">'
@@ -38,7 +37,6 @@ function wireMiniSearch(root){
         raise SystemExit('active player template anchor not found')
     js=js.replace(old_active,new_active,1)
 
-    # Wire the search row in both branches without rebuilding media.
     old_empty_return="r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});\n    return;"
     new_empty_return="r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});\n    wireMiniSearch(r);\n    return;"
     if old_empty_return not in js:
@@ -60,7 +58,31 @@ function wireMiniSearch(root){
 .music-shell.music-minimized .music-mini-search .btn{min-height:38px!important;height:38px;padding:0 9px!important;font-size:11px!important}
 '''
 
-for needle in ['MUSIC_MINI_SEARCH_V6','MUSIC_LAYOUT_NO_RESTART_V5','MUSIC_MINI_RESIZE_V4','TMY_VIEWPORT_V1']:
+if '/* MUSIC_MINI_TOUCH_V7 */' not in css:
+    css += r'''
+
+/* MUSIC_MINI_TOUCH_V7 */
+.music-shell.music-minimized .music-controls{gap:7px!important}
+.music-shell.music-minimized .music-controls .btn{min-height:46px!important;height:46px!important;padding:6px 8px!important;font-size:13px!important;border-radius:12px!important}
+.music-shell.music-minimized .music-now{min-height:48px!important;margin-bottom:8px!important;gap:11px!important}
+.music-shell.music-minimized .music-now .music-art{width:47px!important;height:47px!important;border-radius:9px!important}
+.music-shell.music-minimized .music-now .music-title{font-size:16px!important;line-height:1.15!important}
+.music-shell.music-minimized .music-now .music-sub{font-size:13px!important;line-height:1.2!important}
+.music-shell.music-minimized .music-mini-search{grid-template-columns:minmax(0,1fr) 106px;gap:9px;margin-bottom:9px}
+.music-shell.music-minimized .music-mini-search input{height:49px!important;font-size:16px!important;padding:0 13px!important;border-radius:11px!important}
+.music-shell.music-minimized .music-mini-search .btn{height:49px!important;min-height:49px!important;font-size:14px!important;padding:0 12px!important}
+.music-shell.music-minimized .music-mini-seekrow{grid-template-columns:50px minmax(0,1fr) 50px;gap:10px;font-size:14px!important}
+.music-shell.music-minimized .music-mini-seekrow input[type=range]{height:39px!important}
+.music-shell.music-minimized .music-mini-track{grid-template-columns:30px 50px minmax(0,1fr) 30px!important;gap:10px!important;min-height:65px!important;padding:8px 6px!important;border-radius:9px!important}
+.music-shell.music-minimized .music-mini-art{width:50px!important;height:50px!important;border-radius:9px!important}
+.music-shell.music-minimized .music-mini-index{font-size:14px!important}
+.music-shell.music-minimized .music-mini-meta{gap:3px!important}
+.music-shell.music-minimized .music-mini-meta b{font-size:16px!important;line-height:1.15!important}
+.music-shell.music-minimized .music-mini-meta small{font-size:13px!important;line-height:1.2!important}
+.music-shell.music-minimized .music-mini-playing{font-size:19px!important}
+'''
+
+for needle in ['MUSIC_MINI_SEARCH_V6','MUSIC_MINI_TOUCH_V7','MUSIC_LAYOUT_NO_RESTART_V5','MUSIC_MINI_RESIZE_V4','TMY_VIEWPORT_V1']:
     if needle not in js and needle not in css:
         raise SystemExit(f'missing required marker: {needle}')
 
