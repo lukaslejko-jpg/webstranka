@@ -195,3 +195,24 @@ body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rg
 .music-shell.music-minimized .music-mini-search{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:7px;margin:0 0 7px;flex:0 0 auto}
 .music-shell.music-minimized .music-mini-search input{width:100%;min-width:0;height:38px;border-radius:9px;border:1px solid #334556;background:#0f1720;color:#fff;padding:0 10px;font-size:13px}
 .music-shell.music-minimized .music-mini-search .btn{min-height:38px!important;height:38px;padding:0 9px!important;font-size:11px!important}
+
+
+/* MUSIC_MINI_TOUCH_V7 */
+.music-shell.music-minimized .music-controls{gap:7px!important}
+.music-shell.music-minimized .music-controls .btn{min-height:46px!important;height:46px!important;padding:6px 8px!important;font-size:13px!important;border-radius:12px!important}
+.music-shell.music-minimized .music-now{min-height:48px!important;margin-bottom:8px!important;gap:11px!important}
+.music-shell.music-minimized .music-now .music-art{width:47px!important;height:47px!important;border-radius:9px!important}
+.music-shell.music-minimized .music-now .music-title{font-size:16px!important;line-height:1.15!important}
+.music-shell.music-minimized .music-now .music-sub{font-size:13px!important;line-height:1.2!important}
+.music-shell.music-minimized .music-mini-search{grid-template-columns:minmax(0,1fr) 106px;gap:9px;margin-bottom:9px}
+.music-shell.music-minimized .music-mini-search input{height:49px!important;font-size:16px!important;padding:0 13px!important;border-radius:11px!important}
+.music-shell.music-minimized .music-mini-search .btn{height:49px!important;min-height:49px!important;font-size:14px!important;padding:0 12px!important}
+.music-shell.music-minimized .music-mini-seekrow{grid-template-columns:50px minmax(0,1fr) 50px;gap:10px;font-size:14px!important}
+.music-shell.music-minimized .music-mini-seekrow input[type=range]{height:39px!important}
+.music-shell.music-minimized .music-mini-track{grid-template-columns:30px 50px minmax(0,1fr) 30px!important;gap:10px!important;min-height:65px!important;padding:8px 6px!important;border-radius:9px!important}
+.music-shell.music-minimized .music-mini-art{width:50px!important;height:50px!important;border-radius:9px!important}
+.music-shell.music-minimized .music-mini-index{font-size:14px!important}
+.music-shell.music-minimized .music-mini-meta{gap:3px!important}
+.music-shell.music-minimized .music-mini-meta b{font-size:16px!important;line-height:1.15!important}
+.music-shell.music-minimized .music-mini-meta small{font-size:13px!important;line-height:1.2!important}
+.music-shell.music-minimized .music-mini-playing{font-size:19px!important}
