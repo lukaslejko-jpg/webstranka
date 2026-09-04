@@ -180,3 +180,8 @@ body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rg
 .music-mini-meta small{font-size:10px;color:#91a8b6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .music-mini-playing{color:#22d3ee;font-size:15px;text-align:center}
 @media(max-width:650px){.music-shell.music-minimized{min-height:340px!important}.music-mini-track{grid-template-columns:20px 34px minmax(0,1fr) 20px}.music-mini-art{width:34px;height:34px}.music-mini-seekrow{grid-template-columns:40px minmax(0,1fr) 40px}}
+
+
+/* MUSIC_MINI_QUEUE_V2 */
+.music-shell.music-minimized .music-mini-empty{flex:0 0 auto;margin:2px 0 6px;color:#a8bac7}
+.music-shell.music-minimized .music-mini-panel>.music-mini-queue{flex:1;min-height:0}
