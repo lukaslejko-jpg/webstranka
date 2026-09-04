@@ -6,7 +6,7 @@ css_path=Path('tesla-waze-preview/app.css')
 js=js_path.read_text(encoding='utf-8')
 css=css_path.read_text(encoding='utf-8')
 
-for need in ['/* MUSIC_MINI_QUEUE_V1 */','/* MUSIC_MINI_QUEUE_V2 */','/* TMY_VIEWPORT_V1 */']:
+for need in ['/* MUSIC_MINI_QUEUE_V1 */','/* MUSIC_MINI_QUEUE_V3 */','/* TMY_VIEWPORT_V1 */']:
     if need not in js:
         raise SystemExit(f'missing JS marker: {need}')
 if '/* MUSIC_MINI_QUEUE_V1 */' not in css:
@@ -66,7 +66,6 @@ if marker not in js:
 }'''
     js=js[:start]+render+js[end:]
 
-# Force mini panel visibility with !important as a CSS fallback.
 css=css.replace('.music-shell.music-minimized .music-mini-panel{display:flex;flex:1;min-height:0;flex-direction:column;gap:7px;margin-top:7px}',
                 '.music-shell.music-minimized .music-mini-panel{display:flex!important;flex:1;min-height:0;flex-direction:column;gap:7px;margin-top:7px}')
 if '/* MUSIC_MINI_QUEUE_V3 */' not in css:
