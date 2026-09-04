@@ -166,7 +166,7 @@ body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rg
 .music-shell.music-minimized .music-now{flex:0 0 auto;margin-bottom:6px!important}
 .music-shell.music-minimized .music-controls{grid-template-columns:repeat(4,minmax(0,1fr))!important;flex:0 0 auto}
 .music-shell.music-minimized .music-controls [data-ma="shuffle"],.music-shell.music-minimized .music-controls [data-ma="auto"]{display:none!important}
-.music-shell.music-minimized .music-mini-panel{display:flex;flex:1;min-height:0;flex-direction:column;gap:7px;margin-top:7px}
+.music-shell.music-minimized .music-mini-panel{display:flex!important;flex:1;min-height:0;flex-direction:column;gap:7px;margin-top:7px}
 .music-mini-seekrow{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:8px;align-items:center;color:#b8c8d4;font-size:11px;font-weight:800}
 .music-mini-seekrow input[type=range]{width:100%;height:30px;margin:0;cursor:pointer;touch-action:pan-x}
 .music-mini-seekrow span:last-child{text-align:right}
@@ -185,3 +185,6 @@ body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rg
 /* MUSIC_MINI_QUEUE_V2 */
 .music-shell.music-minimized .music-mini-empty{flex:0 0 auto;margin:2px 0 6px;color:#a8bac7}
 .music-shell.music-minimized .music-mini-panel>.music-mini-queue{flex:1;min-height:0}
+
+/* MUSIC_MINI_QUEUE_V3 */
+.music-shell.music-minimized .music-mini-panel{display:flex!important}
