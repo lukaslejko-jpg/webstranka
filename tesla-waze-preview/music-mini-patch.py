@@ -82,7 +82,32 @@ if '/* MUSIC_MINI_TOUCH_V7 */' not in css:
 .music-shell.music-minimized .music-mini-playing{font-size:19px!important}
 '''
 
-for needle in ['MUSIC_MINI_SEARCH_V6','MUSIC_MINI_TOUCH_V7','MUSIC_LAYOUT_NO_RESTART_V5','MUSIC_MINI_RESIZE_V4','TMY_VIEWPORT_V1']:
+# V8: maximize the player without rebuilding media, and use two queue columns in maximized mini mode.
+if '/* MUSIC_MAX_TWO_COL_V8 */' not in js:
+    old_apply="function applyMusicWindow(){const shell=document.querySelector('.music-shell');if(!shell)return;const cfg=musicWindowState(),maxW=Math.max(340,Math.min(window.innerWidth-20,760)),maxH=Math.max(360,window.innerHeight-20);shell.style.width=`${Math.max(340,Math.min(maxW,cfg.width||520))}px`;const miniH=Math.max(360,Math.min(maxH,cfg.miniHeight||520));const fullH=Math.max(360,Math.min(maxH,cfg.height||Math.min(window.innerHeight,760)));shell.style.height=`${cfg.minimized?miniH:fullH}px`;shell.classList.toggle('music-minimized',!!cfg.minimized);const b=$('musicMinimize');if(b)b.textContent=cfg.minimized?'Rozbaliť':'Minimalizovať'}/* MUSIC_MINI_RESIZE_V4 */"
+    new_apply="function applyMusicWindow(){const shell=document.querySelector('.music-shell');if(!shell)return;const cfg=musicWindowState(),maxW=Math.max(340,window.innerWidth-20),maxH=Math.max(360,window.innerHeight-20),isMax=!!cfg.maximized;if(isMax){shell.style.width=`${maxW}px`;shell.style.height=`${maxH}px`}else{const normalMaxW=Math.max(340,Math.min(window.innerWidth-20,760));shell.style.width=`${Math.max(340,Math.min(normalMaxW,cfg.width||520))}px`;const miniH=Math.max(360,Math.min(maxH,cfg.miniHeight||520));const fullH=Math.max(360,Math.min(maxH,cfg.height||Math.min(window.innerHeight,760)));shell.style.height=`${cfg.minimized?miniH:fullH}px`}shell.classList.toggle('music-minimized',!!cfg.minimized);shell.classList.toggle('music-maximized',isMax);const b=$('musicMinimize');if(b)b.textContent=cfg.minimized?'Rozbaliť':'Minimalizovať';const s=$('musicSize');if(s)s.textContent=isMax?'Pôvodný rozmer':'Maximalizovať'}/* MUSIC_MINI_RESIZE_V4 *//* MUSIC_MAX_TWO_COL_V8 */"
+    if old_apply not in js:
+        raise SystemExit('applyMusicWindow V8 anchor not found')
+    js=js.replace(old_apply,new_apply,1)
+
+    old_size="size.onclick=()=>{const cfg=musicWindowState(),mini=!!cfg.minimized,w=shell.getBoundingClientRect().width,maxW=Math.min(window.innerWidth-20,760),maxH=window.innerHeight-20,nextW=w<500?560:w<680?maxW:420,nextH=w<500?Math.min(maxH,700):w<680?maxH:Math.min(maxH,520);saveMusicWindow(mini?{width:nextW,miniHeight:Math.max(360,nextH),minimized:true}:{width:nextW,height:Math.max(360,nextH),minimized:false})};"
+    new_size="size.onclick=()=>{const cfg=musicWindowState();saveMusicWindow({maximized:!cfg.maximized})};"
+    if old_size not in js:
+        raise SystemExit('size handler V8 anchor not found')
+    js=js.replace(old_size,new_size,1)
+
+if '/* MUSIC_MAX_TWO_COL_V8 */' not in css:
+    css += r'''
+
+/* MUSIC_MAX_TWO_COL_V8 */
+.music-shell.music-maximized{max-width:calc(100vw - 20px)!important;max-height:calc(100vh - 20px)!important}
+.music-shell.music-minimized.music-maximized .music-mini-queue{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:8px 10px;padding:8px 2px 4px!important}
+.music-shell.music-minimized.music-maximized .music-mini-track{margin:0!important;border:1px solid #263746!important;min-width:0!important}
+.music-shell.music-minimized.music-maximized .music-mini-panel{overflow:hidden!important}
+@media(max-width:760px){.music-shell.music-minimized.music-maximized .music-mini-queue{grid-template-columns:1fr}}
+'''
+
+for needle in ['MUSIC_MINI_SEARCH_V6','MUSIC_MINI_TOUCH_V7','MUSIC_MAX_TWO_COL_V8','MUSIC_LAYOUT_NO_RESTART_V5','MUSIC_MINI_RESIZE_V4','TMY_VIEWPORT_V1']:
     if needle not in js and needle not in css:
         raise SystemExit(f'missing required marker: {needle}')
 
