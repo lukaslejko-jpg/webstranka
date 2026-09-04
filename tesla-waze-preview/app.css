@@ -216,3 +216,11 @@ body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rg
 .music-shell.music-minimized .music-mini-meta b{font-size:16px!important;line-height:1.15!important}
 .music-shell.music-minimized .music-mini-meta small{font-size:13px!important;line-height:1.2!important}
 .music-shell.music-minimized .music-mini-playing{font-size:19px!important}
+
+
+/* MUSIC_MAX_TWO_COL_V8 */
+.music-shell.music-maximized{max-width:calc(100vw - 20px)!important;max-height:calc(100vh - 20px)!important}
+.music-shell.music-minimized.music-maximized .music-mini-queue{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:8px 10px;padding:8px 2px 4px!important}
+.music-shell.music-minimized.music-maximized .music-mini-track{margin:0!important;border:1px solid #263746!important;min-width:0!important}
+.music-shell.music-minimized.music-maximized .music-mini-panel{overflow:hidden!important}
+@media(max-width:760px){.music-shell.music-minimized.music-maximized .music-mini-queue{grid-template-columns:1fr}}
