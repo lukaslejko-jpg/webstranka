@@ -29,7 +29,6 @@ jobs:
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
-          import re
           path = Path('tesla-waze-preview/app.js')
           s = path.read_text(encoding='utf-8')
           marker = '/* TMY_VIEWPORT_V1 */'
@@ -52,6 +51,7 @@ jobs:
           node --check tesla-waze-preview/app.js
           grep -q 'TMY_VIEWPORT_V1' tesla-waze-preview/app.js
           grep -q 'MUSIC_MINI_QUEUE_V1' tesla-waze-preview/app.js
+          grep -q 'MUSIC_MINI_QUEUE_V2' tesla-waze-preview/app.js
           grep -q 'music-mini-seekrow' tesla-waze-preview/app.css
           grep -q 'minimized:musicWindowState().minimized' tesla-waze-preview/app.js
 
@@ -79,5 +79,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'music: keep minimized mode while resizing'
+          git commit -m 'music: V2 mini queue before first play'
           git push origin HEAD:tesla-waze-preview-v1
