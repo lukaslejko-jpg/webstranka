@@ -155,4 +155,5 @@ body.tesla-navigating #alertBox{left:auto;right:18px;bottom:18px;width:min(380px
 body.tesla-navigating .topbar{display:flex!important;top:16px!important;right:16px!important;left:auto!important;pointer-events:none}
 body.tesla-navigating .topbar>*:not(#speed){display:none!important}
 body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rgba(11,20,29,.9)!important;color:#f4f7f8!important;border-color:rgba(103,232,249,.36)!important;font-size:15px!important;font-weight:850!important}
+.alert-pin{font:900 14px/1 Inter,system-ui,sans-serif;color:#fff}.alert-pin span{display:flex;width:100%;height:100%;align-items:center;justify-content:center}.alert-pin-police{background:#2563eb!important}.alert-pin-jam{background:#f97316!important}.alert-pin-camera{background:#7c3aed!important}
 
