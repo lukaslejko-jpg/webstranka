@@ -72,7 +72,27 @@ css=css.replace('.music-shell.music-minimized .music-mini-panel{display:flex;fle
 if '/* MUSIC_MINI_QUEUE_V3 */' not in css:
     css += '\n/* MUSIC_MINI_QUEUE_V3 */\n.music-shell.music-minimized .music-mini-panel{display:flex!important}\n'
 
-for needle in ['MUSIC_MINI_QUEUE_V3','musicMiniSeek','miniQueueMarkup','TMY_VIEWPORT_V1']:
+# V4: give minimized mode its own persistent height so top-only resizing survives applyMusicWindow().
+if '/* MUSIC_MINI_RESIZE_V4 */' not in js:
+    old_state="function musicWindowState(){return load(MUSIC_WIN_KEY,{width:520,height:Math.min(window.innerHeight,760),minimized:false})}"
+    new_state="function musicWindowState(){return load(MUSIC_WIN_KEY,{width:520,height:Math.min(window.innerHeight,760),miniHeight:520,minimized:false})}"
+    if old_state not in js:
+        raise SystemExit('musicWindowState anchor not found')
+    js=js.replace(old_state,new_state,1)
+
+    old_apply="function applyMusicWindow(){const shell=document.querySelector('.music-shell');if(!shell)return;const cfg=musicWindowState(),maxW=Math.max(340,Math.min(window.innerWidth-20,760)),maxH=Math.max(220,window.innerHeight-20);shell.style.width=`${Math.max(340,Math.min(maxW,cfg.width||520))}px`;shell.style.height=cfg.minimized?`${Math.min(520,Math.max(360,window.innerHeight-40))}px`:`${Math.max(360,Math.min(maxH,cfg.height||Math.min(window.innerHeight,760)))}px`;shell.classList.toggle('music-minimized',!!cfg.minimized);const b=$('musicMinimize');if(b)b.textContent=cfg.minimized?'Rozbaliť':'Minimalizovať'}"
+    new_apply="function applyMusicWindow(){const shell=document.querySelector('.music-shell');if(!shell)return;const cfg=musicWindowState(),maxW=Math.max(340,Math.min(window.innerWidth-20,760)),maxH=Math.max(360,window.innerHeight-20);shell.style.width=`${Math.max(340,Math.min(maxW,cfg.width||520))}px`;const miniH=Math.max(360,Math.min(maxH,cfg.miniHeight||520));const fullH=Math.max(360,Math.min(maxH,cfg.height||Math.min(window.innerHeight,760)));shell.style.height=`${cfg.minimized?miniH:fullH}px`;shell.classList.toggle('music-minimized',!!cfg.minimized);const b=$('musicMinimize');if(b)b.textContent=cfg.minimized?'Rozbaliť':'Minimalizovať'}/* MUSIC_MINI_RESIZE_V4 */"
+    if old_apply not in js:
+        raise SystemExit('applyMusicWindow anchor not found')
+    js=js.replace(old_apply,new_apply,1)
+
+    old_up="saveMusicWindow({width:Math.round(shell.getBoundingClientRect().width),height:Math.round(shell.getBoundingClientRect().height),minimized:musicWindowState().minimized})"
+    new_up="(()=>{const rect=shell.getBoundingClientRect(),mini=musicWindowState().minimized;saveMusicWindow(mini?{width:Math.round(rect.width),miniHeight:Math.round(rect.height),minimized:true}:{width:Math.round(rect.width),height:Math.round(rect.height),minimized:false})})()"
+    if old_up not in js:
+        raise SystemExit('resize save anchor not found')
+    js=js.replace(old_up,new_up,1)
+
+for needle in ['MUSIC_MINI_QUEUE_V3','MUSIC_MINI_RESIZE_V4','musicMiniSeek','miniQueueMarkup','TMY_VIEWPORT_V1']:
     if needle not in js:
         raise SystemExit(f'missing required JS marker: {needle}')
 
