@@ -1,0 +1,49 @@
+name: Rebuild Tesla Waze assets
+
+on:
+  push:
+    branches:
+      - tesla-waze-preview-v1
+    paths:
+      - 'tesla-waze-preview/app.js'
+      - '.github/workflows/rebuild-tesla-waze-assets.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+
+      - name: Build and verify JS gzip/base64
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd tesla-waze-preview
+          gzip -n -c app.js > app.js.gz
+          gzip -t app.js.gz
+          base64 -w 0 app.js.gz > app.js.gz.b64
+          test -s app.js.gz.b64
+          base64 -d app.js.gz.b64 > verify.gz
+          gzip -t verify.gz
+          cmp <(gzip -dc verify.gz) app.js
+          rm -f app.js.gz verify.gz
+
+      - name: Commit rebuilt asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js.gz.b64
+          if git diff --cached --quiet; then
+            echo 'Asset already correct.'
+            exit 0
+          fi
+          git commit -m 'rebuild verified Tesla Waze JS asset'
+          git push origin HEAD:tesla-waze-preview-v1
