@@ -18,6 +18,14 @@ function cumulative(c){const a=[0];for(let i=1;i<c.length;i++)a.push(a[i-1]+dist
 const routeMetaCache=new WeakMap();
 function routeMeta(r){let m=routeMetaCache.get(r);if(m)return m;const cum=cumulative(r.coords||[]),stepDistances=[];let cursor=0;for(const s of r.steps||[]){const p=s?.path?{lat:Number(s.path.y),lng:Number(s.path.x)}:null,n=p&&Number.isFinite(p.lat)&&Number.isFinite(p.lng)?nearest(p,r.coords,cursor):null;if(n){cursor=Math.max(cursor,n.index);const a=cum[n.index]||0,b=cum[n.index+1]??a;stepDistances.push(a+n.t*(b-a))}else stepDistances.push(Infinity)}m={cum,total:cum.at(-1)||r.distance||1,stepDistances};routeMetaCache.set(r,m);return m}
 function routePointFromProjection(coords,n,meters){if(!coords?.length||!n)return null;let left=Math.max(0,meters||0),start=n.point;for(let i=n.index;i<coords.length-1;i++){const end=coords[i+1],d=dist(start,end);if(d>=left&&d>0){const t=left/d;return {lat:start.lat+(end.lat-start.lat)*t,lng:start.lng+(end.lng-start.lng)*t}}left-=d;start=end}return coords.at(-1)}
+/* TMY_VIEWPORT_V1 */
+function destinationPoint(p,meters,heading){
+  if(!p||!Number.isFinite(meters)||!Number.isFinite(heading)||meters===0)return p;
+  const R=6371000,ang=meters/R,br=heading*Math.PI/180,lat1=p.lat*Math.PI/180,lon1=p.lng*Math.PI/180;
+  const lat2=Math.asin(Math.sin(lat1)*Math.cos(ang)+Math.cos(lat1)*Math.sin(ang)*Math.cos(br));
+  const lon2=lon1+Math.atan2(Math.sin(br)*Math.sin(ang)*Math.cos(lat1),Math.cos(ang)-Math.sin(lat1)*Math.sin(lat2));
+  return {lat:lat2*180/Math.PI,lng:lon2*180/Math.PI};
+}
 function navigationZoom(distanceMeters,opcode,speedKmh){const ramp=/RAMP|EXIT/i.test(String(opcode||''));if(ramp){if(distanceMeters<=250)return 18.8;if(distanceMeters<=600)return 18.2;if(distanceMeters<=1200)return 17.5;if(distanceMeters<=2500)return 16.8;return 16.2}if(distanceMeters<=250)return 19;if(distanceMeters<=700)return 18.4;if(distanceMeters<=2000)return 17.4;return speedKmh>95?15.7:16.5}
 function shouldSnapToRoute(distanceMeters,accuracy){const a=Number.isFinite(accuracy)?Math.min(30,Math.max(0,accuracy)):0;return distanceMeters<=Math.max(35,a*1.5)}
 function confirmedOffRoute(distanceMeters,accuracy){if(Number.isFinite(accuracy)&&accuracy>60)return false;return distanceMeters>Math.max(55,(Number(accuracy)||0)*2)}
@@ -48,7 +56,28 @@ function setMapType(type,persist=true){
 
 async function initMap(){const L=window.L;state.L=L;state.map=L.map('map',{zoomControl:true,attributionControl:true,rotate:true,bearing:0,rotateControl:false,dragRotate:false,touchRotate:false,shiftKeyRotate:false,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false}).setView([48.9984,21.2393],12);const common={maxZoom:20,keepBuffer:8,updateWhenIdle:false,updateWhenZooming:false},imagery=()=>L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{...common,attribution:'Esri, Maxar, Earthstar Geographics'}),labels=()=>L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{...common,attribution:'Esri'});state.baseLayers={roadmap:L.tileLayer('https://www.waze.com/row-tiles/live/base/{z}/{x}/{y}/tile.png',{...common,attribution:'Waze'}),satellite:imagery(),hybrid:L.layerGroup([imagery(),labels()])};setMapType(state.mapType,false);startGPS();setInterval(loadAlerts,30000);setTimeout(loadAlerts,2200)}
 function carIcon(){return state.L.divIcon({className:'car-wrap',html:'<div class="car-arrow">▲</div>',iconSize:[40,40],iconAnchor:[20,20]})}
-function startGPS(){if(!navigator.geolocation){$('gpsNotice').querySelector('span').textContent='GPS nie je dostupné.';return}let lastTs=Date.now(),lastRestart=0,watch;const onPosition=g=>{const p={lat:g.coords.latitude,lng:g.coords.longitude};if(!Number.isFinite(p.lat)||!Number.isFinite(p.lng))return;lastTs=Date.now();const previous=state.pos,sp=Number.isFinite(g.coords.speed)?g.coords.speed:null,raw=Number.isFinite(g.coords.heading)?g.coords.heading:null,moved=previous?dist(previous,p):0;let h=moved>=4?bearing(previous,p):raw;if(h!=null)state.heading=smoothHeading(state.heading,h);state.lastPos=previous;state.pos=p;state.accuracy=g.coords.accuracy;state.speed=sp;state.gpsHeading=raw;$('speed').textContent=`${sp==null?'—':Math.max(0,Math.round(sp*3.6))} km/h`;$('gpsNotice').querySelector('span').textContent=`GPS aktívne · presnosť približne ${Math.round(g.coords.accuracy)} m`;if(!state.car){state.car=state.L.marker(p,{icon:carIcon(),zIndexOffset:1000,rotation:0,rotateWithView:false}).addTo(state.map);state.map.setView(p,16,{animate:false})}else if(!state.navigating)state.car.setLatLng(p);if(state.navigating)updateNavigation();else if(state.dest&&!state.routes.length&&!state.routeLoading)calculateRoute(true)};const restart=()=>{if(watch)navigator.geolocation.clearWatch(watch);watch=navigator.geolocation.watchPosition(onPosition,e=>$('gpsNotice').querySelector('span').textContent=e.code===1?'Poloha bola zamietnutá.':'GPS momentálne nie je dostupné.',{enableHighAccuracy:true,timeout:12000,maximumAge:0})};restart();setInterval(()=>{const now=Date.now();if(state.navigating)navigator.geolocation.getCurrentPosition(onPosition,()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0});if(now-lastTs>10000&&now-lastRestart>10000){lastRestart=now;$('gpsNotice').querySelector('span').textContent='GPS neposiela novú polohu. Obnovujem sledovanie.';restart()}},2500);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')navigator.geolocation.getCurrentPosition(onPosition,()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0})})}
+function startGPS(){
+  if(!navigator.geolocation){$('gpsNotice').querySelector('span').textContent='GPS nie je dostupné.';return}
+  let lastTs=Date.now(),lastRestart=0,watch;
+  const onPosition=g=>{
+    const p={lat:g.coords.latitude,lng:g.coords.longitude};
+    if(!Number.isFinite(p.lat)||!Number.isFinite(p.lng))return;
+    lastTs=Date.now();
+    const previous=state.pos,sp=Number.isFinite(g.coords.speed)?g.coords.speed:null,raw=Number.isFinite(g.coords.heading)?g.coords.heading:null,moved=previous?dist(previous,p):0;
+    let h=moved>=4?bearing(previous,p):raw;
+    if(h!=null)state.heading=smoothHeading(state.heading,h,.35);
+    state.lastPos=previous;state.pos=p;state.accuracy=g.coords.accuracy;state.speed=sp;state.gpsHeading=raw;
+    $('speed').textContent=`${sp==null?'—':Math.max(0,Math.round(sp*3.6))} km/h`;
+    $('gpsNotice').querySelector('span').textContent=`GPS aktívne · presnosť približne ${Math.round(g.coords.accuracy)} m`;
+    if(!state.car){state.car=state.L.marker(p,{icon:carIcon(),zIndexOffset:1000,rotation:0,rotateWithView:false}).addTo(state.map);state.map.setView(p,16,{animate:false})}
+    else if(!state.navigating)state.car.setLatLng(p);
+    if(state.navigating)updateNavigation();else if(state.dest&&!state.routes.length&&!state.routeLoading)calculateRoute(true);
+  };
+  const restart=()=>{if(watch)navigator.geolocation.clearWatch(watch);watch=navigator.geolocation.watchPosition(onPosition,e=>$('gpsNotice').querySelector('span').textContent=e.code===1?'Poloha bola zamietnutá.':'GPS momentálne nie je dostupné.',{enableHighAccuracy:true,timeout:12000,maximumAge:0})};
+  restart();
+  setInterval(()=>{const now=Date.now();if(state.navigating)navigator.geolocation.getCurrentPosition(onPosition,()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0});if(now-lastTs>10000&&now-lastRestart>10000){lastRestart=now;$('gpsNotice').querySelector('span').textContent='GPS neposiela novú polohu. Obnovujem sledovanie.';restart()}},2500);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')navigator.geolocation.getCurrentPosition(onPosition,()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0})});
+}
 function applyHeadingUp(center,zoom){
   if(!state.map||!state.navigating)return;
   const now=Date.now();
@@ -58,8 +87,7 @@ function applyHeadingUp(center,zoom){
   if(now-state.lastCameraAt<500&&moved<18&&Math.abs(curZoom-zoom)<.55)return;
   if(moved<10&&Math.abs(curZoom-zoom)<.35)return;
   state.lastCameraAt=now;state.lastCameraCenter={lat:center.lat,lng:center.lng};
-  if(Math.abs(curZoom-zoom)>=.65)state.map.setView(center,zoom,{animate:false});
-  else state.map.panTo(center,{animate:false,noMoveStart:true});
+  if(Math.abs(curZoom-zoom)>=.65)state.map.setView(center,zoom,{animate:false});else state.map.panTo(center,{animate:false,noMoveStart:true});
 }
 function stopHeadingUp(reset=true){if(typeof state.map?.setHeading==='function')state.map.setHeading(null);if(typeof state.map?.stopHeadingUp==='function')state.map.stopHeadingUp();if(reset&&typeof state.map?.setBearing==='function')state.map.setBearing(0)}
 
@@ -179,7 +207,26 @@ function renderRouteCard(){const r=state.routes[state.routeIndex],c=$('routeCard
 function toggleOverview(){const r=state.routes[state.routeIndex];if(!r)return;clearTimeout(state.overviewTimer);state.overview=!state.overview;if(state.overview){stopHeadingUp(false);state.map.fitBounds(state.L.latLngBounds(r.coords),{padding:[70,70]})}else updateNavigation();renderRouteCard();renderTeslaNavigation();$('routeModeBtn').textContent=state.overview?'Späť na navigovanie':'Celá trasa'}
 function stopNavigation(recenter=true){clearTimeout(state.overviewTimer);if(state.navigating)rememberDrivenRoute();state.routeRequestSeq++;state.routeLoading=false;state.navigating=false;state.overview=false;state.routeProgress=null;state.routeCursor=0;state.tripKey='';state.tripTrail=[];state.tripOriginalRoute=null;state.lastTrailAt=null;stopHeadingUp(true);$('app').classList.remove('navcompact');$('panel').classList.remove('navcompact');$('routeModeBtn').classList.add('hidden');$('alertBox').classList.add('hidden');state.routeLines.forEach(x=>x.remove());state.routeLines=[];state.trafficLines.forEach(x=>x.remove());state.trafficLines=[];state.trafficPaintSig='';if(state.destMarker)state.destMarker.remove();state.destMarker=null;state.routes=[];state.routeIndex=0;state.dest=null;state.jams=[];$('searchInput').value='';$('searchResults').innerHTML='';$('searchStatus').textContent='';setNavigationShell(false);renderDestination();renderRouteBox();renderRouteCard();renderTeslaNavigation();if(!recenter)return;const center=state.pos||state.car?.getLatLng?.();[100,320].forEach(delay=>setTimeout(()=>{if(!state.map||!center)return;state.map.stop();state.map.invalidateSize({pan:false});state.map.setView(center,16,{animate:false})},delay))}
 function routeAheadPoint(coords,startIndex,meters){if(!coords?.length)return null;let left=Math.max(0,meters||0),i=Math.max(0,Math.min(startIndex,coords.length-1));for(;i<coords.length-1;i++){const d=dist(coords[i],coords[i+1]);if(d>=left&&d>0){const t=left/d;return {lat:coords[i].lat+(coords[i+1].lat-coords[i].lat)*t,lng:coords[i].lng+(coords[i+1].lng-coords[i].lng)*t}}left-=d}return coords.at(-1)}
-function updateNavigation(){const r=state.routes[state.routeIndex];if(!state.navigating||state.overview||!state.pos||!r?.coords?.length)return;const n=nearest(state.pos,r.coords,state.routeCursor);if(!n)return;state.routeCursor=Math.max(state.routeCursor,n.index);const meta=routeMeta(r),cum=meta.cum,total=meta.total,passed=(cum[n.index]||0)+n.t*((cum[n.index+1]??cum[n.index]??0)-(cum[n.index]||0)),remaining=Math.max(0,total-passed);let si=meta.stepDistances.findIndex((d,i)=>i>0&&d>passed+12);if(si<0)si=Math.max(0,(r.steps||[]).length-1);const maneuver=r.steps?.[si],stepDistance=meta.stepDistances[si],dm=Number.isFinite(stepDistance)?Math.max(0,stepDistance-passed):remaining;state.routeProgress={remainingDistance:remaining,remainingTime:(r.time||0)*(remaining/Math.max(total,1)),stepIdx:si,distanceToManeuver:dm,offRoute:n.distance,progressRatio:Math.max(0,Math.min(1,passed/Math.max(total,1)))};if(!state.lastTrailAt||dist(state.lastTrailAt,state.pos)>=25){state.tripTrail.push({...state.pos});state.lastTrailAt={...state.pos};if(state.tripTrail.length>500)state.tripTrail=state.tripTrail.filter((_,i)=>i%2===0)}const kmh=(state.speed||0)*3.6,aheadMeters=kmh>95?420:kmh>60?320:kmh>25?230:150,markerPosition=shouldSnapToRoute(n.distance,state.accuracy)?n.point:state.pos,center=routePointFromProjection(r.coords,n,aheadMeters)||markerPosition,routeDirection=routePointFromProjection(r.coords,n,30);if((state.heading==null||(state.speed||0)<.8)&&routeDirection)state.heading=smoothHeading(state.heading,bearing(n.point,routeDirection),.28);if(state.car)state.car.setLatLng(markerPosition);applyHeadingUp(center,navigationZoom(dm,maneuver?.opcode,kmh));if(confirmedOffRoute(n.distance,state.accuracy))state.offRouteHits=(state.offRouteHits||0)+1;else state.offRouteHits=0;if(state.offRouteHits>=2&&Date.now()-state.lastReroute>15000){state.offRouteHits=0;state.lastReroute=Date.now();calculateRoute(false)}renderRouteBox();renderTeslaNavigation();voiceNavigation();findAheadAlert();findAheadTraffic()}
+function updateNavigation(){
+  const r=state.routes[state.routeIndex];
+  if(!state.navigating||state.overview||!state.pos||!r?.coords?.length)return;
+  const n=nearest(state.pos,r.coords,state.routeCursor);if(!n)return;state.routeCursor=Math.max(state.routeCursor,n.index);
+  const meta=routeMeta(r),cum=meta.cum,total=meta.total,passed=(cum[n.index]||0)+n.t*((cum[n.index+1]??cum[n.index]??0)-(cum[n.index]||0)),remaining=Math.max(0,total-passed);
+  let si=meta.stepDistances.findIndex((d,i)=>i>0&&d>passed+12);if(si<0)si=Math.max(0,(r.steps||[]).length-1);
+  const maneuver=r.steps?.[si],stepDistance=meta.stepDistances[si],dm=Number.isFinite(stepDistance)?Math.max(0,stepDistance-passed):remaining;
+  state.routeProgress={remainingDistance:remaining,remainingTime:(r.time||0)*(remaining/Math.max(total,1)),stepIdx:si,distanceToManeuver:dm,offRoute:n.distance,progressRatio:Math.max(0,Math.min(1,passed/Math.max(total,1)))};
+  if(!state.lastTrailAt||dist(state.lastTrailAt,state.pos)>=25){state.tripTrail.push({...state.pos});state.lastTrailAt={...state.pos};if(state.tripTrail.length>500)state.tripTrail=state.tripTrail.filter((_,i)=>i%2===0)}
+  const markerPosition=shouldSnapToRoute(n.distance,state.accuracy)?n.point:state.pos,routeDirection=routePointFromProjection(r.coords,n,30);
+  if((state.heading==null||(state.speed||0)<.8)&&routeDirection)state.heading=smoothHeading(state.heading,bearing(n.point,routeDirection),.28);
+  if(state.car)state.car.setLatLng(markerPosition);
+  let cameraBase=markerPosition;const op=String(maneuver?.opcode||'').toUpperCase();
+  if((op.includes('RAMP')||op.includes('EXIT'))&&dm<=4000){const rampTarget=routePointFromProjection(r.coords,n,Math.min(Math.max(dm*.42,120),900));if(rampTarget)cameraBase=rampTarget}
+  const cameraHeading=state.heading!=null?state.heading:(routeDirection?bearing(markerPosition,routeDirection):0),cameraCenter=destinationPoint(cameraBase,65,cameraHeading),kmh=(state.speed||0)*3.6;
+  applyHeadingUp(cameraCenter,navigationZoom(dm,maneuver?.opcode,kmh));
+  if(confirmedOffRoute(n.distance,state.accuracy))state.offRouteHits=(state.offRouteHits||0)+1;else state.offRouteHits=0;
+  if(state.offRouteHits>=2&&Date.now()-state.lastReroute>15000){state.offRouteHits=0;state.lastReroute=Date.now();calculateRoute(false)}
+  renderRouteBox();renderTeslaNavigation();voiceNavigation();findAheadAlert();findAheadTraffic();
+}
 function renderRouteBox(){const r=state.routes[state.routeIndex],p=state.routeProgress,b=$('routeBox');if(!r){b.classList.add('hidden');return}b.classList.remove('hidden');const time=p?.remainingTime??r.time,di=p?.remainingDistance??r.distance,arr=new Date(Date.now()+1000*(time||0)).toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'}),title=state.navigating?instruction(r.steps?.[p?.stepIdx||0]):(r.routeName||r.name||'Trasa');b.innerHTML=`<b>${esc(title)}</b>${state.navigating&&p?`<small>manéver o ${fmtD(p.distanceToManeuver)}${p.offRoute>50?' · odchýlka '+fmtD(p.offRoute):''}</small>`:''}<div class="routeStats"><div><b>${fmtT(time||0)}</b><small>zostáva</small></div><div><b>${fmtD(di||0)}</b><small>vzdialenosť</small></div><div><b>${arr}</b><small>príchod</small></div></div>`}
 let voiceContext=null,activeVoiceSource=null,voiceGeneration=0,cloudVoiceUnavailable=false;const voiceCache=new Map();
 function unlockVoiceAudio(){const C=window.AudioContext||window.webkitAudioContext;if(!C)return;try{voiceContext=voiceContext||new C();voiceContext.resume?.()}catch{}}
