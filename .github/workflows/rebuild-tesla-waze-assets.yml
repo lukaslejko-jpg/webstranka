@@ -22,8 +22,10 @@ jobs:
           fetch-depth: 0
 
       - name: Apply tm-y navigation viewport once
-        shell: python
+        shell: bash
         run: |
+          set -euo pipefail
+          python3 <<'PY'
           from pathlib import Path
           import re
 
@@ -34,119 +36,84 @@ jobs:
               print('tm-y viewport already applied')
               raise SystemExit(0)
 
-          helper = r'''/* TMY_VIEWPORT_V1 */
-function destinationPoint(p,meters,heading){
-  if(!p||!Number.isFinite(meters)||!Number.isFinite(heading)||meters===0)return p;
-  const R=6371000,ang=meters/R,br=heading*Math.PI/180,lat1=p.lat*Math.PI/180,lon1=p.lng*Math.PI/180;
-  const lat2=Math.asin(Math.sin(lat1)*Math.cos(ang)+Math.cos(lat1)*Math.sin(ang)*Math.cos(br));
-  const lon2=lon1+Math.atan2(Math.sin(br)*Math.sin(ang)*Math.cos(lat1),Math.cos(ang)-Math.sin(lat1)*Math.sin(lat2));
-  return {lat:lat2*180/Math.PI,lng:lon2*180/Math.PI};
-}
-'''
+          helper = '''/* TMY_VIEWPORT_V1 */
+          function destinationPoint(p,meters,heading){
+            if(!p||!Number.isFinite(meters)||!Number.isFinite(heading)||meters===0)return p;
+            const R=6371000,ang=meters/R,br=heading*Math.PI/180,lat1=p.lat*Math.PI/180,lon1=p.lng*Math.PI/180;
+            const lat2=Math.asin(Math.sin(lat1)*Math.cos(ang)+Math.cos(lat1)*Math.sin(ang)*Math.cos(br));
+            const lon2=lon1+Math.atan2(Math.sin(br)*Math.sin(ang)*Math.cos(lat1),Math.cos(ang)-Math.sin(lat1)*Math.sin(lat2));
+            return {lat:lat2*180/Math.PI,lng:lon2*180/Math.PI};
+          }
+          '''
           s, nh = re.subn(r'(?=function navigationZoom\()', helper, s, count=1)
           assert nh == 1, 'navigationZoom insertion point not found'
 
-          start_gps = r'''function startGPS(){
-  if(!navigator.geolocation){$('gpsNotice').querySelector('span').textContent='GPS nie je dostupné.';return}
-  let lastTs=Date.now(),lastRestart=0,watch;
-  const onPosition=g=>{
-    const p={lat:g.coords.latitude,lng:g.coords.longitude};
-    if(!Number.isFinite(p.lat)||!Number.isFinite(p.lng))return;
-    lastTs=Date.now();
-    const previous=state.pos,sp=Number.isFinite(g.coords.speed)?g.coords.speed:null,raw=Number.isFinite(g.coords.heading)?g.coords.heading:null,moved=previous?dist(previous,p):0;
-    let h=moved>=4?bearing(previous,p):raw;
-    if(h!=null)state.heading=smoothHeading(state.heading,h,.35);
-    state.lastPos=previous;state.pos=p;state.accuracy=g.coords.accuracy;state.speed=sp;state.gpsHeading=raw;
-    $('speed').textContent=`${sp==null?'—':Math.max(0,Math.round(sp*3.6))} km/h`;
-    $('gpsNotice').querySelector('span').textContent=`GPS aktívne · presnosť približne ${Math.round(g.coords.accuracy)} m`;
-    if(!state.car){
-      state.car=state.L.marker(p,{icon:carIcon(),zIndexOffset:1000,rotation:0,rotateWithView:false}).addTo(state.map);
-      state.map.setView(p,16,{animate:false});
-    }else if(!state.navigating)state.car.setLatLng(p);
-    if(state.navigating)updateNavigation();
-    else if(state.dest&&!state.routes.length&&!state.routeLoading)calculateRoute(true);
-  };
-  const restart=()=>{
-    if(watch)navigator.geolocation.clearWatch(watch);
-    watch=navigator.geolocation.watchPosition(onPosition,e=>$('gpsNotice').querySelector('span').textContent=e.code===1?'Poloha bola zamietnutá.':'GPS momentálne nie je dostupné.',{enableHighAccuracy:true,timeout:12000,maximumAge:0});
-  };
-  restart();
-  setInterval(()=>{
-    const now=Date.now();
-    if(state.navigating)navigator.geolocation.getCurrentPosition(onPosition,()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0});
-    if(now-lastTs>10000&&now-lastRestart>10000){lastRestart=now;$('gpsNotice').querySelector('span').textContent='GPS neposiela novú polohu. Obnovujem sledovanie.';restart()}
-  },2500);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')navigator.geolocation.getCurrentPosition(onPosition,()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0})});
-}'''
+          start_gps = '''function startGPS(){
+            if(!navigator.geolocation){$('gpsNotice').querySelector('span').textContent='GPS nie je dostupné.';return}
+            let lastTs=Date.now(),lastRestart=0,watch;
+            const onPosition=g=>{
+              const p={lat:g.coords.latitude,lng:g.coords.longitude};
+              if(!Number.isFinite(p.lat)||!Number.isFinite(p.lng))return;
+              lastTs=Date.now();
+              const previous=state.pos,sp=Number.isFinite(g.coords.speed)?g.coords.speed:null,raw=Number.isFinite(g.coords.heading)?g.coords.heading:null,moved=previous?dist(previous,p):0;
+              let h=moved>=4?bearing(previous,p):raw;
+              if(h!=null)state.heading=smoothHeading(state.heading,h,.35);
+              state.lastPos=previous;state.pos=p;state.accuracy=g.coords.accuracy;state.speed=sp;state.gpsHeading=raw;
+              $('speed').textContent=`${sp==null?'—':Math.max(0,Math.round(sp*3.6))} km/h`;
+              $('gpsNotice').querySelector('span').textContent=`GPS aktívne · presnosť približne ${Math.round(g.coords.accuracy)} m`;
+              if(!state.car){state.car=state.L.marker(p,{icon:carIcon(),zIndexOffset:1000,rotation:0,rotateWithView:false}).addTo(state.map);state.map.setView(p,16,{animate:false})}
+              else if(!state.navigating)state.car.setLatLng(p);
+              if(state.navigating)updateNavigation();else if(state.dest&&!state.routes.length&&!state.routeLoading)calculateRoute(true);
+            };
+            const restart=()=>{if(watch)navigator.geolocation.clearWatch(watch);watch=navigator.geolocation.watchPosition(onPosition,e=>$('gpsNotice').querySelector('span').textContent=e.code===1?'Poloha bola zamietnutá.':'GPS momentálne nie je dostupné.',{enableHighAccuracy:true,timeout:12000,maximumAge:0})};
+            restart();
+            setInterval(()=>{const now=Date.now();if(state.navigating)navigator.geolocation.getCurrentPosition(onPosition,()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0});if(now-lastTs>10000&&now-lastRestart>10000){lastRestart=now;$('gpsNotice').querySelector('span').textContent='GPS neposiela novú polohu. Obnovujem sledovanie.';restart()}},2500);
+            document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')navigator.geolocation.getCurrentPosition(onPosition,()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0})});
+          }'''
 
-          apply_heading = r'''function applyHeadingUp(center,zoom){
-  if(!state.map||!state.navigating)return;
-  const now=Date.now();
-  if(state.heading!=null){
-    const delta=state.lastAppliedHeading==null?180:Math.abs(((state.heading-state.lastAppliedHeading+540)%360)-180);
-    if(delta>=3.5&&now-state.lastBearingAt>=650){
-      if(typeof state.map.setHeading==='function')state.map.setHeading(state.heading,{ease:0,deadzone:3.5});
-      else if(typeof state.map.setBearing==='function')state.map.setBearing(state.heading);
-      state.lastAppliedHeading=state.heading;state.lastBearingAt=now;
-    }
-  }
-  if(!center)return;
-  const curZoom=Number(state.map.getZoom?.()??zoom),moved=state.lastCameraCenter?dist(state.lastCameraCenter,center):Infinity;
-  if(now-state.lastCameraAt<500&&moved<18&&Math.abs(curZoom-zoom)<.55)return;
-  if(moved<10&&Math.abs(curZoom-zoom)<.35)return;
-  state.lastCameraAt=now;state.lastCameraCenter={lat:center.lat,lng:center.lng};
-  if(Math.abs(curZoom-zoom)>=.65)state.map.setView(center,zoom,{animate:false});
-  else state.map.panTo(center,{animate:false,noMoveStart:true});
-}'''
+          apply_heading = '''function applyHeadingUp(center,zoom){
+            if(!state.map||!state.navigating)return;
+            const now=Date.now();
+            if(state.heading!=null){const delta=state.lastAppliedHeading==null?180:Math.abs(((state.heading-state.lastAppliedHeading+540)%360)-180);if(delta>=3.5&&now-state.lastBearingAt>=650){if(typeof state.map.setHeading==='function')state.map.setHeading(state.heading,{ease:0,deadzone:3.5});else if(typeof state.map.setBearing==='function')state.map.setBearing(state.heading);state.lastAppliedHeading=state.heading;state.lastBearingAt=now}}
+            if(!center)return;
+            const curZoom=Number(state.map.getZoom?.()??zoom),moved=state.lastCameraCenter?dist(state.lastCameraCenter,center):Infinity;
+            if(now-state.lastCameraAt<500&&moved<18&&Math.abs(curZoom-zoom)<.55)return;
+            if(moved<10&&Math.abs(curZoom-zoom)<.35)return;
+            state.lastCameraAt=now;state.lastCameraCenter={lat:center.lat,lng:center.lng};
+            if(Math.abs(curZoom-zoom)>=.65)state.map.setView(center,zoom,{animate:false});else state.map.panTo(center,{animate:false,noMoveStart:true});
+          }'''
 
-          update_nav = r'''function updateNavigation(){
-  const r=state.routes[state.routeIndex];
-  if(!state.navigating||state.overview||!state.pos||!r?.coords?.length)return;
-  const n=nearest(state.pos,r.coords,state.routeCursor);
-  if(!n)return;
-  state.routeCursor=Math.max(state.routeCursor,n.index);
-  const meta=routeMeta(r),cum=meta.cum,total=meta.total;
-  const passed=(cum[n.index]||0)+n.t*((cum[n.index+1]??cum[n.index]??0)-(cum[n.index]||0));
-  const remaining=Math.max(0,total-passed);
-  let si=meta.stepDistances.findIndex((d,i)=>i>0&&d>passed+12);
-  if(si<0)si=Math.max(0,(r.steps||[]).length-1);
-  const maneuver=r.steps?.[si],stepDistance=meta.stepDistances[si];
-  const dm=Number.isFinite(stepDistance)?Math.max(0,stepDistance-passed):remaining;
-  state.routeProgress={remainingDistance:remaining,remainingTime:(r.time||0)*(remaining/Math.max(total,1)),stepIdx:si,distanceToManeuver:dm,offRoute:n.distance,progressRatio:Math.max(0,Math.min(1,passed/Math.max(total,1)))};
-  if(!state.lastTrailAt||dist(state.lastTrailAt,state.pos)>=25){
-    state.tripTrail.push({...state.pos});state.lastTrailAt={...state.pos};
-    if(state.tripTrail.length>500)state.tripTrail=state.tripTrail.filter((_,i)=>i%2===0);
-  }
-  const markerPosition=shouldSnapToRoute(n.distance,state.accuracy)?n.point:state.pos;
-  const routeDirection=routePointFromProjection(r.coords,n,30);
-  if((state.heading==null||(state.speed||0)<.8)&&routeDirection)state.heading=smoothHeading(state.heading,bearing(n.point,routeDirection),.28);
-  if(state.car)state.car.setLatLng(markerPosition);
-  let cameraBase=markerPosition;
-  const op=String(maneuver?.opcode||'').toUpperCase();
-  if((op.includes('RAMP')||op.includes('EXIT'))&&dm<=4000){
-    const rampTarget=routePointFromProjection(r.coords,n,Math.min(Math.max(dm*.42,120),900));
-    if(rampTarget)cameraBase=rampTarget;
-  }
-  const cameraHeading=state.heading!=null?state.heading:(routeDirection?bearing(markerPosition,routeDirection):0);
-  const cameraCenter=destinationPoint(cameraBase,65,cameraHeading);
-  const kmh=(state.speed||0)*3.6;
-  applyHeadingUp(cameraCenter,navigationZoom(dm,maneuver?.opcode,kmh));
-  if(confirmedOffRoute(n.distance,state.accuracy))state.offRouteHits=(state.offRouteHits||0)+1;else state.offRouteHits=0;
-  if(state.offRouteHits>=2&&Date.now()-state.lastReroute>15000){state.offRouteHits=0;state.lastReroute=Date.now();calculateRoute(false)}
-  renderRouteBox();renderTeslaNavigation();voiceNavigation();findAheadAlert();findAheadTraffic();
-}'''
+          update_nav = '''function updateNavigation(){
+            const r=state.routes[state.routeIndex];
+            if(!state.navigating||state.overview||!state.pos||!r?.coords?.length)return;
+            const n=nearest(state.pos,r.coords,state.routeCursor);if(!n)return;state.routeCursor=Math.max(state.routeCursor,n.index);
+            const meta=routeMeta(r),cum=meta.cum,total=meta.total,passed=(cum[n.index]||0)+n.t*((cum[n.index+1]??cum[n.index]??0)-(cum[n.index]||0)),remaining=Math.max(0,total-passed);
+            let si=meta.stepDistances.findIndex((d,i)=>i>0&&d>passed+12);if(si<0)si=Math.max(0,(r.steps||[]).length-1);
+            const maneuver=r.steps?.[si],stepDistance=meta.stepDistances[si],dm=Number.isFinite(stepDistance)?Math.max(0,stepDistance-passed):remaining;
+            state.routeProgress={remainingDistance:remaining,remainingTime:(r.time||0)*(remaining/Math.max(total,1)),stepIdx:si,distanceToManeuver:dm,offRoute:n.distance,progressRatio:Math.max(0,Math.min(1,passed/Math.max(total,1)))};
+            if(!state.lastTrailAt||dist(state.lastTrailAt,state.pos)>=25){state.tripTrail.push({...state.pos});state.lastTrailAt={...state.pos};if(state.tripTrail.length>500)state.tripTrail=state.tripTrail.filter((_,i)=>i%2===0)}
+            const markerPosition=shouldSnapToRoute(n.distance,state.accuracy)?n.point:state.pos,routeDirection=routePointFromProjection(r.coords,n,30);
+            if((state.heading==null||(state.speed||0)<.8)&&routeDirection)state.heading=smoothHeading(state.heading,bearing(n.point,routeDirection),.28);
+            if(state.car)state.car.setLatLng(markerPosition);
+            let cameraBase=markerPosition;const op=String(maneuver?.opcode||'').toUpperCase();
+            if((op.includes('RAMP')||op.includes('EXIT'))&&dm<=4000){const rampTarget=routePointFromProjection(r.coords,n,Math.min(Math.max(dm*.42,120),900));if(rampTarget)cameraBase=rampTarget}
+            const cameraHeading=state.heading!=null?state.heading:(routeDirection?bearing(markerPosition,routeDirection):0),cameraCenter=destinationPoint(cameraBase,65,cameraHeading),kmh=(state.speed||0)*3.6;
+            applyHeadingUp(cameraCenter,navigationZoom(dm,maneuver?.opcode,kmh));
+            if(confirmedOffRoute(n.distance,state.accuracy))state.offRouteHits=(state.offRouteHits||0)+1;else state.offRouteHits=0;
+            if(state.offRouteHits>=2&&Date.now()-state.lastReroute>15000){state.offRouteHits=0;state.lastReroute=Date.now();calculateRoute(false)}
+            renderRouteBox();renderTeslaNavigation();voiceNavigation();findAheadAlert();findAheadTraffic();
+          }'''
 
           s, n1 = re.subn(r'function startGPS\(\)\{.*?(?=\nfunction applyHeadingUp\()', start_gps, s, count=1, flags=re.S)
           s, n2 = re.subn(r'function applyHeadingUp\(center,zoom\)\{.*?(?=\nfunction stopHeadingUp\()', apply_heading, s, count=1, flags=re.S)
           s, n3 = re.subn(r'function updateNavigation\(\)\{.*?(?=\nfunction renderRouteBox\()', update_nav, s, count=1, flags=re.S)
           assert (n1,n2,n3)==(1,1,1), f'viewport patch mismatch: {(n1,n2,n3)}'
-
-          for needle in ['function renderTraffic(', 'function loadAlerts(', 'async function musicSearch(', 'function renderChargers(', 'function calculateRoute(']:
-            assert needle in s, f'missing preserved module: {needle}'
-
+          for needle in ['function renderTraffic(', 'function loadAlerts(', 'async function musicSearch(', 'function renderChargers(', 'function calculateRoute(']: assert needle in s, f'missing preserved module: {needle}'
           path.write_text(s,encoding='utf-8')
+          PY
 
       - name: Syntax check
+        shell: bash
         run: node --check tesla-waze-preview/app.js
 
       - name: Build and verify JS gzip/base64
@@ -170,9 +137,6 @@ function destinationPoint(p,meters,heading){
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
-          if git diff --cached --quiet; then
-            echo 'Source and asset already correct.'
-            exit 0
-          fi
+          if git diff --cached --quiet; then echo 'Source and asset already correct.'; exit 0; fi
           git commit -m 'apply verified tm-y navigation viewport'
           git push origin HEAD:tesla-waze-preview-v1
