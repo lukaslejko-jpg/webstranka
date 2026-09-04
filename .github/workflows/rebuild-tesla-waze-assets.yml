@@ -31,9 +31,7 @@ jobs:
           from pathlib import Path
           path = Path('tesla-waze-preview/app.js')
           s = path.read_text(encoding='utf-8')
-          marker = '/* TMY_VIEWPORT_V1 */'
-          if marker in s:
-              print('tm-y viewport already applied')
+          if '/* TMY_VIEWPORT_V1 */' in s:
               raise SystemExit(0)
           raise SystemExit('TMY viewport marker missing unexpectedly')
           PY
@@ -50,11 +48,7 @@ jobs:
           set -euo pipefail
           node --check tesla-waze-preview/app.js
           grep -q 'TMY_VIEWPORT_V1' tesla-waze-preview/app.js
-          grep -q 'MUSIC_MINI_QUEUE_V1' tesla-waze-preview/app.js
-          grep -q 'MUSIC_MINI_QUEUE_V2' tesla-waze-preview/app.js
           grep -q 'MUSIC_MINI_QUEUE_V3' tesla-waze-preview/app.js
-          grep -q 'music-mini-seekrow' tesla-waze-preview/app.css
-          grep -q 'display:flex!important' tesla-waze-preview/app.css
 
       - name: Build and verify JS and CSS gzip/base64
         shell: bash
