@@ -396,3 +396,18 @@ body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rg
     bottom:auto!important;
   }
 }
+
+
+/* MOBILE_UI_V5_RAISED_NAV_CONTROLS */
+@media (max-width:700px){
+  body.tesla-navigating .tesla-trip{
+    bottom:calc(210px + env(safe-area-inset-bottom,0px))!important;
+  }
+  body.tesla-navigating:not(.music-window-open) .music-fab{
+    bottom:calc(350px + env(safe-area-inset-bottom,0px))!important;
+  }
+  body.tesla-navigating .tesla-settings{
+    bottom:calc(300px + env(safe-area-inset-bottom,0px))!important;
+    max-height:42svh!important;
+  }
+}
