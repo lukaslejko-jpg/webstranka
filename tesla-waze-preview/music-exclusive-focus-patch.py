@@ -2,34 +2,26 @@ from pathlib import Path
 
 p=Path('tesla-waze-preview/app.js')
 s=p.read_text(encoding='utf-8')
-marker='/* MUSIC_TRANSITION_BRIDGE_2S_V29 */'
+marker='/* MUSIC_TRANSITION_BRIDGE_V30 */'
 if marker in s:
     raise SystemExit(0)
 
-# Re-enable the helper audio ONLY as a short bridge before a YouTube track ends.
-old_start='function startMusicKeepalive(){return false}'
-new_start="""function startMusicKeepalive(){
-  if(music.userPaused||!music.wantsPlayback)return;
-  const a=ensureMusicKeepalive();if(!a)return;
-  try{if(a.paused)a.play().catch(()=>{})}catch{}
-}"""
-if old_start not in s:
-    raise SystemExit('disabled keepalive anchor missing')
-s=s.replace(old_start,new_start,1)
-
-# Start the bridge early enough that Tesla cannot fall back to FM during the handoff.
-old='if(st===YT.PlayerState.PLAYING&&d>2&&left>0&&left<=1.2)startMusicKeepalive();'
-new='if(st===YT.PlayerState.PLAYING&&d>2&&left>0&&left<=2.2)startMusicKeepalive();'
+# Start helper bridge earlier: 3.0 s before the current YouTube track ends.
+old="if(st===YT.PlayerState.PLAYING&&d>2&&left>0&&left<=2.2)startMusicKeepalive();"
+new="if(st===YT.PlayerState.PLAYING&&d>2&&left>0&&left<=3.0)startMusicKeepalive();"
 if old not in s:
-    raise SystemExit('transition threshold anchor missing')
+    raise SystemExit('2.2s bridge threshold anchor missing')
 s=s.replace(old,new,1)
 
-# Once the next real YouTube track is PLAYING, immediately release the helper bridge.
-required="if(e.data===YT.PlayerState.PLAYING){music.gaplessBusy=false;music.fallbackAttempts=0;music.userPaused=false;music.wantsPlayback=true;stopMusicKeepalive();setMusicPlaying(true);syncMediaSession()}"
-if required not in s:
-    raise SystemExit('new-track bridge stop handler missing')
+# Do not release the bridge on the first PLAYING event. Tesla needs a short settling window
+# before the new real track is treated as the stable audio source.
+old_play="if(e.data===YT.PlayerState.PLAYING){music.gaplessBusy=false;music.fallbackAttempts=0;music.userPaused=false;music.wantsPlayback=true;stopMusicKeepalive();setMusicPlaying(true);syncMediaSession()}"
+new_play="if(e.data===YT.PlayerState.PLAYING){music.gaplessBusy=false;music.fallbackAttempts=0;music.userPaused=false;music.wantsPlayback=true;setMusicPlaying(true);syncMediaSession();setTimeout(()=>{if(music.wantsPlayback&&!music.userPaused){stopMusicKeepalive();syncMediaSession()}},1200)}"
+if old_play not in s:
+    raise SystemExit('immediate PLAYING bridge release anchor missing')
+s=s.replace(old_play,new_play,1)
 
-# Normal playback must never keep the helper stream running for the whole song.
+# Keep normal playback free of helper audio; the bridge is only primed by the end-of-track timer/handoff.
 for bad in [
     'function playMusic(){music.userPaused=false;music.wantsPlayback=true;startMusicKeepalive()',
     'music.current=t;music.userPaused=false;music.wantsPlayback=true;startMusicKeepalive();syncMediaSession();renderPlayer();',
