@@ -12,14 +12,6 @@ on:
       - 'tesla-waze-preview/music-gapless-handoff-patch.py'
       - 'tesla-waze-preview/music-audio-keepalive-patch.py'
       - 'tesla-waze-preview/music-transition-keepalive-patch.py'
-      - 'tesla-waze-preview/navigation-fix-patch.py'
-      - 'tesla-waze-preview/navigation-icon-fix-patch.py'
-      - 'tesla-waze-preview/navigation-progress-patch.py'
-      - 'tesla-waze-preview/navigation-audio-stability-patch.py'
-      - 'tesla-waze-preview/navigation-screen-anchor-patch.py'
-      - 'tesla-waze-preview/navigation-heading-up-fix-patch.py'
-      - 'tesla-waze-preview/navigation-forward-direction-patch.py'
-      - 'tesla-waze-preview/navigation-tmy-exact-patch.py'
       - 'tesla-waze-preview/navigation-tmy-full-behavior-patch.py'
       - 'tesla-waze-preview/mobile-ui-patch.py'
       - 'tesla-waze-preview/mobile-route-fix-patch.py'
@@ -39,61 +31,14 @@ jobs:
           ref: tesla-waze-preview-v1
           fetch-depth: 0
 
-      - name: Verify tm-y navigation viewport
+      - name: Verify tm-y navigation base
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'TMY_VIEWPORT_V1' tesla-waze-preview/app.js
+          grep -q 'TMY_EXACT_NAV_V21' tesla-waze-preview/app.js
 
-      - name: Apply navigation stability and voice fix
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 tesla-waze-preview/navigation-fix-patch.py
-
-      - name: Apply safe navigation maneuver icons
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 tesla-waze-preview/navigation-icon-fix-patch.py
-
-      - name: Apply remaining-route trim
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 tesla-waze-preview/navigation-progress-patch.py
-
-      - name: Apply map and Smart Music stability
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 tesla-waze-preview/navigation-audio-stability-patch.py
-
-      - name: Apply fixed navigation screen anchor
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 tesla-waze-preview/navigation-screen-anchor-patch.py
-
-      - name: Fix heading direction bottom-to-top
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 tesla-waze-preview/navigation-heading-up-fix-patch.py
-
-      - name: Follow the actual route direction toward destination
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 tesla-waze-preview/navigation-forward-direction-patch.py
-
-      - name: Restore tm-y camera and route semantics
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 tesla-waze-preview/navigation-tmy-exact-patch.py
-
-      - name: Enforce full tm-y navigation behavior last
+      - name: Enforce full tm-y navigation behavior
         shell: bash
         run: |
           set -euo pipefail
@@ -167,6 +112,7 @@ jobs:
           grep -q 'MOBILE_NATIVE_GPS_V12' tesla-waze-preview/app.js
           grep -q 'MOBILE_UI_V1' tesla-waze-preview/app.css
           grep -q 'MUSIC_FULL_QUEUE_V15' tesla-waze-preview/app.css
+          grep -q "function confirmedOffRoute(distanceMeters,accuracy){return distanceMeters>Math.max(55,(Number(accuracy)||0)*2)}" tesla-waze-preview/app.js
           grep -q "state.offRouteHits>=2&&Date.now()-state.lastReroute>15000" tesla-waze-preview/app.js
           ! grep -q "state.offRouteHits>=4&&kmh>8&&Date.now()-state.lastReroute>30000" tesla-waze-preview/app.js
 
