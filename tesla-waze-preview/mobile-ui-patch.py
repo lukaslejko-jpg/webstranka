@@ -114,7 +114,63 @@ if marker_v5 not in css:
 }
 '''
 
-for required in (marker, marker_v2, marker_v3, marker_v4, marker_v5):
+marker_v6 = '/* MOBILE_UI_V6_BALANCED_NAV */'
+if marker_v6 not in css:
+    css += r'''
+
+/* MOBILE_UI_V6_BALANCED_NAV */
+@media (max-width:700px){
+  body.tesla-navigating .tesla-maneuver{
+    width:calc(100vw - 178px)!important;
+    max-width:none!important;
+    min-width:0!important;
+  }
+  body.tesla-navigating .tesla-man-main{padding:10px 12px 8px!important;gap:10px!important}
+  body.tesla-navigating .tesla-turn{font-size:44px!important;width:48px!important}
+  body.tesla-navigating .tesla-man-main b{font-size:25px!important}
+  body.tesla-navigating .tesla-man-main span:not(.tesla-turn){font-size:15px!important;margin-top:3px!important}
+  body.tesla-navigating .tesla-man-next{padding:7px 12px!important;font-size:14px!important;gap:9px!important}
+  body.tesla-navigating .tesla-man-next>span{font-size:23px!important;width:30px!important}
+
+  body.tesla-navigating .tesla-trip{
+    left:10px!important;
+    right:10px!important;
+    bottom:calc(150px + env(safe-area-inset-bottom,0px))!important;
+    border-radius:12px!important;
+  }
+  body.tesla-navigating .tesla-trip-stats{
+    padding:9px 13px 6px!important;
+    gap:6px!important;
+    align-items:center!important;
+  }
+  body.tesla-navigating .tesla-trip-stats b{font-size:20px!important;line-height:1.05!important}
+  body.tesla-navigating .tesla-trip-stats span{font-size:13px!important;line-height:1.1!important}
+  body.tesla-navigating .tesla-progress{
+    height:4px!important;
+    margin:0 13px 7px!important;
+  }
+  body.tesla-navigating .tesla-trip-actions{grid-template-columns:1fr 62px!important}
+  body.tesla-navigating .tesla-trip-actions button{
+    height:46px!important;
+    font-size:15px!important;
+  }
+  body.tesla-navigating .tesla-dots{font-size:20px!important}
+
+  body.tesla-navigating:not(.music-window-open) .music-fab{
+    width:54px!important;
+    height:54px!important;
+    right:14px!important;
+    bottom:calc(286px + env(safe-area-inset-bottom,0px))!important;
+    border-radius:15px!important;
+  }
+  body.tesla-navigating .tesla-settings{
+    bottom:calc(220px + env(safe-area-inset-bottom,0px))!important;
+    max-height:46svh!important;
+  }
+}
+'''
+
+for required in (marker, marker_v2, marker_v3, marker_v4, marker_v5, marker_v6):
     if required not in css:
         raise SystemExit(f'{required} marker missing after patch')
 
