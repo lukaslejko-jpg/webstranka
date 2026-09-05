@@ -11,6 +11,7 @@ on:
       - 'tesla-waze-preview/navigation-fix-patch.py'
       - 'tesla-waze-preview/mobile-ui-patch.py'
       - 'tesla-waze-preview/mobile-route-fix-patch.py'
+      - 'tesla-waze-preview/mobile-native-gps-patch.py'
       - '.github/workflows/rebuild-tesla-waze-assets.yml'
 
 permissions:
@@ -56,6 +57,12 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/mobile-route-fix-patch.py
 
+      - name: Restore native Safari geolocation outside Tesla iframe
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/mobile-native-gps-patch.py
+
       - name: Syntax check
         shell: bash
         run: |
@@ -67,6 +74,7 @@ jobs:
           grep -q 'MUSIC_MINI_RESIZE_V4' tesla-waze-preview/app.js
           grep -q 'MUSIC_LAYOUT_NO_RESTART_V5' tesla-waze-preview/app.js
           grep -q 'MOBILE_PENDING_ROUTE_V11' tesla-waze-preview/app.js
+          grep -q 'MOBILE_NATIVE_GPS_V12' tesla-waze-preview/app.js
           grep -q 'MOBILE_UI_V1' tesla-waze-preview/app.css
 
       - name: Build and verify JS and CSS gzip/base64
@@ -93,5 +101,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'mobile: auto-start route when GPS arrives'
+          git commit -m 'mobile: restore native Safari GPS outside Tesla iframe'
           git push origin HEAD:tesla-waze-preview-v1
