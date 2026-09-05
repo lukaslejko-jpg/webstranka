@@ -709,39 +709,17 @@ function resetManualMusicTransition(){
   music.ytStandbyStarting=false;
   try{clearYoutubeStandby()}catch{}
 }
-function directYoutubeTrack(track,reason='next'){
-  if(!track||!music.ytPlayer)return false;
-  const id=youtubeIdForTrack(track);if(!id)return false;
-  const prev=music.current;
-  resetManualMusicTransition();
-  music.current=track;
-  music.userPaused=false;
-  music.wantsPlayback=true;
-  music.started=Date.now();
-  if(prev&&mt(prev).id!==mt(track).id)mev(reason==='auto'?'complete':'skip',prev);
-  mev('play',track);
-  refreshCurrentMusicUi();
-  setMusicPlaying(true);
-  syncMediaSession();
-  try{
-    music.ytPlayer.loadVideoById(id,0,'default');
-    music.ytPlayer.playVideo?.();
-    return true;
-  }catch{
-    return false;
-  }
-}
 function mnext(reason='next'){
   const n=nextMusicTrack();
   if(!n)return false;
-  if(music.ytPlayer&&youtubeIdForTrack(n))return directYoutubeTrack(n,reason);
+  resetManualMusicTransition();
   mplay(n);
   return true;
 }
 function mprev(){
   const p=prevMusicTrack();
   if(!p)return false;
-  if(music.ytPlayer&&youtubeIdForTrack(p))return directYoutubeTrack(p,'prev');
+  resetManualMusicTransition();
   mplay(p);
   return true;
 }
@@ -751,7 +729,7 @@ function setYoutubeFallbackStatus(text,active=false){const el=document.querySele
 async function switchYoutubeToFree(yt,manual=false){if(!yt)return;music.anonymousYoutube=true;music.fallbackAttempts=0;if(music.fallbackTimer){clearTimeout(music.fallbackTimer);music.fallbackTimer=null}setYoutubeFallbackStatus(manual?'Spúšťam bezplatné YouTube s reklamami…':'YouTube účet je blokovaný · prepínam na prehrávanie s reklamami…',true);try{music.ytPlayer?.destroy?.()}catch{}music.ytPlayer=null;const host=document.getElementById('ytPlayerHost');if(host){host.innerHTML=''}await setupYoutubePlayer(yt,true)}
 function noteYoutubeBlockedState(yt){if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback)return;music.fallbackAttempts=(music.fallbackAttempts||0)+1;if(music.fallbackAttempts>=3)switchYoutubeToFree(yt,false)}
 async function setupYoutubePlayer(yt,anonymous=music.anonymousYoutube){try{await loadYoutubeApi();const host=document.getElementById('ytPlayerHost');if(!host)return;music.anonymousYoutube=!!anonymous;try{music.ytPlayer?.destroy?.()}catch{}host.innerHTML='';setYoutubeFallbackStatus(anonymous?'Free YouTube · reklamy môžu byť zobrazené':'YouTube účet',anonymous);music.ytPlayer=new YT.Player('ytPlayerHost',{host:anonymous?'https://www.youtube-nocookie.com':'https://www.youtube.com',videoId:yt,playerVars:{autoplay:1,playsinline:1,rel:0,origin:location.origin},events:{onReady:e=>{syncMediaSession();try{e.target.playVideo()}catch{}},onStateChange:e=>{if(e.data===YT.PlayerState.PLAYING){music.gaplessBusy=false;music.fallbackAttempts=0;music.userPaused=false;music.wantsPlayback=true;setMusicPlaying(true);syncMediaSession();setTimeout(()=>{if(music.wantsPlayback&&!music.userPaused){stopMusicKeepalive();syncMediaSession()}},2000)}else if(e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.CUED||e.data===YT.PlayerState.UNSTARTED){if(!music.gaplessBusy){setMusicPlaying(false);scheduleMusicResume();noteYoutubeBlockedState(currentYoutubeId()||yt)}}else if(e.data===YT.PlayerState.ENDED){if(music.autoNext&&mnext('auto'))return;music.wantsPlayback=false;setMusicPlaying(false);if(music.current)mev('complete',music.current)}},onError:()=>{if(!anonymous&&music.wantsPlayback&&!music.userPaused)noteYoutubeBlockedState(yt)}}})}catch{const h=document.getElementById('ytPlayerHost');if(h){const base=anonymous?'https://www.youtube-nocookie.com':'https://www.youtube.com';h.innerHTML=`<iframe class="yt-player" src="${base}/embed/${encodeURIComponent(yt)}?autoplay=1&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;setYoutubeFallbackStatus(anonymous?'Free YouTube · reklamy môžu byť zobrazené':'YouTube účet',anonymous)}syncMediaSession()}}
-setInterval(()=>{if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.();if(st!==YT.PlayerState.PLAYING&&st!==YT.PlayerState.BUFFERING)noteYoutubeBlockedState(currentYoutubeId())}catch{}},2600);setInterval(()=>{if(!music.autoNext||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.(),d=Number(music.ytPlayer.getDuration?.()||0),t=Number(music.ytPlayer.getCurrentTime?.()||0),left=d-t;if(st!==YT.PlayerState.PLAYING||d<=2||left<=0)return;const n=nextMusicTrack();if(left<=5.0&&n&&!music.ytStandby&&!music.ytStandbyStarting)prepareYoutubeStandby(n);if(left<=1.2&&n&&!music.gaplessBusy&&!music.ytStandbyStarting){if(!handoffYoutubeTrack(n,'auto'))prepareYoutubeStandby(n)}}catch{}},100);
+setInterval(()=>{if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.();if(st!==YT.PlayerState.PLAYING&&st!==YT.PlayerState.BUFFERING)noteYoutubeBlockedState(currentYoutubeId())}catch{}},2600);/* dual-player preroll disabled by V40; ENDED handler performs auto-next through mplay() */
 /* MUSIC_TRANSITION_KEEPALIVE_V18 *//* MUSIC_GAPLESS_HANDOFF_V16 *//* MUSIC_FREE_FALLBACK_V15 */
 async function resolveMusic(q){const r=await fetch(MUSIC_RESOLVE_API+'?q='+encodeURIComponent(q),{cache:'no-store'});if(!r.ok)throw new Error('music '+r.status);const d=await r.json();return Array.isArray(d.results)?d.results:[]}
 async function searchYoutube(q){const r=await fetch(PROD_ORIGIN+'/api/music/youtube/search?q='+encodeURIComponent(q),{cache:'no-store',credentials:'include'});if(r.status===401)return [];if(!r.ok)throw new Error('youtube search '+r.status);const d=await r.json();return Array.isArray(d.items)?d.items:[]}
@@ -798,3 +776,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_NEXT_UNLOCK_V38 */
 
 /* MUSIC_MANUAL_DIRECT_NAV_V39 */
+
+/* MUSIC_SINGLE_PLAYER_STABLE_NAV_V40 */
