@@ -2,10 +2,45 @@ from pathlib import Path
 
 p=Path('tesla-waze-preview/app.js')
 s=p.read_text(encoding='utf-8')
-marker='/* MUSIC_DUAL_PLAYER_HANDOFF_V33 */'
-if marker in s:
+marker33='/* MUSIC_DUAL_PLAYER_HANDOFF_V33 */'
+marker34='/* MUSIC_MANUAL_NEXT_ZERO_GAP_V34 */'
+if marker34 in s:
     raise SystemExit(0)
 
+# Upgrade an already V33-patched app in-place so manual Next never falls through to mplay().
+if marker33 in s:
+    old="""function handoffYoutubeTrack(next,reason='next'){
+  if(!next||music.gaplessBusy||!music.ytPlayer)return false;
+  const id=youtubeIdForTrack(next);if(!id)return false;
+  if(!music.ytStandby||!music.ytStandbyTrack||youtubeIdForTrack(music.ytStandbyTrack)!==id){prepareYoutubeStandby(next);return false}
+  try{music.ytStandbyStarting=true;music.ytStandby.mute?.();music.ytStandby.seekTo?.(0,true);music.ytStandby.playVideo?.();return true}catch{music.ytStandbyStarting=false;return false}
+}"""
+    new="""function handoffYoutubeTrack(next,reason='next'){
+  if(!next||music.gaplessBusy||!music.ytPlayer)return false;
+  const id=youtubeIdForTrack(next);if(!id)return false;
+  const startStandby=()=>{
+    if(!music.ytStandby||!music.ytStandbyTrack||youtubeIdForTrack(music.ytStandbyTrack)!==id)return false;
+    try{music.ytStandbyStarting=true;music.ytStandby.mute?.();music.ytStandby.seekTo?.(0,true);music.ytStandby.playVideo?.();return true}catch{music.ytStandbyStarting=false;return false}
+  };
+  if(startStandby())return true;
+  // Keep the live main player running while the standby player is created.
+  // Return true immediately so mnext() cannot fall through to mplay()/renderPlayer().
+  prepareYoutubeStandby(next).then(ok=>{
+    if(!ok||music.userPaused||!music.wantsPlayback)return;
+    startStandby();
+  }).catch(()=>{});
+  return true;
+}"""
+    if old not in s:
+        raise SystemExit('V33 handoff upgrade anchor missing')
+    s=s.replace(old,new,1)
+    if 'prepareYoutubeStandby(next);return false' in s:
+        raise SystemExit('manual next can still fall through to mplay')
+    s+='\n'+marker34+'\n'
+    p.write_text(s,encoding='utf-8')
+    raise SystemExit(0)
+
+# Fresh V33 installation path.
 # Extend music state with a standby YouTube player.
 old="gaplessBusy:false,gaplessTimer:null};"
 new="gaplessBusy:false,gaplessTimer:null,ytStandby:null,ytStandbyTrack:null,ytStandbyReady:false,ytStandbyStarting:false};"
@@ -51,26 +86,31 @@ async function prepareYoutubeStandby(next){
 function handoffYoutubeTrack(next,reason='next'){
   if(!next||music.gaplessBusy||!music.ytPlayer)return false;
   const id=youtubeIdForTrack(next);if(!id)return false;
-  if(!music.ytStandby||!music.ytStandbyTrack||youtubeIdForTrack(music.ytStandbyTrack)!==id){prepareYoutubeStandby(next);return false}
-  try{music.ytStandbyStarting=true;music.ytStandby.mute?.();music.ytStandby.seekTo?.(0,true);music.ytStandby.playVideo?.();return true}catch{music.ytStandbyStarting=false;return false}
+  const startStandby=()=>{
+    if(!music.ytStandby||!music.ytStandbyTrack||youtubeIdForTrack(music.ytStandbyTrack)!==id)return false;
+    try{music.ytStandbyStarting=true;music.ytStandby.mute?.();music.ytStandby.seekTo?.(0,true);music.ytStandby.playVideo?.();return true}catch{music.ytStandbyStarting=false;return false}
+  };
+  if(startStandby())return true;
+  prepareYoutubeStandby(next).then(ok=>{if(ok&&!music.userPaused&&music.wantsPlayback)startStandby()}).catch(()=>{});
+  return true;
 }'''
 if old_handoff not in s:
     raise SystemExit('handoff function anchor missing')
 s=s.replace(old_handoff,new_handoff,1)
 
-# Replace the end-of-track timer: preload next track at 5 s, start standby at 1.2 s.
 old_timer="setInterval(()=>{if(!music.autoNext||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.(),d=Number(music.ytPlayer.getDuration?.()||0),t=Number(music.ytPlayer.getCurrentTime?.()||0),left=d-t;if(st===YT.PlayerState.PLAYING&&d>2&&left>0&&left<=5.0)startMusicKeepalive();if(!music.gaplessBusy&&st===YT.PlayerState.PLAYING&&d>2&&left>0&&left<=1.5){const n=nextMusicTrack();if(n)handoffYoutubeTrack(n,'auto')}}catch{}},120);"
-new_timer="setInterval(()=>{if(!music.autoNext||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.(),d=Number(music.ytPlayer.getDuration?.()||0),t=Number(music.ytPlayer.getCurrentTime?.()||0),left=d-t;if(st!==YT.PlayerState.PLAYING||d<=2||left<=0)return;const n=nextMusicTrack();if(left<=5.0&&n&&!music.ytStandby&&!music.ytStandbyStarting)prepareYoutubeStandby(n);if(left<=1.2&&n&&!music.gaplessBusy&&!music.ytStandbyStarting){if(!handoffYoutubeTrack(n,'auto'))prepareYoutubeStandby(n)}}catch{}},100);"
+new_timer="setInterval(()=>{if(!music.autoNext||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.(),d=Number(music.ytPlayer.getDuration?.()||0),t=Number(music.ytPlayer.getCurrentTime?.()||0),left=d-t;if(st!==YT.PlayerState.PLAYING||d<=2||left<=0)return;const n=nextMusicTrack();if(left<=5.0&&n&&!music.ytStandby&&!music.ytStandbyStarting)prepareYoutubeStandby(n);if(left<=1.2&&n&&!music.gaplessBusy&&!music.ytStandbyStarting){handoffYoutubeTrack(n,'auto')}}catch{}},100);"
 if old_timer not in s:
     raise SystemExit('early handoff timer anchor missing')
 s=s.replace(old_timer,new_timer,1)
 
-# If playback is manually paused, destroy any standby player too.
-old_pause="function pauseMusic(){music.userPaused=true;music.wantsPlayback=false;stopMusicKeepalive();"
-new_pause="function pauseMusic(){music.userPaused=true;music.wantsPlayback=false;clearYoutubeStandby();stopMusicKeepalive();"
+old_pause="function pauseMusic(){music.userPaused=true;music.wantsPlayback=false;clearYoutubeStandby();stopMusicKeepalive();"
 if old_pause not in s:
-    raise SystemExit('pause anchor missing')
-s=s.replace(old_pause,new_pause,1)
+    old_pause="function pauseMusic(){music.userPaused=true;music.wantsPlayback=false;stopMusicKeepalive();"
+    new_pause="function pauseMusic(){music.userPaused=true;music.wantsPlayback=false;clearYoutubeStandby();stopMusicKeepalive();"
+    if old_pause not in s:
+        raise SystemExit('pause anchor missing')
+    s=s.replace(old_pause,new_pause,1)
 
-s+='\n'+marker+'\n'
+s+='\n'+marker33+'\n'+marker34+'\n'
 p.write_text(s,encoding='utf-8')
