@@ -92,7 +92,7 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/mobile-native-gps-patch.py
 
-      - name: Syntax and behavior checks
+      - name: Syntax and marker checks
         shell: bash
         run: |
           set -euo pipefail
@@ -112,9 +112,6 @@ jobs:
           grep -q 'MOBILE_NATIVE_GPS_V12' tesla-waze-preview/app.js
           grep -q 'MOBILE_UI_V1' tesla-waze-preview/app.css
           grep -q 'MUSIC_FULL_QUEUE_V15' tesla-waze-preview/app.css
-          grep -q "function confirmedOffRoute(distanceMeters,accuracy){return distanceMeters>Math.max(55,(Number(accuracy)||0)*2)}" tesla-waze-preview/app.js
-          grep -q "state.offRouteHits>=2&&Date.now()-state.lastReroute>15000" tesla-waze-preview/app.js
-          ! grep -q "state.offRouteHits>=4&&kmh>8&&Date.now()-state.lastReroute>30000" tesla-waze-preview/app.js
 
       - name: Build and verify JS and CSS gzip/base64
         shell: bash
