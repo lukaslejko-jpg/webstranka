@@ -485,3 +485,19 @@ body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rg
   .music-head h2{font-size:19px!important;line-height:1.05!important;margin:0!important}
   .music-head small{font-size:10px!important;line-height:1.1!important}
 }
+
+
+/* MUSIC_FULL_QUEUE_V15 */
+.music-free-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0 2px;padding:7px 9px;border:1px solid #2b3a47;border-radius:10px;background:#101b25;color:#a8bac7;font-size:12px;font-weight:800}
+.music-free-row [data-free-status].active{color:#67e8f9}
+.music-free-row .btn{min-height:38px;height:38px;padding:0 10px;font-size:12px;white-space:nowrap}
+.music-shell.music-minimized .music-free-row{display:none!important}
+.music-shell:not(.music-minimized) .music-mini-panel{display:flex!important;flex-direction:column;gap:7px;margin-top:8px;min-height:150px;max-height:290px;overflow:hidden}
+.music-shell:not(.music-minimized) .music-mini-panel>.music-mini-queue{flex:1;min-height:110px;overflow-y:auto}
+.music-shell.music-maximized:not(.music-minimized) .music-mini-panel{max-height:38vh!important}
+.music-shell.music-maximized:not(.music-minimized) .music-mini-queue{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:8px 10px;padding:8px 2px 4px!important}
+.music-shell.music-maximized:not(.music-minimized) .music-mini-track{margin:0!important;border:1px solid #263746!important;min-width:0!important}
+@media(max-width:760px){
+  .music-shell.music-maximized:not(.music-minimized) .music-mini-queue{grid-template-columns:1fr!important}
+  .music-shell:not(.music-minimized) .music-mini-panel{max-height:34vh}
+}
