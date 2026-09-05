@@ -279,10 +279,11 @@ function updateNavigation(){
   renderRouteBox();renderTeslaNavigation();voiceNavigation();findAheadAlert();findAheadTraffic();
 }
 function renderRouteBox(){const r=state.routes[state.routeIndex],p=state.routeProgress,b=$('routeBox');if(!r){b.classList.add('hidden');return}b.classList.remove('hidden');const time=p?.remainingTime??r.time,di=p?.remainingDistance??r.distance,arr=new Date(Date.now()+1000*(time||0)).toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'}),title=state.navigating?instruction(r.steps?.[p?.stepIdx||0]):(r.routeName||r.name||'Trasa');b.innerHTML=`<b>${esc(title)}</b>${state.navigating&&p?`<small>manéver o ${fmtD(p.distanceToManeuver)}${p.offRoute>50?' · odchýlka '+fmtD(p.offRoute):''}</small>`:''}<div class="routeStats"><div><b>${fmtT(time||0)}</b><small>zostáva</small></div><div><b>${fmtD(di||0)}</b><small>vzdialenosť</small></div><div><b>${arr}</b><small>príchod</small></div></div>`}
-let voiceContext=null,activeVoiceSource=null,voiceGeneration=0,cloudVoiceUnavailable=false;const voiceCache=new Map();
+let voiceContext=null,activeVoiceSource=null,voiceGeneration=0,cloudVoiceUnavailable=false,voiceAnnouncementTimer=null;const voiceCache=new Map();
 /* NAV_VOICE_CANCEL_V10 */
 function cancelNavigationVoice(){
   voiceGeneration++;
+  if(voiceAnnouncementTimer){clearTimeout(voiceAnnouncementTimer);voiceAnnouncementTimer=null}
   try{activeVoiceSource?.stop()}catch{}
   activeVoiceSource=null;
   try{window.speechSynthesis?.cancel()}catch{}
@@ -313,7 +314,30 @@ async function speak(text,force=false){
   }catch(e){console.warn('Cloud navigation voice failed:',e?.message||e)}}
   if(generation===voiceGeneration&&((state.voice&&state.navigating)||force))browserSpeak(normalized,force,generation)
 }
-function voiceNavigation(){if(!state.voice||!state.navigating)return;const r=state.routes[state.routeIndex],p=state.routeProgress;if(!r||!p)return;const band=p.distanceToManeuver<=120?'now':p.distanceToManeuver<=550?'near':p.distanceToManeuver<=1500?'mid':'far',k=`${state.routeIndex}:${p.stepIdx}:${band}`;if(k===state.lastVoice||p.distanceToManeuver>3200)return;state.lastVoice=k;const s=r.steps?.[p.stepIdx],distance=p.distanceToManeuver>60?`O ${fmtSpeechD(p.distanceToManeuver)}. `:'';speak(`${distance}${instruction(s)}`)}
+function voiceNavigation(){
+  if(!state.voice||!state.navigating)return;
+  const r=state.routes[state.routeIndex],p=state.routeProgress;
+  if(!r||!p)return;
+  const step=r.steps?.[p.stepIdx];
+  if(!step)return;
+  const d=Number(p.distanceToManeuver),op=String(step?.opcode||'').replace(/-/g,'_').toUpperCase(),ramp=op.startsWith('RAMP_')||op.startsWith('EXIT_');
+  let bucket='step';
+  if(Number.isFinite(d)&&d>=0){
+    if(ramp) bucket=d<=100?'now':d<=250?'200':d<=600?'500':d<=1200?'1000':d<=2200?'2000':d<=3200?'3000':'step';
+    else bucket=d<=100?'now':d<=250?'200':d<=600?'500':d<=1200?'1000':'step';
+  }
+  const key=`${p.stepIdx}:${bucket}`;
+  if(key===state.lastVoice)return;
+  state.lastVoice=key;
+  const distance=Number.isFinite(d)&&d>=0?`${fmtSpeechD(d)}. `:'';
+  const text=`${distance}${instruction(step)}`;
+  if(voiceAnnouncementTimer)clearTimeout(voiceAnnouncementTimer);
+  voiceAnnouncementTimer=setTimeout(()=>{
+    voiceAnnouncementTimer=null;
+    if(!state.voice||!state.navigating||state.lastVoice!==key)return;
+    speak(text);
+  },200);
+}/* TMY_VOICE_V23 */
 function findAheadTraffic(){
   if(!state.navigating||!state.pos||!state.jams?.length)return;
   const r=state.routes[state.routeIndex];if(!r?.coords?.length)return;
