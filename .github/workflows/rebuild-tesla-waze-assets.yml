@@ -20,6 +20,7 @@ on:
       - 'tesla-waze-preview/navigation-heading-up-fix-patch.py'
       - 'tesla-waze-preview/navigation-forward-direction-patch.py'
       - 'tesla-waze-preview/navigation-tmy-exact-patch.py'
+      - 'tesla-waze-preview/navigation-tmy-full-behavior-patch.py'
       - 'tesla-waze-preview/mobile-ui-patch.py'
       - 'tesla-waze-preview/mobile-route-fix-patch.py'
       - 'tesla-waze-preview/mobile-native-gps-patch.py'
@@ -86,11 +87,17 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/navigation-forward-direction-patch.py
 
-      - name: Restore tm-y navigation algorithm exactly
+      - name: Restore tm-y camera and route semantics
         shell: bash
         run: |
           set -euo pipefail
           python3 tesla-waze-preview/navigation-tmy-exact-patch.py
+
+      - name: Enforce full tm-y navigation behavior last
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/navigation-tmy-full-behavior-patch.py
 
       - name: Apply Smart Music layout patch
         shell: bash
@@ -140,13 +147,14 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/mobile-native-gps-patch.py
 
-      - name: Syntax check
+      - name: Syntax and behavior checks
         shell: bash
         run: |
           set -euo pipefail
           node --check tesla-waze-preview/app.js
           grep -q 'TMY_VIEWPORT_V1' tesla-waze-preview/app.js
           grep -q 'TMY_EXACT_NAV_V21' tesla-waze-preview/app.js
+          grep -q 'TMY_FULL_NAV_V22' tesla-waze-preview/app.js
           grep -q 'NAV_VOICE_CANCEL_V10' tesla-waze-preview/app.js
           grep -q 'NAV_SAFE_ICONS_V13' tesla-waze-preview/app.js
           grep -q 'MUSIC_MINI_RESIZE_V4' tesla-waze-preview/app.js
@@ -159,6 +167,8 @@ jobs:
           grep -q 'MOBILE_NATIVE_GPS_V12' tesla-waze-preview/app.js
           grep -q 'MOBILE_UI_V1' tesla-waze-preview/app.css
           grep -q 'MUSIC_FULL_QUEUE_V15' tesla-waze-preview/app.css
+          grep -q "state.offRouteHits>=2&&Date.now()-state.lastReroute>15000" tesla-waze-preview/app.js
+          ! grep -q "state.offRouteHits>=4&&kmh>8&&Date.now()-state.lastReroute>30000" tesla-waze-preview/app.js
 
       - name: Build and verify JS and CSS gzip/base64
         shell: bash
@@ -184,5 +194,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'nav: restore tm-y camera and route progress algorithm'
+          git commit -m 'nav: mirror full tm-y navigation behavior'
           git push origin HEAD:tesla-waze-preview-v1
