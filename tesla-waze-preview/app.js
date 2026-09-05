@@ -551,12 +551,8 @@ function ensureMusicKeepalive(){
   a.style.position='fixed';a.style.width='1px';a.style.height='1px';a.style.opacity='0';a.style.pointerEvents='none';a.setAttribute('aria-hidden','true');
   document.body.appendChild(a);musicKeepalive=a;return a;
 }
-function startMusicKeepalive(){
-  if(music.userPaused||!music.wantsPlayback)return;
-  const a=ensureMusicKeepalive();if(!a)return;
-  try{if(a.paused)a.play().catch(()=>{})}catch{}
-}
-function stopMusicKeepalive(){try{musicKeepalive?.pause?.()}catch{}}
+function startMusicKeepalive(){return false}
+function stopMusicKeepalive(){try{if(musicKeepalive){musicKeepalive.pause();musicKeepalive.remove();musicKeepalive=null}}catch{}return true}
 /* MUSIC_AUDIO_KEEPALIVE_V17 */
 function playMusic(){music.userPaused=false;music.wantsPlayback=true;stopMusicKeepalive();syncMediaSession();if(music.audio){music.audio.play().catch(()=>{});return}try{music.ytPlayer?.playVideo?.()}catch{}}
 function pauseMusic(){music.userPaused=true;music.wantsPlayback=false;stopMusicKeepalive();if(music.resumeTimer){clearTimeout(music.resumeTimer);music.resumeTimer=null}if(music.audio){music.audio.pause();return}try{music.ytPlayer?.pauseVideo?.()}catch{}}
@@ -603,3 +599,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* NAV_VOICE_VOLUME_V25 */
 
 /* MUSIC_EXCLUSIVE_FOCUS_V27 */
+
+/* MUSIC_DISABLE_KEEPALIVE_V28 */
