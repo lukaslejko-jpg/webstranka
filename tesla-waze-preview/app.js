@@ -473,7 +473,7 @@ function syncMusicFab(){const f=$('musicFab'),m=$('musicModal');if(!f||!m)return
 function setMusicWindowOpen(on){const m=$('musicModal');if(!m)return;m.classList.toggle('hidden',!on);syncMusicFab()}
 function openMusicWindow(){ensureMusicWindowControls();setMusicWindowOpen(true);applyMusicWindow();if($('musicSearch'))$('musicSearch').placeholder='Video, rozprávka, skladba alebo interpret';renderMusicStatus();renderMusicList();const r=$('musicPlayer');const live=!!(music.current&&r&&r.children.length&&(music.audio||music.ytPlayer));if(live){refreshCurrentMusicUi();if(music.wantsPlayback&&!music.userPaused){stopMusicKeepalive();setMusicPlaying(true)}}else renderPlayer()}
 
-const music={profile:load(LS.music,{tracks:{},artists:{},events:[],youtube:{connected:false,email:'lukaslejko@gmail.com'}}),queue:load(LS.queue,[]),current:null,audio:null,ytPlayer:null,tab:'forYou',started:0,shuffle:load('teslaWaze:musicShuffle:v1',false),autoNext:load('teslaWaze:musicAutoNext:v1',true),userPaused:false,wantsPlayback:false,resumeTimer:null,anonymousYoutube:false,fallbackAttempts:0,fallbackTimer:null,gaplessBusy:false,gaplessTimer:null,ytStandby:null,ytStandbyTrack:null,ytStandbyReady:false,ytStandbyStarting:false,navPending:0,shuffleRecent:[],shuffleBack:[]};
+const music={profile:load(LS.music,{tracks:{},artists:{},events:[],youtube:{connected:false,email:'lukaslejko@gmail.com'}}),queue:load(LS.queue,[]),current:null,audio:null,ytPlayer:null,tab:'forYou',started:0,shuffle:load('teslaWaze:musicShuffle:v1',false),autoNext:load('teslaWaze:musicAutoNext:v1',true),userPaused:false,wantsPlayback:false,resumeTimer:null,anonymousYoutube:false,fallbackAttempts:0,fallbackTimer:null,gaplessBusy:false,gaplessTimer:null,ytStandby:null,ytStandbyTrack:null,ytStandbyReady:false,ytStandbyStarting:false,navPending:0,shuffleRecent:[],shuffleBack:[],navPreparing:false,handoffWatchdog:null};
 function mt(t){const id=t.id||`${norm(t.artist)}::${norm(t.title)}`;return music.profile.tracks[id]||(music.profile.tracks[id]={id,title:t.title||'',artist:t.artist||'',score:0,plays:0,completed:0,skips:0,liked:false,disliked:false,lastPlayed:null,source:t.source||'',streamUrl:t.streamUrl||'',artwork:t.artwork||'',youtubeId:t.youtubeId||''})}
 function ma(n){const k=norm(n)||'unknown';return music.profile.artists[k]||(music.profile.artists[k]={name:n||'',score:0,plays:0})}
 function mev(type,t){const s=mt(t),a=ma(t.artist),d={like:5,dislike:-6,complete:3,play:.4,skip:-1.5,replay:2}[type]||0;s.score+=d;a.score+=d*.7;if(type==='play'){s.plays++;a.plays++;s.lastPlayed=new Date().toISOString()}if(type==='complete')s.completed++;if(type==='skip')s.skips++;if(type==='like'){s.liked=true;s.disliked=false}music.profile.events.push({type,id:s.id,at:new Date().toISOString()});music.profile.events=music.profile.events.slice(-500);save(LS.music,music.profile);renderMusicStatus()}
@@ -638,7 +638,7 @@ async function prepareYoutubeStandby(next){
         setTimeout(()=>{
           try{const main=document.getElementById('ytPlayerHost'),iframe=newPlayer.getIframe?.();if(main&&iframe&&!main.contains(iframe)){main.innerHTML='';main.appendChild(iframe)}}catch{}
           try{oldPlayer?.destroy?.()}catch{};
-          music.gaplessBusy=false;stopMusicKeepalive();syncMediaSession();drainMusicNav();
+          music.gaplessBusy=false;music.navPreparing=false;if(music.handoffWatchdog){clearTimeout(music.handoffWatchdog);music.handoffWatchdog=null}stopMusicKeepalive();syncMediaSession();drainMusicNav();
         },900);
       },
       onError:()=>{clearYoutubeStandby()}
@@ -647,24 +647,61 @@ async function prepareYoutubeStandby(next){
   }catch{clearYoutubeStandby();return false}
 }
 function handoffYoutubeTrack(next,reason='next'){
-  if(!next||music.gaplessBusy||!music.ytPlayer)return false;
+  if(!next||music.gaplessBusy||music.ytStandbyStarting||music.navPreparing||!music.ytPlayer)return false;
   const id=youtubeIdForTrack(next);if(!id)return false;
-  music.gaplessBusy=true;
-  const startStandby=()=>{
-    if(!music.ytStandby||!music.ytStandbyTrack||youtubeIdForTrack(music.ytStandbyTrack)!==id)return false;
-    try{music.ytStandbyStarting=true;music.ytStandby.mute?.();music.ytStandby.seekTo?.(0,true);music.ytStandby.playVideo?.();return true}catch{music.ytStandbyStarting=false;return false}
+
+  const startReadyStandby=()=>{
+    if(!music.ytStandby||!music.ytStandbyTrack||youtubeIdForTrack(music.ytStandbyTrack)!==id||!music.ytStandbyReady)return false;
+    try{
+      music.navPreparing=false;
+      music.gaplessBusy=true;
+      music.ytStandbyStarting=true;
+      music.ytStandby.mute?.();
+      music.ytStandby.seekTo?.(0,true);
+      music.ytStandby.playVideo?.();
+      if(music.handoffWatchdog)clearTimeout(music.handoffWatchdog);
+      music.handoffWatchdog=setTimeout(()=>{
+        music.handoffWatchdog=null;
+        if(!music.gaplessBusy&&!music.ytStandbyStarting)return;
+        music.gaplessBusy=false;
+        music.ytStandbyStarting=false;
+        music.navPreparing=false;
+        clearYoutubeStandby();
+        drainMusicNav();
+      },4500);
+      return true;
+    }catch{
+      music.gaplessBusy=false;
+      music.ytStandbyStarting=false;
+      music.navPreparing=false;
+      return false;
+    }
   };
-  if(startStandby())return true;
-  // Keep the live main player running while the standby player is created.
-  // Return true immediately so mnext() cannot fall through to mplay()/renderPlayer().
+
+  if(startReadyStandby())return true;
+  music.navPreparing=true;
   prepareYoutubeStandby(next).then(ok=>{
-    if(!ok||music.userPaused||!music.wantsPlayback){music.gaplessBusy=false;drainMusicNav();return}
-    if(!startStandby()){music.gaplessBusy=false;drainMusicNav()}
-  }).catch(()=>{music.gaplessBusy=false;drainMusicNav()});
+    if(!ok||music.userPaused||!music.wantsPlayback){
+      music.navPreparing=false;
+      clearYoutubeStandby();
+      drainMusicNav();
+      return;
+    }
+    let tries=0;
+    const waitReady=()=>{
+      if(music.userPaused||!music.wantsPlayback){music.navPreparing=false;clearYoutubeStandby();drainMusicNav();return}
+      if(startReadyStandby())return;
+      if(++tries<50){setTimeout(waitReady,80);return}
+      music.navPreparing=false;
+      clearYoutubeStandby();
+      drainMusicNav();
+    };
+    waitReady();
+  }).catch(()=>{music.navPreparing=false;clearYoutubeStandby();drainMusicNav()});
   return true;
 }
 function drainMusicNav(){
-  if(music.gaplessBusy||music.ytStandbyStarting||!music.navPending)return;
+  if(music.gaplessBusy||music.ytStandbyStarting||music.navPreparing||!music.navPending)return;
   const dir=music.navPending>0?1:-1;music.navPending-=dir;
   if(dir>0)performMusicNext('next');else performMusicPrev();
 }
@@ -678,8 +715,8 @@ function performMusicPrev(){
   if(music.ytPlayer&&youtubeIdForTrack(p)){if(!handoffYoutubeTrack(p,'prev')){music.navPending-=1;setTimeout(drainMusicNav,120)}return true}
   mplay(p);setTimeout(drainMusicNav,0);return true;
 }
-function mnext(reason='next'){if(music.gaplessBusy||music.ytStandbyStarting){music.navPending+=1;return true}return performMusicNext(reason)}
-function mprev(){if(music.gaplessBusy||music.ytStandbyStarting){music.navPending-=1;return true}return performMusicPrev()}
+function mnext(reason='next'){if(music.gaplessBusy||music.ytStandbyStarting||music.navPreparing){music.navPending+=1;return true}return performMusicNext(reason)}
+function mprev(){if(music.gaplessBusy||music.ytStandbyStarting||music.navPreparing){music.navPending-=1;return true}return performMusicPrev()}
 let ytApiPromise=null;function loadYoutubeApi(){if(window.YT&&window.YT.Player)return Promise.resolve();if(ytApiPromise)return ytApiPromise;ytApiPromise=new Promise(resolve=>{const prev=window.onYouTubeIframeAPIReady;window.onYouTubeIframeAPIReady=()=>{try{prev&&prev()}catch{}resolve()};if(!document.querySelector('script[data-yt-api]')){const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';s.dataset.ytApi='1';document.head.appendChild(s)}});return ytApiPromise}
 function currentYoutubeId(){const t=music.current;if(!t)return'';const s=mt(t);return t.youtubeId||s.youtubeId||(String(t.id||'').startsWith('youtube:')?String(t.id).slice(8):'')}
 function setYoutubeFallbackStatus(text,active=false){const el=document.querySelector('[data-free-status]');if(el){el.textContent=text;el.classList.toggle('active',active)}}
@@ -729,3 +766,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_LIKE_TOGGLE_V36 */
 
 /* MUSIC_SHUFFLE_NAV_FIX_V37 */
+
+/* MUSIC_NEXT_UNLOCK_V38 */
