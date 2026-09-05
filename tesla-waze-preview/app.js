@@ -92,7 +92,7 @@ function applyHeadingUp(markerPosition,zoom){
   if(state.heading!=null){
     const delta=state.lastAppliedHeading==null?180:Math.abs(((state.heading-state.lastAppliedHeading+540)%360)-180);
     if(delta>=4&&now-state.lastBearingAt>=1200){
-      if(typeof state.map.setHeading==='function')state.map.setHeading(state.heading,{ease:0,deadzone:0});
+      if(typeof state.map.setHeading==='function')state.map.setHeading(state.heading,{ease:1,deadzone:0});/* NAV_HEADING_UP_FIX_V18 */
       else if(typeof state.map.setBearing==='function')state.map.setBearing(-state.heading);
       state.lastAppliedHeading=state.heading;state.lastBearingAt=now;
     }
