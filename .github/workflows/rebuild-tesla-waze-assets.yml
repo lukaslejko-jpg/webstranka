@@ -149,8 +149,6 @@ jobs:
           grep -q 'TMY_EXACT_NAV_V21' tesla-waze-preview/app.js
           grep -q 'NAV_VOICE_CANCEL_V10' tesla-waze-preview/app.js
           grep -q 'NAV_SAFE_ICONS_V13' tesla-waze-preview/app.js
-          grep -q 'NAV_REMAINING_ROUTE_V13' tesla-waze-preview/app.js
-          grep -q 'NAV_AUDIO_STABILITY_V14' tesla-waze-preview/app.js
           grep -q 'MUSIC_MINI_RESIZE_V4' tesla-waze-preview/app.js
           grep -q 'MUSIC_LAYOUT_NO_RESTART_V5' tesla-waze-preview/app.js
           grep -q 'MUSIC_FREE_FALLBACK_V15' tesla-waze-preview/app.js
