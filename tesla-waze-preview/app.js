@@ -92,7 +92,7 @@ function applyHeadingUp(markerPosition,zoom){
   if(state.heading!=null){
     const delta=state.lastAppliedHeading==null?180:Math.abs(((state.heading-state.lastAppliedHeading+540)%360)-180);
     if(delta>=4&&now-state.lastBearingAt>=1200){
-      if(typeof state.map.setHeading==='function')state.map.setHeading((state.heading+180)%360,{ease:1,deadzone:0});/* NAV_HEADING_DIRECTION_V19 */
+      if(typeof state.map.setHeading==='function')state.map.setHeading(state.heading,{ease:1,deadzone:0});/* NAV_HEADING_DIRECTION_V19 *//* NAV_FORWARD_TO_DEST_V20 */
       else if(typeof state.map.setBearing==='function')state.map.setBearing(-state.heading);
       state.lastAppliedHeading=state.heading;state.lastBearingAt=now;
     }
@@ -232,12 +232,42 @@ function toggleOverview(){const r=state.routes[state.routeIndex];if(!r)return;cl
 function stopNavigation(recenter=true){clearTimeout(state.overviewTimer);cancelNavigationVoice();if(state.navigating)rememberDrivenRoute();state.routeRequestSeq++;state.routeLoading=false;state.navigating=false;state.overview=false;state.routeProgress=null;state.routeCursor=0;state.tripKey='';state.tripTrail=[];state.tripOriginalRoute=null;state.lastTrailAt=null;stopHeadingUp(true);$('app').classList.remove('navcompact');$('panel').classList.remove('navcompact');$('routeModeBtn').classList.add('hidden');$('alertBox').classList.add('hidden');state.routeLines.forEach(x=>x.remove());state.routeLines=[];state.trafficLines.forEach(x=>x.remove());state.trafficLines=[];state.trafficPaintSig='';if(state.destMarker)state.destMarker.remove();state.destMarker=null;state.routes=[];state.routeIndex=0;state.dest=null;state.jams=[];$('searchInput').value='';$('searchResults').innerHTML='';$('searchStatus').textContent='';setNavigationShell(false);renderDestination();renderRouteBox();renderRouteCard();renderTeslaNavigation();if(!recenter)return;const center=state.pos||state.car?.getLatLng?.();[100,320].forEach(delay=>setTimeout(()=>{if(!state.map||!center)return;state.map.stop();state.map.invalidateSize({pan:false});state.map.setView(center,16,{animate:false})},delay))}
 function routeAheadPoint(coords,startIndex,meters){if(!coords?.length)return null;let left=Math.max(0,meters||0),i=Math.max(0,Math.min(startIndex,coords.length-1));for(;i<coords.length-1;i++){const d=dist(coords[i],coords[i+1]);if(d>=left&&d>0){const t=left/d;return {lat:coords[i].lat+(coords[i+1].lat-coords[i].lat)*t,lng:coords[i].lng+(coords[i+1].lng-coords[i].lng)*t}}left-=d}return coords.at(-1)}
 /* NAV_REMAINING_ROUTE_V13 */
+function routeDestinationAtEnd(r){
+  const coords=r?.coords||[],d=state.dest?.location;
+  if(coords.length<2||!d)return true;
+  return dist(coords.at(-1),d)<=dist(coords[0],d);
+}
+function routeForwardCoords(r,n,markerPosition){
+  const coords=r?.coords||[];
+  if(!coords.length||!n)return markerPosition?[markerPosition]:[];
+  if(routeDestinationAtEnd(r))return [markerPosition,...coords.slice(Math.min(coords.length,n.index+1))];
+  return [markerPosition,...coords.slice(0,Math.max(0,n.index+1)).reverse()];
+}
+function routeForwardPointToDestination(r,n,meters){
+  const coords=r?.coords||[];
+  if(!coords.length||!n)return null;
+  let left=Math.max(0,Number(meters)||0),start=n.point;
+  if(routeDestinationAtEnd(r)){
+    for(let i=n.index+1;i<coords.length;i++){
+      const end=coords[i],d=dist(start,end);
+      if(d>=left&&d>0){const t=left/d;return {lat:start.lat+(end.lat-start.lat)*t,lng:start.lng+(end.lng-start.lng)*t}}
+      left-=d;start=end;
+    }
+    return coords.at(-1);
+  }
+  for(let i=n.index;i>=0;i--){
+    const end=coords[i],d=dist(start,end);
+    if(d>=left&&d>0){const t=left/d;return {lat:start.lat+(end.lat-start.lat)*t,lng:start.lng+(end.lng-start.lng)*t}}
+    left-=d;start=end;
+  }
+  return coords[0];
+}
 function trimActiveRouteBehindCar(r,n,markerPosition){
   if(!state.navigating||state.overview||!r?.coords?.length||!n)return;
   const active=state.routeLines?.[state.routeIndex];
   if(active?.setLatLngs){
-    const tail=r.coords.slice(Math.min(r.coords.length,n.index+1));
-    active.setLatLngs([markerPosition,...tail]);
+    const remaining=routeForwardCoords(r,n,markerPosition);
+    active.setLatLngs(remaining);
     active.setStyle?.({opacity:.96,weight:8,color:'#14b8e6'});
   }
   state.routeLines?.forEach((line,i)=>{if(i!==state.routeIndex)line.setStyle?.({opacity:0})});
@@ -257,7 +287,7 @@ function updateNavigation(){
   const kmh=(state.speed||0)*3.6,op=String(maneuver?.opcode||'').toUpperCase();
   let lookAhead=kmh>=100?170:kmh>=70?140:kmh>=40?110:85;
   if((op.includes('RAMP')||op.includes('EXIT'))&&dm<=1800)lookAhead=Math.max(100,Math.min(220,dm*.28));
-  const headingTarget=routePointFromProjection(r.coords,n,Math.max(80,Math.min(180,lookAhead)));
+  const headingTarget=routeForwardPointToDestination(r,n,Math.max(80,Math.min(180,lookAhead)));
   const routeHeading=headingTarget?bearing(markerPosition,headingTarget):(routeDirection?bearing(markerPosition,routeDirection):state.heading);
   if(routeHeading!=null)state.heading=smoothHeading(state.heading,routeHeading,.48);
   applyHeadingUp(markerPosition,navigationZoom(dm,maneuver?.opcode,kmh));
