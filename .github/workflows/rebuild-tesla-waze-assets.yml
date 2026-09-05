@@ -10,6 +10,7 @@ on:
       - 'tesla-waze-preview/music-mini-patch.py'
       - 'tesla-waze-preview/navigation-fix-patch.py'
       - 'tesla-waze-preview/navigation-icon-fix-patch.py'
+      - 'tesla-waze-preview/navigation-progress-patch.py'
       - 'tesla-waze-preview/mobile-ui-patch.py'
       - 'tesla-waze-preview/mobile-route-fix-patch.py'
       - 'tesla-waze-preview/mobile-native-gps-patch.py'
@@ -46,6 +47,12 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/navigation-icon-fix-patch.py
 
+      - name: Apply remaining-route trim
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/navigation-progress-patch.py
+
       - name: Apply Smart Music layout patch
         shell: bash
         run: |
@@ -79,6 +86,7 @@ jobs:
           grep -q 'NAV_ROUTE_HEADING_V9' tesla-waze-preview/app.js
           grep -q 'NAV_VOICE_CANCEL_V10' tesla-waze-preview/app.js
           grep -q 'NAV_SAFE_ICONS_V13' tesla-waze-preview/app.js
+          grep -q 'NAV_REMAINING_ROUTE_V13' tesla-waze-preview/app.js
           grep -q 'MUSIC_MINI_RESIZE_V4' tesla-waze-preview/app.js
           grep -q 'MUSIC_LAYOUT_NO_RESTART_V5' tesla-waze-preview/app.js
           grep -q 'MOBILE_PENDING_ROUTE_V11' tesla-waze-preview/app.js
@@ -109,5 +117,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'nav: safe maneuver icons after dense Waze geometry fix'
+          git commit -m 'nav: trim route behind vehicle and hide distant destination placeholder'
           git push origin HEAD:tesla-waze-preview-v1
