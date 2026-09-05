@@ -13,6 +13,7 @@ on:
       - 'tesla-waze-preview/music-audio-keepalive-patch.py'
       - 'tesla-waze-preview/music-transition-keepalive-patch.py'
       - 'tesla-waze-preview/music-continuous-session-patch.py'
+      - 'tesla-waze-preview/music-tesla-media-controls-patch.py'
       - 'tesla-waze-preview/navigation-tmy-full-behavior-patch.py'
       - 'tesla-waze-preview/navigation-tmy-voice-patch.py'
       - 'tesla-waze-preview/navigation-voice-volume-patch.py'
@@ -95,6 +96,12 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/music-continuous-session-patch.py
 
+      - name: Restore Tesla system media controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/music-tesla-media-controls-patch.py
+
       - name: Apply mobile-only layout
         shell: bash
         run: |
@@ -124,6 +131,7 @@ jobs:
           grep -q 'TMY_VOICE_V23' tesla-waze-preview/app.js
           grep -q 'NAV_VOICE_VOLUME_V25' tesla-waze-preview/app.js
           grep -q 'MUSIC_CONTINUOUS_SESSION_V24' tesla-waze-preview/app.js
+          grep -q 'MUSIC_TESLA_MEDIA_CONTROLS_V26' tesla-waze-preview/app.js
           grep -q 'NAV_VOICE_CANCEL_V10' tesla-waze-preview/app.js
           grep -q 'NAV_SAFE_ICONS_V13' tesla-waze-preview/app.js
           grep -q 'MUSIC_MINI_RESIZE_V4' tesla-waze-preview/app.js
@@ -161,5 +169,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'nav: add independent navigation voice volume control'
+          git commit -m 'music: restore Tesla system media controls'
           git push origin HEAD:tesla-waze-preview-v1
