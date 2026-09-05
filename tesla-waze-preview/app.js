@@ -1,5 +1,13 @@
 (()=>{
 'use strict';
+/* MOBILE_NATIVE_GPS_V12 */
+(function restoreNativeGeolocationForDirectBrowser(){
+  try{
+    if(window.top!==window.self)return;
+    const own=Object.getOwnPropertyDescriptor(navigator,'geolocation');
+    if(own&&own.configurable)delete navigator.geolocation;
+  }catch(e){console.warn('Native mobile geolocation restore failed:',e?.message||e)}
+})();
 const $=id=>document.getElementById(id), LS={fav:'teslaWaze:favorites:v1',recent:'teslaWaze:recent:v1',routing:'teslaWaze:routing:v1',voice:'teslaWaze:voice:v1',voiceMode:'teslaWaze:voiceMode:v1',mapType:'teslaWaze:mapType:v1',device:'teslaWaze:pairedDevice:v1',mobilePair:'teslaWaze:mobilePair:v1',alerts:'teslaWaze:alerts:v1',chargeFilter:'teslaWaze:chargeFilter:v1',music:'teslaWaze:musicProfile:v2',queue:'teslaWaze:musicQueue:v2',learnedRoutes:'teslaWaze:learnedRoutes:v1'};
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??d}catch{return d}}, save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
 const esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
