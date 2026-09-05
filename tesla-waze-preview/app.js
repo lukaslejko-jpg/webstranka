@@ -523,7 +523,22 @@ function renderPlayer(){
   r.querySelector('[data-ma=next]').onclick=mnext;
   r.querySelector('[data-ma=shuffle]').onclick=()=>{music.shuffle=!music.shuffle;save('teslaWaze:musicShuffle:v1',music.shuffle);r.querySelector('[data-ma=shuffle]').classList.toggle('primary',music.shuffle)};
   r.querySelector('[data-ma=auto]').onclick=()=>{music.autoNext=!music.autoNext;save('teslaWaze:musicAutoNext:v1',music.autoNext);r.querySelector('[data-ma=auto]').classList.toggle('primary',music.autoNext)};
-  r.querySelector('[data-ma=like]').onclick=()=>{mev('like',music.current);renderMusicList();r.querySelector('[data-ma=like]').classList.toggle('primary',mt(music.current).liked)};
+  r.querySelector('[data-ma=like]').onclick=()=>{
+  const st=mt(music.current);
+  if(st.liked){
+    st.liked=false;
+    st.score-=5;
+    music.profile.events.push({type:'unlike',id:st.id,at:new Date().toISOString()});
+    music.profile.events=music.profile.events.slice(-500);
+    save(LS.music,music.profile);
+    renderMusicStatus();
+  }else{
+    mev('like',music.current);
+  }
+  renderMusicList();
+  const btn=r.querySelector('[data-ma=like]');
+  if(btn)btn.classList.toggle('primary',!!mt(music.current).liked);
+};
   const byId=new Map(q.map(t=>[mt(t).id,t]));
   r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});
   wireMiniSearch(r);
@@ -672,3 +687,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_MANUAL_NEXT_ZERO_GAP_V34 */
 
 /* MUSIC_STABLE_CONTROLS_FULL_QUEUE_V35 */
+
+/* MUSIC_LIKE_TOGGLE_V36 */
