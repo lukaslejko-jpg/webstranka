@@ -98,7 +98,49 @@ if marker not in css:
 }
 '''
 
-if marker not in css:
-    raise SystemExit('MOBILE_UI_V1 marker missing after patch')
+# V2 fixes the empty strip left by the fixed first grid row and keeps the music FAB
+# above iPhone Safari's bottom toolbar. These rules are intentionally mobile-only.
+marker_v2 = '/* MOBILE_UI_V2 */'
+if marker_v2 not in css:
+    css += r'''
+
+/* MOBILE_UI_V2 */
+@media (max-width:700px){
+  .app{
+    grid-template-rows:auto minmax(0,1fr)!important;
+  }
+  .panel{
+    height:auto!important;
+    min-height:0!important;
+    max-height:220px!important;
+  }
+  .mapwrap{
+    grid-row:2!important;
+    min-height:0!important;
+    height:100%!important;
+  }
+  .music-fab{
+    right:14px!important;
+    bottom:calc(82px + env(safe-area-inset-bottom,0px))!important;
+    width:52px!important;
+    height:52px!important;
+    z-index:5900!important;
+  }
+  .music-modal{
+    padding:4px 4px calc(70px + env(safe-area-inset-bottom,0px))!important;
+  }
+  .music-shell,
+  .music-shell.music-maximized{
+    max-height:calc(100svh - 78px - env(safe-area-inset-bottom,0px))!important;
+  }
+  .panel-off .mapwrap{grid-row:1!important;height:100%!important}
+  body.tesla-navigating .app{grid-template-rows:1fr!important}
+  body.tesla-navigating .mapwrap{grid-row:1!important;height:100%!important;min-height:0!important}
+}
+'''
+
+for required in (marker, marker_v2):
+    if required not in css:
+        raise SystemExit(f'{required} marker missing after patch')
 
 css_path.write_text(css, encoding='utf-8')
