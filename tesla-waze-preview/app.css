@@ -315,3 +315,38 @@ body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rg
   body.tesla-navigating .tesla-trip{left:10px!important;bottom:10px!important;width:min(330px,calc(100vw - 20px))!important}
   body.tesla-navigating .tesla-settings{left:10px!important;bottom:72px!important;width:min(330px,calc(100vw - 20px))!important}
 }
+
+
+/* MOBILE_UI_V2 */
+@media (max-width:700px){
+  .app{
+    grid-template-rows:auto minmax(0,1fr)!important;
+  }
+  .panel{
+    height:auto!important;
+    min-height:0!important;
+    max-height:220px!important;
+  }
+  .mapwrap{
+    grid-row:2!important;
+    min-height:0!important;
+    height:100%!important;
+  }
+  .music-fab{
+    right:14px!important;
+    bottom:calc(82px + env(safe-area-inset-bottom,0px))!important;
+    width:52px!important;
+    height:52px!important;
+    z-index:5900!important;
+  }
+  .music-modal{
+    padding:4px 4px calc(70px + env(safe-area-inset-bottom,0px))!important;
+  }
+  .music-shell,
+  .music-shell.music-maximized{
+    max-height:calc(100svh - 78px - env(safe-area-inset-bottom,0px))!important;
+  }
+  .panel-off .mapwrap{grid-row:1!important;height:100%!important}
+  body.tesla-navigating .app{grid-template-rows:1fr!important}
+  body.tesla-navigating .mapwrap{grid-row:1!important;height:100%!important;min-height:0!important}
+}
