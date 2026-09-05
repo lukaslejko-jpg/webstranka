@@ -9,6 +9,7 @@ on:
       - 'tesla-waze-preview/app.css'
       - 'tesla-waze-preview/music-mini-patch.py'
       - 'tesla-waze-preview/music-free-fallback-patch.py'
+      - 'tesla-waze-preview/music-gapless-handoff-patch.py'
       - 'tesla-waze-preview/navigation-fix-patch.py'
       - 'tesla-waze-preview/navigation-icon-fix-patch.py'
       - 'tesla-waze-preview/navigation-progress-patch.py'
@@ -80,6 +81,12 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/music-free-fallback-patch.py
 
+      - name: Apply seamless YouTube track handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/music-gapless-handoff-patch.py
+
       - name: Apply mobile-only layout
         shell: bash
         run: |
@@ -113,6 +120,7 @@ jobs:
           grep -q 'MUSIC_MINI_RESIZE_V4' tesla-waze-preview/app.js
           grep -q 'MUSIC_LAYOUT_NO_RESTART_V5' tesla-waze-preview/app.js
           grep -q 'MUSIC_FREE_FALLBACK_V15' tesla-waze-preview/app.js
+          grep -q 'MUSIC_GAPLESS_HANDOFF_V16' tesla-waze-preview/app.js
           grep -q 'MOBILE_PENDING_ROUTE_V11' tesla-waze-preview/app.js
           grep -q 'MOBILE_NATIVE_GPS_V12' tesla-waze-preview/app.js
           grep -q 'MOBILE_UI_V1' tesla-waze-preview/app.css
@@ -142,5 +150,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'nav: fixed center screen anchor for vehicle'
+          git commit -m 'music: seamless YouTube handoff without radio gap'
           git push origin HEAD:tesla-waze-preview-v1
