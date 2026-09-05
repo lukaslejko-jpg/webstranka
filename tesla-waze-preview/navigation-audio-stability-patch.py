@@ -28,7 +28,7 @@ repls = [
 ("const replay=music.current&&mt(music.current).id===mt(t).id;music.current=t;renderPlayer();",
  "const replay=music.current&&mt(music.current).id===mt(t).id;music.current=t;music.userPaused=false;music.wantsPlayback=true;renderPlayer();"),
 ("else if(e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.CUED)setMusicPlaying(false);",
- "else if(e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.CUED){setMusicPlaying(false);scheduleMusicResume()};"),
+ "else if(e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.CUED){setMusicPlaying(false);scheduleMusicResume()}"),
 ("else if(e.data===YT.PlayerState.ENDED){setMusicPlaying(false);if(music.current)mev('complete',music.current);if(music.autoNext)mnext()}",
  "else if(e.data===YT.PlayerState.ENDED){music.wantsPlayback=false;setMusicPlaying(false);if(music.current)mev('complete',music.current);if(music.autoNext)mnext()}"),
 ]
@@ -44,7 +44,6 @@ if anchor not in s:
     raise SystemExit('seek anchor missing')
 s = s.replace(anchor, helper, 1)
 
-# Add marker after the camera function marker, keeping code semantics untouched.
 insert = "}/* NAV_ROUTE_HEADING_V9 */"
 if insert not in s:
     raise SystemExit('nav heading marker missing')
