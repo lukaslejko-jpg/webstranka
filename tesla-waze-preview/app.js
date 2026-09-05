@@ -609,8 +609,18 @@ async function prepareYoutubeStandby(next){
 function handoffYoutubeTrack(next,reason='next'){
   if(!next||music.gaplessBusy||!music.ytPlayer)return false;
   const id=youtubeIdForTrack(next);if(!id)return false;
-  if(!music.ytStandby||!music.ytStandbyTrack||youtubeIdForTrack(music.ytStandbyTrack)!==id){prepareYoutubeStandby(next);return false}
-  try{music.ytStandbyStarting=true;music.ytStandby.mute?.();music.ytStandby.seekTo?.(0,true);music.ytStandby.playVideo?.();return true}catch{music.ytStandbyStarting=false;return false}
+  const startStandby=()=>{
+    if(!music.ytStandby||!music.ytStandbyTrack||youtubeIdForTrack(music.ytStandbyTrack)!==id)return false;
+    try{music.ytStandbyStarting=true;music.ytStandby.mute?.();music.ytStandby.seekTo?.(0,true);music.ytStandby.playVideo?.();return true}catch{music.ytStandbyStarting=false;return false}
+  };
+  if(startStandby())return true;
+  // Keep the live main player running while the standby player is created.
+  // Return true immediately so mnext() cannot fall through to mplay()/renderPlayer().
+  prepareYoutubeStandby(next).then(ok=>{
+    if(!ok||music.userPaused||!music.wantsPlayback)return;
+    startStandby();
+  }).catch(()=>{});
+  return true;
 }
 function mnext(reason='next'){const n=nextMusicTrack();if(!n)return false;if(handoffYoutubeTrack(n,reason))return true;mplay(n);return true}function mprev(){const p=prevMusicTrack();if(!p)return false;if(handoffYoutubeTrack(p,'prev'))return true;mplay(p);return true}
 let ytApiPromise=null;function loadYoutubeApi(){if(window.YT&&window.YT.Player)return Promise.resolve();if(ytApiPromise)return ytApiPromise;ytApiPromise=new Promise(resolve=>{const prev=window.onYouTubeIframeAPIReady;window.onYouTubeIframeAPIReady=()=>{try{prev&&prev()}catch{}resolve()};if(!document.querySelector('script[data-yt-api]')){const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';s.dataset.ytApi='1';document.head.appendChild(s)}});return ytApiPromise}
@@ -654,3 +664,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_REAL_EARLY_HANDOFF_V32 */
 
 /* MUSIC_DUAL_PLAYER_HANDOFF_V33 */
+
+/* MUSIC_MANUAL_NEXT_ZERO_GAP_V34 */
