@@ -62,7 +62,42 @@ if marker_v3 not in css:
 }
 '''
 
-for required in (marker, marker_v2, marker_v3):
+marker_v4 = '/* MOBILE_UI_V4_NAV_BOTTOM */'
+if marker_v4 not in css:
+    css += r'''
+
+/* MOBILE_UI_V4_NAV_BOTTOM */
+@media (max-width:700px){
+  body.tesla-navigating .tesla-trip{
+    display:block!important;
+    visibility:visible!important;
+    position:fixed!important;
+    left:10px!important;
+    right:10px!important;
+    bottom:calc(112px + env(safe-area-inset-bottom,0px))!important;
+    width:auto!important;
+    max-width:none!important;
+    z-index:7350!important;
+  }
+  body.tesla-navigating:not(.music-window-open) .music-fab{
+    display:flex!important;
+    visibility:visible!important;
+    opacity:.98!important;
+    right:14px!important;
+    bottom:calc(222px + env(safe-area-inset-bottom,0px))!important;
+    z-index:7600!important;
+  }
+  body.tesla-navigating .tesla-settings{
+    bottom:calc(190px + env(safe-area-inset-bottom,0px))!important;
+    max-height:48svh!important;
+  }
+  body.tesla-navigating .alertbox{
+    bottom:auto!important;
+  }
+}
+'''
+
+for required in (marker, marker_v2, marker_v3, marker_v4):
     if required not in css:
         raise SystemExit(f'{required} marker missing after patch')
 
