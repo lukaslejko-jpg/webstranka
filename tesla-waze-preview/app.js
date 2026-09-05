@@ -478,7 +478,7 @@ function mt(t){const id=t.id||`${norm(t.artist)}::${norm(t.title)}`;return music
 function ma(n){const k=norm(n)||'unknown';return music.profile.artists[k]||(music.profile.artists[k]={name:n||'',score:0,plays:0})}
 function mev(type,t){const s=mt(t),a=ma(t.artist),d={like:5,dislike:-6,complete:3,play:.4,skip:-1.5,replay:2}[type]||0;s.score+=d;a.score+=d*.7;if(type==='play'){s.plays++;a.plays++;s.lastPlayed=new Date().toISOString()}if(type==='complete')s.completed++;if(type==='skip')s.skips++;if(type==='like'){s.liked=true;s.disliked=false}music.profile.events.push({type,id:s.id,at:new Date().toISOString()});music.profile.events=music.profile.events.slice(-500);save(LS.music,music.profile);renderMusicStatus()}
 function isYoutubePreference(t){return !!(t?.youtubeId||String(t?.id||'').startsWith('youtube:')||String(t?.source||'').toLowerCase().includes('youtube'))}
-function musicItems(){let a=Object.values(music.profile.tracks).filter(x=>!x.disliked);if(music.tab==='likes')a=a.filter(x=>x.liked);if(music.tab==='recent')a=a.filter(x=>x.lastPlayed).sort((x,y)=>Date.parse(y.lastPlayed)-Date.parse(x.lastPlayed));else a.sort((x,y)=>(y.score+(isYoutubePreference(y)?3:0))-(x.score+(isYoutubePreference(x)?3:0)));return a.slice(0,40)}
+function musicItems(){let a=Object.values(music.profile.tracks).filter(x=>!x.disliked);if(music.tab==='likes')a=a.filter(x=>x.liked);if(music.tab==='recent')a=a.filter(x=>x.lastPlayed).sort((x,y)=>Date.parse(y.lastPlayed)-Date.parse(x.lastPlayed));else a.sort((x,y)=>(y.score+(isYoutubePreference(y)?3:0))-(x.score+(isYoutubePreference(x)?3:0)));return a}
 function renderMusicStatus(){const n=Object.keys(music.profile.tracks).length,y=music.profile.youtube;$('musicStatus').textContent=`${n} naučených skladieb`;$('musicAccount').textContent=y.connected?`${y.email||'lukaslejko@gmail.com'} · synchronizované`:'lukaslejko@gmail.com · YouTube nepripojený';$('musicMiniStatus').textContent=$('musicAccount').textContent}
 function canPlayInApp(t){return !!(t?.streamUrl||t?.youtubeId||String(t?.id||'').startsWith('youtube:'))}
 function musicCard(t){const s=mt(t),play=!!t.streamUrl,yt=isYoutubePreference(t)||isYoutubePreference(s),inApp=play||yt;return `<div class="music-track" data-mrow="${esc(s.id)}"><img class="music-art" src="${esc(t.artwork||'')}" onerror="this.style.visibility='hidden'"><div><div class="music-title">${esc(t.title||'Bez názvu')}</div><div class="music-sub">${esc(t.artist||'')} · ${esc(t.source||'')}</div><span class="music-source">${play?'▶ FREE':yt?'▶ YOUTUBE':esc((t.source||'NÁJSŤ').toUpperCase())}</span>${s.liked?' <span class="music-source">♥</span>':''}</div><button class="btn ${inApp?'primary':''}" data-mplay="${esc(s.id)}">${inApp?'Prehrať':'Nájsť zdroj'}</button></div>`}
@@ -490,7 +490,7 @@ function musicCurrentTime(){try{if(music.audio)return Number(music.audio.current
 function musicDuration(){try{if(music.audio)return Number(music.audio.duration||0);if(music.ytPlayer)return Number(music.ytPlayer.getDuration?.()||0)}catch{}return 0}
 function seekMusicTo(seconds){try{const d=musicDuration(),v=Math.max(0,Math.min(d||Infinity,Number(seconds)||0));if(music.audio){music.audio.currentTime=v;return}if(music.ytPlayer)music.ytPlayer.seekTo(v,true)}catch{}}
 function updateMiniSeek(){const seek=$('musicMiniSeek'),now=$('musicMiniNow'),total=$('musicMiniTotal');if(!seek)return;const d=musicDuration(),p=musicCurrentTime();if(now)now.textContent=fmtMusicClock(p);if(total)total.textContent=d>0?fmtMusicClock(d):'--:--';seek.disabled=!(d>0);if(d>0&&document.activeElement!==seek)seek.value=String(Math.max(0,Math.min(1000,Math.round(p/d*1000))))}
-function miniQueueMarkup(q,currentId){return q.slice(0,40).map((t,i)=>{const s=mt(t),active=s.id===currentId;return `<button type="button" class="music-mini-track ${active?'active':''}" data-mini-play="${esc(s.id)}"><span class="music-mini-index">${i+1}</span><img class="music-mini-art" src="${esc(t.artwork||s.artwork||'')}" onerror="this.style.visibility='hidden'"><span class="music-mini-meta"><b>${esc(t.title||s.title||'Bez názvu')}</b><small>${esc(t.artist||s.artist||'')}</small></span>${active?'<span class="music-mini-playing">▶</span>':''}</button>`}).join('')}
+function miniQueueMarkup(q,currentId){return q.map((t,i)=>{const s=mt(t),active=s.id===currentId;return `<button type="button" class="music-mini-track ${active?'active':''}" data-mini-play="${esc(s.id)}"><span class="music-mini-index">${i+1}</span><img class="music-mini-art" src="${esc(t.artwork||s.artwork||'')}" onerror="this.style.visibility='hidden'"><span class="music-mini-meta"><b>${esc(t.title||s.title||'Bez názvu')}</b><small>${esc(t.artist||s.artist||'')}</small></span>${active?'<span class="music-mini-playing">▶</span>':''}</button>`}).join('')}
 
 /* MUSIC_MINI_SEARCH_V6 */
 function wireMiniQueue(container,q,currentId){if(!container)return;container.innerHTML=miniQueueMarkup(q,currentId||'');const byId=new Map(q.map(t=>[mt(t).id,t]));container.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)})}
@@ -594,12 +594,16 @@ async function prepareYoutubeStandby(next){
         if(!newPlayer||!nextTrack)return;
         music.gaplessBusy=true;
         try{newPlayer.unMute?.();newPlayer.setVolume?.(100)}catch{}
-        try{oldPlayer?.pauseVideo?.()}catch{}
         music.ytPlayer=newPlayer;music.ytStandby=null;music.ytStandbyTrack=null;music.ytStandbyReady=false;music.ytStandbyStarting=false;
         music.current=nextTrack;music.userPaused=false;music.wantsPlayback=true;music.started=Date.now();
         if(prev)mev('complete',prev);mev('play',nextTrack);refreshCurrentMusicUi();setMusicPlaying(true);syncMediaSession();
-        try{const main=document.getElementById('ytPlayerHost'),iframe=newPlayer.getIframe?.();if(main&&iframe){main.innerHTML='';main.appendChild(iframe)}}catch{}
-        setTimeout(()=>{try{oldPlayer?.destroy?.()}catch{};music.gaplessBusy=false;stopMusicKeepalive();syncMediaSession()},350);
+        // Keep old real YouTube audio alive for a short overlap so Tesla never sees an audio gap.
+        setTimeout(()=>{try{oldPlayer?.pauseVideo?.()}catch{}},650);
+        setTimeout(()=>{
+          try{const main=document.getElementById('ytPlayerHost'),iframe=newPlayer.getIframe?.();if(main&&iframe&&!main.contains(iframe)){main.innerHTML='';main.appendChild(iframe)}}catch{}
+          try{oldPlayer?.destroy?.()}catch{};
+          music.gaplessBusy=false;stopMusicKeepalive();syncMediaSession();
+        },900);
       },
       onError:()=>{clearYoutubeStandby()}
     }});
@@ -622,7 +626,7 @@ function handoffYoutubeTrack(next,reason='next'){
   }).catch(()=>{});
   return true;
 }
-function mnext(reason='next'){const n=nextMusicTrack();if(!n)return false;if(handoffYoutubeTrack(n,reason))return true;mplay(n);return true}function mprev(){const p=prevMusicTrack();if(!p)return false;if(handoffYoutubeTrack(p,'prev'))return true;mplay(p);return true}
+function mnext(reason='next'){const n=nextMusicTrack();if(!n)return false;if(music.ytPlayer&&youtubeIdForTrack(n)){handoffYoutubeTrack(n,reason);return true}mplay(n);return true}function mprev(){const p=prevMusicTrack();if(!p)return false;if(music.ytPlayer&&youtubeIdForTrack(p)){handoffYoutubeTrack(p,'prev');return true}mplay(p);return true}
 let ytApiPromise=null;function loadYoutubeApi(){if(window.YT&&window.YT.Player)return Promise.resolve();if(ytApiPromise)return ytApiPromise;ytApiPromise=new Promise(resolve=>{const prev=window.onYouTubeIframeAPIReady;window.onYouTubeIframeAPIReady=()=>{try{prev&&prev()}catch{}resolve()};if(!document.querySelector('script[data-yt-api]')){const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';s.dataset.ytApi='1';document.head.appendChild(s)}});return ytApiPromise}
 function currentYoutubeId(){const t=music.current;if(!t)return'';const s=mt(t);return t.youtubeId||s.youtubeId||(String(t.id||'').startsWith('youtube:')?String(t.id).slice(8):'')}
 function setYoutubeFallbackStatus(text,active=false){const el=document.querySelector('[data-free-status]');if(el){el.textContent=text;el.classList.toggle('active',active)}}
@@ -666,3 +670,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_DUAL_PLAYER_HANDOFF_V33 */
 
 /* MUSIC_MANUAL_NEXT_ZERO_GAP_V34 */
+
+/* MUSIC_STABLE_CONTROLS_FULL_QUEUE_V35 */
