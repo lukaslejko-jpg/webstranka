@@ -19,6 +19,7 @@ on:
       - 'tesla-waze-preview/navigation-screen-anchor-patch.py'
       - 'tesla-waze-preview/navigation-heading-up-fix-patch.py'
       - 'tesla-waze-preview/navigation-forward-direction-patch.py'
+      - 'tesla-waze-preview/navigation-tmy-exact-patch.py'
       - 'tesla-waze-preview/mobile-ui-patch.py'
       - 'tesla-waze-preview/mobile-route-fix-patch.py'
       - 'tesla-waze-preview/mobile-native-gps-patch.py'
@@ -85,6 +86,12 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/navigation-forward-direction-patch.py
 
+      - name: Restore tm-y navigation algorithm exactly
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/navigation-tmy-exact-patch.py
+
       - name: Apply Smart Music layout patch
         shell: bash
         run: |
@@ -139,14 +146,11 @@ jobs:
           set -euo pipefail
           node --check tesla-waze-preview/app.js
           grep -q 'TMY_VIEWPORT_V1' tesla-waze-preview/app.js
-          grep -q 'NAV_ROUTE_HEADING_V9' tesla-waze-preview/app.js
+          grep -q 'TMY_EXACT_NAV_V21' tesla-waze-preview/app.js
           grep -q 'NAV_VOICE_CANCEL_V10' tesla-waze-preview/app.js
           grep -q 'NAV_SAFE_ICONS_V13' tesla-waze-preview/app.js
           grep -q 'NAV_REMAINING_ROUTE_V13' tesla-waze-preview/app.js
           grep -q 'NAV_AUDIO_STABILITY_V14' tesla-waze-preview/app.js
-          grep -q 'NAV_SCREEN_ANCHOR_V16' tesla-waze-preview/app.js
-          grep -q 'NAV_HEADING_DIRECTION_V19' tesla-waze-preview/app.js
-          grep -q 'NAV_FORWARD_TO_DEST_V20' tesla-waze-preview/app.js
           grep -q 'MUSIC_MINI_RESIZE_V4' tesla-waze-preview/app.js
           grep -q 'MUSIC_LAYOUT_NO_RESTART_V5' tesla-waze-preview/app.js
           grep -q 'MUSIC_FREE_FALLBACK_V15' tesla-waze-preview/app.js
@@ -182,5 +186,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'music: restore Tesla panel metadata with transition keepalive'
+          git commit -m 'nav: restore tm-y camera and route progress algorithm'
           git push origin HEAD:tesla-waze-preview-v1
