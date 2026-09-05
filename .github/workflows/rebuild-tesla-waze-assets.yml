@@ -17,6 +17,7 @@ on:
       - 'tesla-waze-preview/music-exclusive-focus-patch.py'
       - 'tesla-waze-preview/music-dual-player-handoff-patch.py'
       - 'tesla-waze-preview/music-stabilize-fullqueue-patch.py'
+      - 'tesla-waze-preview/music-next-unlock-patch.py'
       - 'tesla-waze-preview/navigation-tmy-full-behavior-patch.py'
       - 'tesla-waze-preview/navigation-tmy-voice-patch.py'
       - 'tesla-waze-preview/navigation-voice-volume-patch.py'
@@ -123,6 +124,12 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/music-stabilize-fullqueue-patch.py
 
+      - name: Prevent music navigation deadlock
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/music-next-unlock-patch.py
+
       - name: Apply mobile-only layout
         shell: bash
         run: |
@@ -158,6 +165,9 @@ jobs:
           grep -q 'MUSIC_DUAL_PLAYER_HANDOFF_V33' tesla-waze-preview/app.js
           grep -q 'MUSIC_MANUAL_NEXT_ZERO_GAP_V34' tesla-waze-preview/app.js
           grep -q 'MUSIC_STABLE_CONTROLS_FULL_QUEUE_V35' tesla-waze-preview/app.js
+          grep -q 'MUSIC_LIKE_TOGGLE_V36' tesla-waze-preview/app.js
+          grep -q 'MUSIC_SHUFFLE_NAV_FIX_V37' tesla-waze-preview/app.js
+          grep -q 'MUSIC_NEXT_UNLOCK_V38' tesla-waze-preview/app.js
           grep -q 'NAV_VOICE_CANCEL_V10' tesla-waze-preview/app.js
           grep -q 'NAV_SAFE_ICONS_V13' tesla-waze-preview/app.js
           grep -q 'MUSIC_MINI_RESIZE_V4' tesla-waze-preview/app.js
@@ -197,5 +207,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'music: stabilize controls and use full queue'
+          git commit -m 'music: unlock reliable next previous controls'
           git push origin HEAD:tesla-waze-preview-v1
