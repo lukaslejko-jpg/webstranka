@@ -157,7 +157,7 @@ function renderTeslaNavigation(){
   ensureTeslaNavUI();
   const r=state.routes[state.routeIndex],p=state.routeProgress;
   if(!state.navigating||!r){$('teslaNavManeuver').classList.add('hidden');$('teslaTripCard').classList.add('hidden');return}
-  const step=r.steps?.[p?.stepIdx||0],next=r.steps?.[(p?.stepIdx||0)+1];
+  const step=r.steps?.[p?.stepIdx||0],rawNext=r.steps?.[(p?.stepIdx||0)+1],next=/DESTINATION/i.test(String(rawNext?.opcode||''))&&((p?.remainingDistance??Infinity)>350)?null:rawNext;
   const man=$('teslaNavManeuver');
   const distTo=p?.distanceToManeuver??0;
   man.innerHTML=`<div class="tesla-man-main"><span class="tesla-turn">${maneuverIcon(step)}</span><div><b>${fmtD(distTo)}</b><span>${esc(step?.street||instruction(step).replace(/[.]/g,''))}</span></div></div>${next?`<div class="tesla-man-next"><span>${maneuverIcon(next)}</span><b>${esc(next.street||instruction(next).replace(/[.]/g,''))}</b></div>`:''}`;
@@ -223,6 +223,17 @@ function renderRouteCard(){const r=state.routes[state.routeIndex],c=$('routeCard
 function toggleOverview(){const r=state.routes[state.routeIndex];if(!r)return;clearTimeout(state.overviewTimer);state.overview=!state.overview;if(state.overview){stopHeadingUp(false);state.map.fitBounds(state.L.latLngBounds(r.coords),{padding:[70,70]})}else updateNavigation();renderRouteCard();renderTeslaNavigation();$('routeModeBtn').textContent=state.overview?'Späť na navigovanie':'Celá trasa'}
 function stopNavigation(recenter=true){clearTimeout(state.overviewTimer);cancelNavigationVoice();if(state.navigating)rememberDrivenRoute();state.routeRequestSeq++;state.routeLoading=false;state.navigating=false;state.overview=false;state.routeProgress=null;state.routeCursor=0;state.tripKey='';state.tripTrail=[];state.tripOriginalRoute=null;state.lastTrailAt=null;stopHeadingUp(true);$('app').classList.remove('navcompact');$('panel').classList.remove('navcompact');$('routeModeBtn').classList.add('hidden');$('alertBox').classList.add('hidden');state.routeLines.forEach(x=>x.remove());state.routeLines=[];state.trafficLines.forEach(x=>x.remove());state.trafficLines=[];state.trafficPaintSig='';if(state.destMarker)state.destMarker.remove();state.destMarker=null;state.routes=[];state.routeIndex=0;state.dest=null;state.jams=[];$('searchInput').value='';$('searchResults').innerHTML='';$('searchStatus').textContent='';setNavigationShell(false);renderDestination();renderRouteBox();renderRouteCard();renderTeslaNavigation();if(!recenter)return;const center=state.pos||state.car?.getLatLng?.();[100,320].forEach(delay=>setTimeout(()=>{if(!state.map||!center)return;state.map.stop();state.map.invalidateSize({pan:false});state.map.setView(center,16,{animate:false})},delay))}
 function routeAheadPoint(coords,startIndex,meters){if(!coords?.length)return null;let left=Math.max(0,meters||0),i=Math.max(0,Math.min(startIndex,coords.length-1));for(;i<coords.length-1;i++){const d=dist(coords[i],coords[i+1]);if(d>=left&&d>0){const t=left/d;return {lat:coords[i].lat+(coords[i+1].lat-coords[i].lat)*t,lng:coords[i].lng+(coords[i+1].lng-coords[i].lng)*t}}left-=d}return coords.at(-1)}
+/* NAV_REMAINING_ROUTE_V13 */
+function trimActiveRouteBehindCar(r,n,markerPosition){
+  if(!state.navigating||state.overview||!r?.coords?.length||!n)return;
+  const active=state.routeLines?.[state.routeIndex];
+  if(active?.setLatLngs){
+    const tail=r.coords.slice(Math.min(r.coords.length,n.index+1));
+    active.setLatLngs([markerPosition,...tail]);
+    active.setStyle?.({opacity:.96,weight:8,color:'#14b8e6'});
+  }
+  state.routeLines?.forEach((line,i)=>{if(i!==state.routeIndex)line.setStyle?.({opacity:0})});
+}
 function updateNavigation(){
   const r=state.routes[state.routeIndex];
   if(!state.navigating||state.overview||!state.pos||!r?.coords?.length)return;
@@ -234,6 +245,7 @@ function updateNavigation(){
   if(!state.lastTrailAt||dist(state.lastTrailAt,state.pos)>=25){state.tripTrail.push({...state.pos});state.lastTrailAt={...state.pos};if(state.tripTrail.length>500)state.tripTrail=state.tripTrail.filter((_,i)=>i%2===0)}
   const markerPosition=shouldSnapToRoute(n.distance,state.accuracy)?n.point:state.pos,routeDirection=routePointFromProjection(r.coords,n,30);
   if(state.car)state.car.setLatLng(markerPosition);
+  trimActiveRouteBehindCar(r,n,markerPosition);
   const kmh=(state.speed||0)*3.6,op=String(maneuver?.opcode||'').toUpperCase();
   let lookAhead=kmh>=100?170:kmh>=70?140:kmh>=40?110:85;
   if((op.includes('RAMP')||op.includes('EXIT'))&&dm<=1800)lookAhead=Math.max(100,Math.min(220,dm*.28));
