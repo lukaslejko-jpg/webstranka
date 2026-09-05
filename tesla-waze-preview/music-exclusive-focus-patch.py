@@ -2,41 +2,41 @@ from pathlib import Path
 
 p=Path('tesla-waze-preview/app.js')
 s=p.read_text(encoding='utf-8')
-marker='/* MUSIC_DISABLE_KEEPALIVE_V28 */'
+marker='/* MUSIC_TRANSITION_BRIDGE_2S_V29 */'
 if marker in s:
     raise SystemExit(0)
 
-# Disable helper keepalive audio completely. Tesla must see only the real Smart Music source.
-def replace_function(src,name,replacement):
-    start=f'function {name}()'+'{'
-    si=src.find(start)
-    if si<0:
-        raise SystemExit(f'{name} anchor missing')
-    brace=src.find('{',si)
-    depth=0
-    end=None
-    for i in range(brace,len(src)):
-        ch=src[i]
-        if ch=='{': depth+=1
-        elif ch=='}':
-            depth-=1
-            if depth==0:
-                end=i+1
-                break
-    if end is None:
-        raise SystemExit(f'{name} block end missing')
-    return src[:si]+replacement+src[end:]
+# Re-enable the helper audio ONLY as a short bridge before a YouTube track ends.
+old_start='function startMusicKeepalive(){return false}'
+new_start="""function startMusicKeepalive(){
+  if(music.userPaused||!music.wantsPlayback)return;
+  const a=ensureMusicKeepalive();if(!a)return;
+  try{if(a.paused)a.play().catch(()=>{})}catch{}
+}"""
+if old_start not in s:
+    raise SystemExit('disabled keepalive anchor missing')
+s=s.replace(old_start,new_start,1)
 
-s=replace_function(s,'startMusicKeepalive',"function startMusicKeepalive(){return false}")
-s=replace_function(s,'stopMusicKeepalive',"function stopMusicKeepalive(){try{if(musicKeepalive){musicKeepalive.pause();musicKeepalive.remove();musicKeepalive=null}}catch{}return true}")
+# Start the bridge early enough that Tesla cannot fall back to FM during the handoff.
+old='if(st===YT.PlayerState.PLAYING&&d>2&&left>0&&left<=1.2)startMusicKeepalive();'
+new='if(st===YT.PlayerState.PLAYING&&d>2&&left>0&&left<=2.2)startMusicKeepalive();'
+if old not in s:
+    raise SystemExit('transition threshold anchor missing')
+s=s.replace(old,new,1)
 
-# Make sure real playback always releases any stale helper element and keeps Tesla metadata/control state synced.
-s=s.replace("if(e.data===YT.PlayerState.PLAYING){music.gaplessBusy=false;music.fallbackAttempts=0;music.userPaused=false;music.wantsPlayback=true;setMusicPlaying(true);syncMediaSession()}",
-            "if(e.data===YT.PlayerState.PLAYING){music.gaplessBusy=false;music.fallbackAttempts=0;music.userPaused=false;music.wantsPlayback=true;stopMusicKeepalive();setMusicPlaying(true);syncMediaSession()}",1)
-s=s.replace("music.audio.onplay=()=>{music.userPaused=false;music.wantsPlayback=true;setMusicPlaying(true)};",
-            "music.audio.onplay=()=>{music.userPaused=false;music.wantsPlayback=true;stopMusicKeepalive();setMusicPlaying(true)};",1)
+# Once the next real YouTube track is PLAYING, immediately release the helper bridge.
+required="if(e.data===YT.PlayerState.PLAYING){music.gaplessBusy=false;music.fallbackAttempts=0;music.userPaused=false;music.wantsPlayback=true;stopMusicKeepalive();setMusicPlaying(true);syncMediaSession()}"
+if required not in s:
+    raise SystemExit('new-track bridge stop handler missing')
+
+# Normal playback must never keep the helper stream running for the whole song.
+for bad in [
+    'function playMusic(){music.userPaused=false;music.wantsPlayback=true;startMusicKeepalive()',
+    'music.current=t;music.userPaused=false;music.wantsPlayback=true;startMusicKeepalive();syncMediaSession();renderPlayer();',
+    'music.audio.onplay=()=>{music.userPaused=false;music.wantsPlayback=true;startMusicKeepalive();'
+]:
+    if bad in s:
+        raise SystemExit('continuous helper audio regression detected')
 
 s += '\n'+marker+'\n'
-if 'function startMusicKeepalive(){return false}' not in s:
-    raise SystemExit('keepalive not disabled')
 p.write_text(s,encoding='utf-8')
