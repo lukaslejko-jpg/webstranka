@@ -700,23 +700,51 @@ function handoffYoutubeTrack(next,reason='next'){
   }).catch(()=>{music.navPreparing=false;clearYoutubeStandby();drainMusicNav()});
   return true;
 }
-function drainMusicNav(){
-  if(music.gaplessBusy||music.ytStandbyStarting||music.navPreparing||!music.navPending)return;
-  const dir=music.navPending>0?1:-1;music.navPending-=dir;
-  if(dir>0)performMusicNext('next');else performMusicPrev();
+function resetManualMusicTransition(){
+  try{if(music.handoffWatchdog)clearTimeout(music.handoffWatchdog)}catch{}
+  music.handoffWatchdog=null;
+  music.navPending=0;
+  music.navPreparing=false;
+  music.gaplessBusy=false;
+  music.ytStandbyStarting=false;
+  try{clearYoutubeStandby()}catch{}
 }
-function performMusicNext(reason='next'){
-  const n=nextMusicTrack();if(!n)return false;
-  if(music.ytPlayer&&youtubeIdForTrack(n)){if(!handoffYoutubeTrack(n,reason)){music.navPending+=1;setTimeout(drainMusicNav,120)}return true}
-  mplay(n);setTimeout(drainMusicNav,0);return true;
+function directYoutubeTrack(track,reason='next'){
+  if(!track||!music.ytPlayer)return false;
+  const id=youtubeIdForTrack(track);if(!id)return false;
+  const prev=music.current;
+  resetManualMusicTransition();
+  music.current=track;
+  music.userPaused=false;
+  music.wantsPlayback=true;
+  music.started=Date.now();
+  if(prev&&mt(prev).id!==mt(track).id)mev(reason==='auto'?'complete':'skip',prev);
+  mev('play',track);
+  refreshCurrentMusicUi();
+  setMusicPlaying(true);
+  syncMediaSession();
+  try{
+    music.ytPlayer.loadVideoById(id,0,'default');
+    music.ytPlayer.playVideo?.();
+    return true;
+  }catch{
+    return false;
+  }
 }
-function performMusicPrev(){
-  const p=prevMusicTrack();if(!p)return false;
-  if(music.ytPlayer&&youtubeIdForTrack(p)){if(!handoffYoutubeTrack(p,'prev')){music.navPending-=1;setTimeout(drainMusicNav,120)}return true}
-  mplay(p);setTimeout(drainMusicNav,0);return true;
+function mnext(reason='next'){
+  const n=nextMusicTrack();
+  if(!n)return false;
+  if(music.ytPlayer&&youtubeIdForTrack(n))return directYoutubeTrack(n,reason);
+  mplay(n);
+  return true;
 }
-function mnext(reason='next'){if(music.gaplessBusy||music.ytStandbyStarting||music.navPreparing){music.navPending+=1;return true}return performMusicNext(reason)}
-function mprev(){if(music.gaplessBusy||music.ytStandbyStarting||music.navPreparing){music.navPending-=1;return true}return performMusicPrev()}
+function mprev(){
+  const p=prevMusicTrack();
+  if(!p)return false;
+  if(music.ytPlayer&&youtubeIdForTrack(p))return directYoutubeTrack(p,'prev');
+  mplay(p);
+  return true;
+}
 let ytApiPromise=null;function loadYoutubeApi(){if(window.YT&&window.YT.Player)return Promise.resolve();if(ytApiPromise)return ytApiPromise;ytApiPromise=new Promise(resolve=>{const prev=window.onYouTubeIframeAPIReady;window.onYouTubeIframeAPIReady=()=>{try{prev&&prev()}catch{}resolve()};if(!document.querySelector('script[data-yt-api]')){const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';s.dataset.ytApi='1';document.head.appendChild(s)}});return ytApiPromise}
 function currentYoutubeId(){const t=music.current;if(!t)return'';const s=mt(t);return t.youtubeId||s.youtubeId||(String(t.id||'').startsWith('youtube:')?String(t.id).slice(8):'')}
 function setYoutubeFallbackStatus(text,active=false){const el=document.querySelector('[data-free-status]');if(el){el.textContent=text;el.classList.toggle('active',active)}}
@@ -768,3 +796,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_SHUFFLE_NAV_FIX_V37 */
 
 /* MUSIC_NEXT_UNLOCK_V38 */
+
+/* MUSIC_MANUAL_DIRECT_NAV_V39 */
