@@ -91,13 +91,30 @@ if marker_v4 not in css:
     bottom:calc(190px + env(safe-area-inset-bottom,0px))!important;
     max-height:48svh!important;
   }
-  body.tesla-navigating .alertbox{
-    bottom:auto!important;
+  body.tesla-navigating .alertbox{bottom:auto!important}
+}
+'''
+
+marker_v5 = '/* MOBILE_UI_V5_RAISED_NAV_CONTROLS */'
+if marker_v5 not in css:
+    css += r'''
+
+/* MOBILE_UI_V5_RAISED_NAV_CONTROLS */
+@media (max-width:700px){
+  body.tesla-navigating .tesla-trip{
+    bottom:calc(210px + env(safe-area-inset-bottom,0px))!important;
+  }
+  body.tesla-navigating:not(.music-window-open) .music-fab{
+    bottom:calc(350px + env(safe-area-inset-bottom,0px))!important;
+  }
+  body.tesla-navigating .tesla-settings{
+    bottom:calc(300px + env(safe-area-inset-bottom,0px))!important;
+    max-height:42svh!important;
   }
 }
 '''
 
-for required in (marker, marker_v2, marker_v3, marker_v4):
+for required in (marker, marker_v2, marker_v3, marker_v4, marker_v5):
     if required not in css:
         raise SystemExit(f'{required} marker missing after patch')
 
