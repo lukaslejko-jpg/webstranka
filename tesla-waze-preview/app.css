@@ -501,3 +501,24 @@ body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rg
   .music-shell.music-maximized:not(.music-minimized) .music-mini-queue{grid-template-columns:1fr!important}
   .music-shell:not(.music-minimized) .music-mini-panel{max-height:34vh}
 }
+
+
+/* TESLA_TRIP_HEIGHT_V48 */
+@media (min-width:701px){
+  body.tesla-navigating .tesla-trip{
+    height:170px!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  body.tesla-navigating .tesla-trip-stats{
+    flex:1 1 auto!important;
+    align-items:center!important;
+    padding-top:22px!important;
+    padding-bottom:16px!important;
+  }
+  body.tesla-navigating .tesla-progress{flex:0 0 auto!important}
+  body.tesla-navigating .tesla-trip-actions{
+    flex:0 0 auto!important;
+    margin-top:auto!important;
+  }
+}
