@@ -1,0 +1,43 @@
+name: Apply navigation immediate reroute V63
+on:
+  push:
+    branches: [tesla-waze-preview-v1]
+    paths:
+      - 'tesla-waze-preview/navigation-immediate-reroute-patch.py'
+      - '.github/workflows/apply-nav-immediate-reroute-v63.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+          fetch-depth: 0
+      - name: Apply V63
+        run: python3 tesla-waze-preview/navigation-immediate-reroute-patch.py
+      - name: Verify
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -q 'NAV_IMMEDIATE_REROUTE_V63' tesla-waze-preview/app.js
+          grep -q "const outCorridor=state.navigating?null:activeLocalCorridor('out',state.pos)" tesla-waze-preview/app.js
+          grep -q 'Date.now()-state.lastReroute>3000' tesla-waze-preview/app.js
+          ! grep -q 'state.offRouteHits>=2&&Date.now()-state.lastReroute>15000' tesla-waze-preview/app.js
+      - name: Rebuild JS asset
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(p.read_bytes(),compresslevel=9)).decode(),encoding='ascii')
+          PY
+      - name: Commit V63
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'nav: reroute immediately when leaving route'
+          git push origin HEAD:tesla-waze-preview-v1
