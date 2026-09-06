@@ -1,7 +1,9 @@
 from pathlib import Path
 import subprocess
 
-# V41 wrapper: V40 is applied first only for compatibility, then the known-good pre-V17 core wins.
+# V42 wrapper: historic V39/V40 patches run only for compatibility; the final
+# restore script replaces the active Smart Music core with the true pre-gapless
+# baseline from 0a6d1349.
 p=Path('tesla-waze-preview/app.js')
 s=p.read_text(encoding='utf-8')
 marker39='/* MUSIC_MANUAL_DIRECT_NAV_V39 */'
@@ -98,7 +100,7 @@ s=s[:start]+new_nav+s[end:]
 
 old_timer="setInterval(()=>{if(!music.autoNext||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.(),d=Number(music.ytPlayer.getDuration?.()||0),t=Number(music.ytPlayer.getCurrentTime?.()||0),left=d-t;if(st!==YT.PlayerState.PLAYING||d<=2||left<=0)return;const n=nextMusicTrack();if(left<=5.0&&n&&!music.ytStandby&&!music.ytStandbyStarting)prepareYoutubeStandby(n);if(left<=1.2&&n&&!music.gaplessBusy&&!music.ytStandbyStarting){if(!handoffYoutubeTrack(n,'auto'))prepareYoutubeStandby(n)}}catch{}},100);"
 if old_timer in s:
-    s=s.replace(old_timer,"/* dual-player preroll disabled by V40; ENDED handler performs auto-next through mplay() */",1)
+    s=s.replace(old_timer,"/* dual-player preroll disabled by V40; V42 subsequently restores pre-gapless core */",1)
 
 if 'function mnext(reason=' not in s or 'mplay(n);' not in s:
     raise SystemExit('V40 next control missing')
