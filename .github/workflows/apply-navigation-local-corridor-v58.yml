@@ -1,0 +1,57 @@
+name: Apply learned local corridor routing V58
+
+on:
+  push:
+    branches:
+      - tesla-waze-preview-v1
+    paths:
+      - 'tesla-waze-preview/navigation-local-corridor-patch.py'
+      - '.github/workflows/apply-navigation-local-corridor-v58.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+          fetch-depth: 0
+      - name: Apply local corridor learning
+        run: python3 tesla-waze-preview/navigation-local-corridor-patch.py
+      - name: Verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tesla-waze-preview/app.js
+          grep -q 'NAV_LOCAL_CORRIDOR_V58' tesla-waze-preview/app.js
+          grep -q "localCorridors:'teslaWaze:localCorridors:v1'" tesla-waze-preview/app.js
+          grep -q "x.count>=2" tesla-waze-preview/app.js
+          grep -q "activeLocalCorridor('out',state.pos)" tesla-waze-preview/app.js
+          grep -q "activeLocalCorridor('in',state.dest.location)" tesla-waze-preview/app.js
+          grep -q 'applyLocalCorridorsToRoute' tesla-waze-preview/app.js
+          grep -q 'NAV_DESTINATION_ARRIVAL_V57' tesla-waze-preview/app.js
+          grep -q 'MUSIC_DISPLAY_LATIN_FILTER_V56' tesla-waze-preview/app.js
+      - name: Rebuild JS asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd tesla-waze-preview
+          gzip -n -c app.js > app.js.gz
+          gzip -t app.js.gz
+          base64 -w 0 app.js.gz > app.js.gz.b64
+          base64 -d app.js.gz.b64 > verify.gz
+          cmp <(gzip -dc verify.gz) app.js
+          rm -f app.js.gz verify.gz
+      - name: Commit V58
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          if git diff --cached --quiet; then echo 'V58 already applied.'; exit 0; fi
+          git commit -m 'nav: learn standard local roads around saved places'
+          git push origin HEAD:tesla-waze-preview-v1
