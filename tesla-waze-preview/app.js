@@ -576,6 +576,8 @@ function mplay(t){
   if(music.audio)music.audio.play().catch(()=>{});
 }
 function mnext(){
+  /* MUSIC_MANUAL_NEXT_HOLD_V46 */
+  music.userPaused=false;music.wantsPlayback=true;setMusicPlaying(true);
   const q=ensureMusicQueue();if(!q.length)return false;
   let n=null;
   if(music.shuffle&&q.length>1){
