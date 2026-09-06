@@ -18,6 +18,8 @@ on:
       - 'tesla-waze-preview/music-dual-player-handoff-patch.py'
       - 'tesla-waze-preview/music-stabilize-fullqueue-patch.py'
       - 'tesla-waze-preview/music-next-unlock-patch.py'
+      - 'tesla-waze-preview/music-restore-prekeepalive-core.py'
+      - 'tesla-waze-preview/music-session-hold-patch.py'
       - 'tesla-waze-preview/navigation-tmy-full-behavior-patch.py'
       - 'tesla-waze-preview/navigation-tmy-voice-patch.py'
       - 'tesla-waze-preview/navigation-voice-volume-patch.py'
@@ -124,11 +126,17 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/music-stabilize-fullqueue-patch.py
 
-      - name: Force stable single-player navigation
+      - name: Restore pre-gapless Smart Music core
         shell: bash
         run: |
           set -euo pipefail
           python3 tesla-waze-preview/music-next-unlock-patch.py
+
+      - name: Hold Tesla media session across track transitions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/music-session-hold-patch.py
 
       - name: Apply mobile-only layout
         shell: bash
@@ -170,6 +178,9 @@ jobs:
           grep -q 'MUSIC_NEXT_UNLOCK_V38' tesla-waze-preview/app.js
           grep -q 'MUSIC_MANUAL_DIRECT_NAV_V39' tesla-waze-preview/app.js
           grep -q 'MUSIC_SINGLE_PLAYER_STABLE_NAV_V40' tesla-waze-preview/app.js
+          grep -q 'MUSIC_PREKEEPALIVE_CORE_V41' tesla-waze-preview/app.js
+          grep -q 'MUSIC_PREGAPLESS_CORE_V42' tesla-waze-preview/app.js
+          grep -q 'MUSIC_SESSION_HOLD_V43' tesla-waze-preview/app.js
           grep -q 'NAV_VOICE_CANCEL_V10' tesla-waze-preview/app.js
           grep -q 'NAV_SAFE_ICONS_V13' tesla-waze-preview/app.js
           grep -q 'MUSIC_MINI_RESIZE_V4' tesla-waze-preview/app.js
@@ -185,6 +196,7 @@ jobs:
           ! grep -q 'return a.slice(0,40)' tesla-waze-preview/app.js
           ! grep -q 'q.slice(0,40).map' tesla-waze-preview/app.js
           ! grep -q 'left<=5.0&&n&&!music.ytStandby' tesla-waze-preview/app.js
+          ! grep -q 'ENDED){music.wantsPlayback=false;setMusicPlaying(false)' tesla-waze-preview/app.js
 
       - name: Build and verify JS and CSS gzip/base64
         shell: bash
@@ -210,5 +222,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'music: use stable single-player navigation'
+          git commit -m 'music: hold Tesla session across tracks'
           git push origin HEAD:tesla-waze-preview-v1
