@@ -20,7 +20,7 @@ function bearing(a,b){const p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180,dl=(b.lng-
 function smoothHeading(prev,next,alpha=.35){if(prev==null)return next;let d=((next-prev+540)%360)-180;return (prev+d*alpha+360)%360}
 function instruction(step){const op=String(step?.opcode||'').toUpperCase(), street=step?.street?` na ${step.street}`:'';if(op.includes('RAMP_RIGHT')||op.includes('EXIT_RIGHT'))return `Zíďte z diaľnice vpravo${street}.`;if(op.includes('RAMP_LEFT')||op.includes('EXIT_LEFT'))return `Zíďte z diaľnice vľavo${street}.`;if(op.includes('TURN_RIGHT'))return `Odbočte doprava${street}.`;if(op.includes('TURN_LEFT'))return `Odbočte doľava${street}.`;if(op.includes('ROUNDABOUT'))return `Pokračujte cez kruhový objazd${street}.`;if(op.includes('DESTINATION'))return 'Cieľ je pred vami.';if(op.includes('KEEP_RIGHT'))return `Držte sa vpravo${street}.`;if(op.includes('KEEP_LEFT'))return `Držte sa vľavo${street}.`;return `Pokračujte rovno${street}.`}
 function normalizeSpeechText(text){return String(text||'').replace(/\s*\/\s*/g,' smerom na ').replace(/\bul\.\s*/gi,'ulicu ').replace(/\bnám\.\s*/gi,'námestie ').replace(/\bč\.\s*/gi,'číslo ').replace(/\bcestu\s+cestu\b/gi,'cestu').replace(/\s+/g,' ').trim()}
-function maneuverIcon(step){const op=String(step?.opcode||'').toUpperCase();if(op.includes('ROUNDABOUT'))return 'O';if(op.includes('TURN_RIGHT')||op.includes('RAMP_RIGHT')||op.includes('EXIT_RIGHT'))return '→';if(op.includes('TURN_LEFT')||op.includes('RAMP_LEFT')||op.includes('EXIT_LEFT'))return '←';if(op.includes('KEEP_RIGHT'))return '↗';if(op.includes('KEEP_LEFT'))return '↖';if(op.includes('DESTINATION'))return '◆';return '↑'}/* NAV_SAFE_ICONS_V13 */
+function maneuverIcon(step){const op=String(step?.opcode||'').toUpperCase();if(op.includes('ROUNDABOUT'))return 'O';if(op.includes('TURN_RIGHT')||op.includes('RAMP_RIGHT')||op.includes('EXIT_RIGHT'))return '→';if(op.includes('TURN_LEFT')||op.includes('RAMP_LEFT')||op.includes('EXIT_LEFT'))return '←';if(op.includes('KEEP_RIGHT'))return '↗';if(op.includes('KEEP_LEFT'))return '↖';if(op.includes('DESTINATION'))return '✓';return '↑'}/* NAV_SAFE_ICONS_V13 */
 function nearest(p,coords,start=0){if(!coords?.length)return null;let best=null;const cos=111320*Math.cos(p.lat*Math.PI/180);for(let i=Math.max(0,start-20);i<Math.min(coords.length-1,start+600);i++){const a=coords[i],b=coords[i+1],ax=(a.lng-p.lng)*cos,ay=(a.lat-p.lat)*111320,bx=(b.lng-p.lng)*cos,by=(b.lat-p.lat)*111320,dx=bx-ax,dy=by-ay,l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/l)):0,d=Math.hypot(ax+t*dx,ay+t*dy);if(!best||d<best.distance)best={index:i,t,distance:d,point:{lat:a.lat+(b.lat-a.lat)*t,lng:a.lng+(b.lng-a.lng)*t}}}return best}
 function cumulative(c){const a=[0];for(let i=1;i<c.length;i++)a.push(a[i-1]+dist(c[i-1],c[i]));return a}
 const routeMetaCache=new WeakMap();
@@ -162,14 +162,28 @@ function setNavigationShell(on){
   setTimeout(()=>state.map?.invalidateSize(),80);
 }
 function routeTotalDistance(r){if(!r?.coords?.length)return r?.distance||0;const c=cumulative(r.coords);return c.at(-1)||r.distance||0}
+function routeDestinationProjection(r){
+  const coords=r?.coords||[],dest=state.dest?.location;
+  if(coords.length<2||!dest)return null;
+  const start=Math.max(0,coords.length-600),n=nearest(dest,coords,start);
+  if(!n)return null;
+  const cum=cumulative(coords),a=cum[n.index]||0,b=cum[n.index+1]??a;
+  return {...n,at:a+n.t*(b-a)};
+}
+function routeArrivalRadius(){return Math.max(35,Math.min(65,(Number(state.accuracy)||0)*1.5))}
+function routeEffectiveEnd(r){
+  const full=routeMeta(r).total||routeTotalDistance(r)||1,proj=routeDestinationProjection(r);
+  if(proj&&proj.distance<=120)return {distance:Math.max(0,Math.min(full,proj.at)),projection:proj};
+  return {distance:full,projection:null};
+}
 function renderTeslaNavigation(){
   ensureTeslaNavUI();
   const r=state.routes[state.routeIndex],p=state.routeProgress;
   if(!state.navigating||!r){$('teslaNavManeuver').classList.add('hidden');$('teslaTripCard').classList.add('hidden');return}
-  const step=r.steps?.[p?.stepIdx||0],rawNext=r.steps?.[(p?.stepIdx||0)+1],next=/DESTINATION/i.test(String(rawNext?.opcode||''))&&((p?.remainingDistance??Infinity)>350)?null:rawNext;
+  const step=r.steps?.[p?.stepIdx||0],rawNext=r.steps?.[(p?.stepIdx||0)+1],arrived=!!p?.arrived,next=arrived?null:(/DESTINATION/i.test(String(rawNext?.opcode||''))&&((p?.remainingDistance??Infinity)>350)?null:rawNext);
   const man=$('teslaNavManeuver');
-  const distTo=p?.distanceToManeuver??0;
-  man.innerHTML=`<div class="tesla-man-main"><span class="tesla-turn">${maneuverIcon(step)}</span><div><b>${fmtD(distTo)}</b><span>${esc(step?.street||instruction(step).replace(/[.]/g,''))}</span></div></div>${next?`<div class="tesla-man-next"><span>${maneuverIcon(next)}</span><b>${esc(next.street||instruction(next).replace(/[.]/g,''))}</b></div>`:''}`;
+  const distTo=arrived?0:(p?.distanceToManeuver??0),displayStep=arrived?{opcode:'DESTINATION'}:step,displayText=arrived?'Cieľ dosiahnutý':(step?.street||instruction(step).replace(/[.]/g,''));
+  man.innerHTML=`<div class="tesla-man-main"><span class="tesla-turn">${maneuverIcon(displayStep)}</span><div><b>${fmtD(distTo)}</b><span>${esc(displayText)}</span></div></div>${next?`<div class="tesla-man-next"><span>${maneuverIcon(next)}</span><b>${esc(next.street||instruction(next).replace(/[.]/g,''))}</b></div>`:''}`;
   const total=routeTotalDistance(r)||1,remaining=p?.remainingDistance??r.distance??0,ratio=Math.max(0,Math.min(1,1-remaining/total));
   const time=p?.remainingTime??r.time??0,arr=new Date(Date.now()+time*1000).toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'});
   const trip=$('teslaTripCard');
@@ -267,7 +281,18 @@ function trimActiveRouteBehindCar(r,n,markerPosition){
   if(!state.navigating||state.overview||!r?.coords?.length||!n)return;
   const active=state.routeLines?.[state.routeIndex];
   if(active?.setLatLngs){
-    active.setLatLngs([markerPosition,...r.coords.slice(Math.min(r.coords.length,n.index+1))]);
+    const eff=routeEffectiveEnd(r),proj=eff.projection,arrived=!!(state.dest?.location&&state.pos&&dist(state.pos,state.dest.location)<=routeArrivalRadius());
+    let pts;
+    if(proj){
+      const endIndex=Math.max(0,proj.index);
+      if(arrived||n.index>endIndex){pts=[markerPosition,markerPosition]}
+      else{
+        pts=[markerPosition,...r.coords.slice(Math.min(r.coords.length,n.index+1),Math.min(r.coords.length,endIndex+1))];
+        if(proj.point){const last=pts.at(-1);if(!last||dist(last,proj.point)>1)pts.push(proj.point)}
+        if(pts.length<2)pts.push(markerPosition);
+      }
+    }else pts=[markerPosition,...r.coords.slice(Math.min(r.coords.length,n.index+1))];
+    active.setLatLngs(pts);
     active.setStyle?.({opacity:.96,weight:8,color:'#14b8e6'});
   }
   state.routeLines?.forEach((line,i)=>{if(i!==state.routeIndex)line.setStyle?.({opacity:0})});
@@ -276,18 +301,23 @@ function updateNavigation(){
   const r=state.routes[state.routeIndex];
   if(!state.navigating||state.overview||!state.pos||!r?.coords?.length)return;
   const n=nearest(state.pos,r.coords,state.routeCursor);if(!n)return;state.routeCursor=Math.max(state.routeCursor,n.index);
-  const meta=routeMeta(r),cum=meta.cum,total=meta.total,passed=(cum[n.index]||0)+n.t*((cum[n.index+1]??cum[n.index]??0)-(cum[n.index]||0)),remaining=Math.max(0,total-passed);
-  let si=meta.stepDistances.findIndex((d,i)=>i>0&&d>passed+12);if(si<0)si=Math.max(0,(r.steps||[]).length-1);
-  const maneuver=r.steps?.[si],stepDistance=meta.stepDistances[si],dm=Number.isFinite(stepDistance)?Math.max(0,stepDistance-passed):remaining;
-  state.routeProgress={remainingDistance:remaining,remainingTime:(r.time||0)*(remaining/Math.max(total,1)),stepIdx:si,distanceToManeuver:dm,offRoute:n.distance,progressRatio:Math.max(0,Math.min(1,passed/Math.max(total,1)))};
+  const meta=routeMeta(r),cum=meta.cum,rawPassed=(cum[n.index]||0)+n.t*((cum[n.index+1]??cum[n.index]??0)-(cum[n.index]||0)),eff=routeEffectiveEnd(r),total=Math.max(1,eff.distance),passed=Math.max(0,Math.min(total,rawPassed));
+  const directToDest=state.dest?.location?dist(state.pos,state.dest.location):Infinity,arrived=directToDest<=routeArrivalRadius(),remaining=arrived?0:Math.max(0,total-passed);
+  const steps=r.steps||[],destIdx=steps.findIndex(x=>/DESTINATION/i.test(String(x?.opcode||'')));
+  let si=meta.stepDistances.findIndex((d,i)=>i>0&&d>passed+12&&d<=total+25);
+  if(si<0)si=destIdx>=0?destIdx:Math.max(0,steps.length-1);
+  if(arrived&&destIdx>=0)si=destIdx;
+  const maneuver=steps[si],stepDistance=meta.stepDistances[si],isDestination=/DESTINATION/i.test(String(maneuver?.opcode||'')),dm=arrived?0:(isDestination?remaining:(Number.isFinite(stepDistance)?Math.max(0,Math.min(remaining,stepDistance-passed)):remaining));
+  const effectiveRouteTime=(r.time||0)*(total/Math.max(meta.total||total,1));
+  state.routeProgress={remainingDistance:remaining,remainingTime:effectiveRouteTime*(remaining/Math.max(total,1)),stepIdx:si,distanceToManeuver:dm,offRoute:n.distance,progressRatio:Math.max(0,Math.min(1,passed/Math.max(total,1))),arrived,directToDestination:directToDest,effectiveRouteEnd:total};
   if(!state.lastTrailAt||dist(state.lastTrailAt,state.pos)>=25){state.tripTrail.push({...state.pos});state.lastTrailAt={...state.pos};if(state.tripTrail.length>500)state.tripTrail=state.tripTrail.filter((_,i)=>i%2===0)}
-  const markerPosition=shouldSnapToRoute(n.distance,state.accuracy)?n.point:state.pos,routeDirection=routePointFromProjection(r.coords,n,30);
+  const markerPosition=shouldSnapToRoute(n.distance,state.accuracy)?n.point:state.pos;
   if(state.car)state.car.setLatLng(markerPosition);
   trimActiveRouteBehindCar(r,n,markerPosition);
   const kmh=(state.speed||0)*3.6;
   applyHeadingUp(markerPosition,navigationZoom(dm,maneuver?.opcode,kmh));
   if(Number.isFinite(state.gpsHeading)&&state.routeHadHeading===false){state.routeHadHeading=true;calculateRoute(false)}
-  if(confirmedOffRoute(n.distance,state.accuracy))state.offRouteHits=(state.offRouteHits||0)+1;else state.offRouteHits=0;
+  if(!arrived&&confirmedOffRoute(n.distance,state.accuracy))state.offRouteHits=(state.offRouteHits||0)+1;else state.offRouteHits=0;
   if(state.offRouteHits>=2&&Date.now()-state.lastReroute>15000){state.offRouteHits=0;state.lastReroute=Date.now();calculateRoute(false)}
   renderRouteBox();renderTeslaNavigation();voiceNavigation();findAheadAlert();findAheadTraffic();
 }
@@ -772,3 +802,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_HOME_POLISH_V55 */
 
 /* MUSIC_DISPLAY_LATIN_FILTER_V56 */
+
+/* NAV_DESTINATION_ARRIVAL_V57 */
