@@ -1,0 +1,53 @@
+name: Apply Tesla navigation V50
+
+on:
+  push:
+    branches:
+      - tesla-waze-preview-v1
+    paths:
+      - 'tesla-waze-preview/nav-v50-compact-patch.py'
+      - '.github/workflows/apply-nav-v50.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+          fetch-depth: 0
+      - name: Apply compact Tesla navigation UI
+        run: python3 tesla-waze-preview/nav-v50-compact-patch.py
+      - name: Verify final CSS behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'TESLA_NAV_COMPACT_V50' tesla-waze-preview/app.css
+          grep -q 'height:185px!important' tesla-waze-preview/app.css
+          grep -q '.tesla-trip.hidden{display:none!important;visibility:hidden!important}' tesla-waze-preview/app.css
+          grep -q '#preSearchDock{width:min(430px' tesla-waze-preview/app.css
+      - name: Rebuild CSS asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd tesla-waze-preview
+          gzip -n -c app.css > app.css.gz
+          gzip -t app.css.gz
+          base64 -w 0 app.css.gz > app.css.gz.b64
+          base64 -d app.css.gz.b64 > verify.gz
+          gzip -t verify.gz
+          cmp <(gzip -dc verify.gz) app.css
+          rm -f app.css.gz verify.gz
+      - name: Commit V50 CSS and asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64
+          if git diff --cached --quiet; then echo 'Already applied.'; exit 0; fi
+          git commit -m 'nav: enforce hidden 185px compact trip panel'
+          git push origin HEAD:tesla-waze-preview-v1
