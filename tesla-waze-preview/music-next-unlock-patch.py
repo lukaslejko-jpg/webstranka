@@ -1,10 +1,12 @@
 from pathlib import Path
+import subprocess
 
 p=Path('tesla-waze-preview/app.js')
 s=p.read_text(encoding='utf-8')
 marker39='/* MUSIC_MANUAL_DIRECT_NAV_V39 */'
 marker40='/* MUSIC_SINGLE_PLAYER_STABLE_NAV_V40 */'
 if marker40 in s:
+    subprocess.check_call(['python3','tesla-waze-preview/music-restore-prekeepalive-core.py'])
     raise SystemExit(0)
 
 # Install V39 first if an older rebuilt source is encountered.
@@ -65,7 +67,6 @@ function mprev(){
     s+='\n'+marker39+'\n'
 
 # V40: remove dual-player/standby behavior from all track navigation.
-# Every manual Next/Previous and ENDED auto-next uses the known-stable mplay()/renderPlayer() path.
 start=s.find('function resetManualMusicTransition(){')
 end=s.find('let ytApiPromise=null;', start)
 if start<0 or end<0:
@@ -109,3 +110,4 @@ if 'left<=5.0&&n&&!music.ytStandby' in s:
 
 s+='\n'+marker40+'\n'
 p.write_text(s,encoding='utf-8')
+subprocess.check_call(['python3','tesla-waze-preview/music-restore-prekeepalive-core.py'])
