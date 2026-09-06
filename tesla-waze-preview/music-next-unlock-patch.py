@@ -3,7 +3,7 @@ import subprocess
 
 # V42 wrapper: historic V39/V40 patches run only for compatibility; the final
 # restore script replaces the active Smart Music core with the true pre-gapless
-# baseline from 0a6d1349.
+# baseline from 0a6d1349. Formatting-safe restore revision 2.
 p=Path('tesla-waze-preview/app.js')
 s=p.read_text(encoding='utf-8')
 marker39='/* MUSIC_MANUAL_DIRECT_NAV_V39 */'
