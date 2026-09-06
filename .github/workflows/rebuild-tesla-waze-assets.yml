@@ -21,6 +21,7 @@ on:
       - 'tesla-waze-preview/music-restore-prekeepalive-core.py'
       - 'tesla-waze-preview/music-session-hold-patch.py'
       - 'tesla-waze-preview/music-persistent-youtube-player-patch.py'
+      - 'tesla-waze-preview/music-disable-mediasession-patch.py'
       - 'tesla-waze-preview/navigation-tmy-full-behavior-patch.py'
       - 'tesla-waze-preview/navigation-tmy-voice-patch.py'
       - 'tesla-waze-preview/navigation-voice-volume-patch.py'
@@ -145,6 +146,12 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/music-persistent-youtube-player-patch.py
 
+      - name: Restore pre-MediaSession Tesla audio behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/music-disable-mediasession-patch.py
+
       - name: Apply mobile-only layout
         shell: bash
         run: |
@@ -189,6 +196,7 @@ jobs:
           grep -q 'MUSIC_PREGAPLESS_CORE_V42' tesla-waze-preview/app.js
           grep -q 'MUSIC_SESSION_HOLD_V43' tesla-waze-preview/app.js
           grep -q 'MUSIC_PERSISTENT_YT_V44' tesla-waze-preview/app.js
+          grep -q 'MUSIC_DISABLE_MEDIASESSION_V45' tesla-waze-preview/app.js
           grep -q 'loadVideoById({videoId:yt,startSeconds:0})' tesla-waze-preview/app.js
           grep -q 'NAV_VOICE_CANCEL_V10' tesla-waze-preview/app.js
           grep -q 'NAV_SAFE_ICONS_V13' tesla-waze-preview/app.js
@@ -206,6 +214,10 @@ jobs:
           ! grep -q 'q.slice(0,40).map' tesla-waze-preview/app.js
           ! grep -q 'left<=5.0&&n&&!music.ytStandby' tesla-waze-preview/app.js
           ! grep -q 'ENDED){music.wantsPlayback=false;setMusicPlaying(false)' tesla-waze-preview/app.js
+          ! grep -q 'navigator.mediaSession.metadata=' tesla-waze-preview/app.js
+          ! grep -q 'navigator.mediaSession.playbackState=' tesla-waze-preview/app.js
+          ! grep -q 'navigator.mediaSession.setActionHandler(' tesla-waze-preview/app.js
+          ! grep -q 'navigator.mediaSession.setPositionState(' tesla-waze-preview/app.js
 
       - name: Build and verify JS and CSS gzip/base64
         shell: bash
@@ -231,5 +243,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'music: keep YouTube player persistent across tracks'
+          git commit -m 'music: restore pre-MediaSession Tesla audio behavior'
           git push origin HEAD:tesla-waze-preview-v1
