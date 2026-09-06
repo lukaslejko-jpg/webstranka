@@ -1,0 +1,43 @@
+name: Apply Tesla map render stability V65
+on:
+  push:
+    branches: [tesla-waze-preview-v1]
+    paths:
+      - 'tesla-waze-preview/navigation-map-render-stability-v65-patch.py'
+      - '.github/workflows/navigation-map-render-stability-v65.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+          fetch-depth: 0
+      - name: Apply V65
+        run: python3 tesla-waze-preview/navigation-map-render-stability-v65-patch.py
+      - name: Verify
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -q 'NAV_MAP_RENDER_STABILITY_V65' tesla-waze-preview/app.js
+          grep -q 'keepBuffer:3' tesla-waze-preview/app.js
+          grep -q 'moved<12&&!zoomChanged&&!headingChanged' tesla-waze-preview/app.js
+      - name: Rebuild JS asset
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          out=Path('tesla-waze-preview/app.js.gz.b64')
+          out.write_text(base64.b64encode(gzip.compress(p.read_bytes(),compresslevel=9)).decode(),encoding='ascii')
+          PY
+      - name: Commit V65
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git diff --cached --quiet && exit 0
+          git commit -m 'nav: reduce Tesla map tile redraw pressure'
+          git push origin HEAD:tesla-waze-preview-v1
