@@ -1,0 +1,41 @@
+name: Apply YouTube-style Smart Music layout
+
+on:
+  push:
+    branches:
+      - tesla-waze-preview-v1
+    paths:
+      - 'tesla-waze-preview/music-youtube-max-layout-patch.py'
+      - '.github/workflows/apply-music-youtube-max-v53.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+      - name: Apply layout patch
+        run: python3 tesla-waze-preview/music-youtube-max-layout-patch.py
+      - name: Verify CSS only
+        run: |
+          grep -q 'MUSIC_YOUTUBE_MAX_LAYOUT_V53' tesla-waze-preview/app.css
+          grep -q 'grid-template-columns:minmax(0,1.65fr) minmax(330px,.75fr)' tesla-waze-preview/app.css
+      - name: Rebuild CSS asset
+        run: |
+          cd tesla-waze-preview
+          gzip -n -c app.css > app.css.gz
+          gzip -t app.css.gz
+          base64 -w 0 app.css.gz > app.css.gz.b64
+          rm -f app.css.gz
+      - name: Commit layout and asset
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'music: add YouTube-style maximized layout'
+          git push origin HEAD:tesla-waze-preview-v1
