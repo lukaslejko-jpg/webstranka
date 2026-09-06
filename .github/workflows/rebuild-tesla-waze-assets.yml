@@ -20,6 +20,7 @@ on:
       - 'tesla-waze-preview/music-next-unlock-patch.py'
       - 'tesla-waze-preview/music-restore-prekeepalive-core.py'
       - 'tesla-waze-preview/music-session-hold-patch.py'
+      - 'tesla-waze-preview/music-persistent-youtube-player-patch.py'
       - 'tesla-waze-preview/navigation-tmy-full-behavior-patch.py'
       - 'tesla-waze-preview/navigation-tmy-voice-patch.py'
       - 'tesla-waze-preview/navigation-voice-volume-patch.py'
@@ -138,6 +139,12 @@ jobs:
           set -euo pipefail
           python3 tesla-waze-preview/music-session-hold-patch.py
 
+      - name: Keep one YouTube player across track changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/music-persistent-youtube-player-patch.py
+
       - name: Apply mobile-only layout
         shell: bash
         run: |
@@ -181,6 +188,8 @@ jobs:
           grep -q 'MUSIC_PREKEEPALIVE_CORE_V41' tesla-waze-preview/app.js
           grep -q 'MUSIC_PREGAPLESS_CORE_V42' tesla-waze-preview/app.js
           grep -q 'MUSIC_SESSION_HOLD_V43' tesla-waze-preview/app.js
+          grep -q 'MUSIC_PERSISTENT_YT_V44' tesla-waze-preview/app.js
+          grep -q 'loadVideoById({videoId:yt,startSeconds:0})' tesla-waze-preview/app.js
           grep -q 'NAV_VOICE_CANCEL_V10' tesla-waze-preview/app.js
           grep -q 'NAV_SAFE_ICONS_V13' tesla-waze-preview/app.js
           grep -q 'MUSIC_MINI_RESIZE_V4' tesla-waze-preview/app.js
@@ -222,5 +231,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
           if git diff --cached --quiet; then echo 'Source and assets already correct.'; exit 0; fi
-          git commit -m 'music: hold Tesla session across tracks'
+          git commit -m 'music: keep YouTube player persistent across tracks'
           git push origin HEAD:tesla-waze-preview-v1
