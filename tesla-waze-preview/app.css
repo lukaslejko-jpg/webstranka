@@ -626,3 +626,20 @@ body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rg
   #preSearchDock .search-quick-places{gap:5px!important;margin-top:5px!important;grid-template-columns:1fr 1fr!important}
   #preSearchDock .quick-place{height:32px!important;min-height:32px!important;padding:0 7px!important;font-size:11px!important}
 }
+
+
+/* TESLA_NAV_FINAL_COMPACT_V51 */
+/* Nothing from the active-navigation HUD may appear before navigation starts. */
+body:not(.tesla-navigating) #teslaTripCard,
+body:not(.tesla-navigating) #teslaNavManeuver,
+body:not(.tesla-navigating) #alertBox{
+  display:none!important;
+  visibility:hidden!important;
+}
+@media (min-width:701px){
+  body.tesla-navigating #teslaTripCard:not(.hidden){
+    height:180px!important;
+    min-height:180px!important;
+    max-height:180px!important;
+  }
+}
