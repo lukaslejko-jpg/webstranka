@@ -1,0 +1,40 @@
+name: Apply trip panel 190px
+
+on:
+  push:
+    branches: [tesla-waze-preview-v1]
+    paths:
+      - 'tesla-waze-preview/navigation-trip-height-190-patch.py'
+      - '.github/workflows/apply-trip-height-190.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+      - name: Apply 190px trip height
+        run: python3 tesla-waze-preview/navigation-trip-height-190-patch.py
+      - name: Verify
+        run: |
+          set -e
+          grep -q 'TESLA_TRIP_HEIGHT_190_V50' tesla-waze-preview/app.css
+          grep -q '.tesla-trip{height:190px!important;}' tesla-waze-preview/app.css
+      - name: Rebuild assets
+        run: |
+          set -e
+          cd tesla-waze-preview
+          gzip -n -c app.css | base64 -w 0 > app.css.gz.b64
+      - name: Commit
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'nav: set trip panel to 190px'
+          git push origin HEAD:tesla-waze-preview-v1
