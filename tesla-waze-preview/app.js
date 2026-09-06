@@ -100,7 +100,7 @@ function startGPS(){
   };
   const restart=()=>{if(watch)navigator.geolocation.clearWatch(watch);watch=navigator.geolocation.watchPosition(onPosition,e=>$('gpsNotice').querySelector('span').textContent=e.code===1?'Poloha bola zamietnutá.':'GPS momentálne nie je dostupné.',{enableHighAccuracy:true,timeout:12000,maximumAge:0})};
   restart();
-  setInterval(()=>{const now=Date.now();if(state.navigating)navigator.geolocation.getCurrentPosition(onPosition,()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0});if(now-lastTs>10000&&now-lastRestart>10000){lastRestart=now;$('gpsNotice').querySelector('span').textContent='GPS neposiela novú polohu. Obnovujem sledovanie.';restart()}},2500);
+  setInterval(()=>{const now=Date.now();if(now-lastTs>8000&&now-lastRestart>8000){lastRestart=now;$('gpsNotice').querySelector('span').textContent='GPS neposiela novú polohu. Overujem sledovanie.';navigator.geolocation.getCurrentPosition(onPosition,()=>{if(now-lastTs>12000)restart()},{enableHighAccuracy:true,timeout:8000,maximumAge:1500})}},2500);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')navigator.geolocation.getCurrentPosition(onPosition,()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0})});
 }
 function applyHeadingUp(markerPosition,zoom){
@@ -119,7 +119,7 @@ function applyHeadingUp(markerPosition,zoom){
     else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);
     state.lastAppliedHeading=h;state.lastBearingAt=now;
   }
-  if(moved>=12||zoomChanged){
+  if(moved>=14||zoomChanged){
     state.map.setView(center,zoom,{animate:false});
     state.lastCameraCenter={lat:center.lat,lng:center.lng};
     state.lastCameraZoom=Number(zoom);
@@ -255,7 +255,7 @@ function toggleTeslaSettings(){const box=$('teslaSettings');renderTeslaSettings(
 function beginNavigationOverview(){
   const r=state.routes[state.routeIndex];if(!r)return;
   clearTimeout(state.overviewTimer);
-  state.navigating=true;state.overview=true;state.offRouteHits=0;state.routeCursor=0;state.routeProgress=null;state.lastVoice='';state.lastTrafficVoice='';
+  state.navigating=true;state.overview=true;state.offRouteHits=0;state.routeCursor=0;state.routeProgress=null;state.lastVoice='';state.lastTrafficVoice='';voiceManeuverHistory.clear();
   state.tripKey=routeLearningKey(state.pos,state.dest);state.tripTrail=state.pos?[{...state.pos}]:[];state.tripOriginalRoute=(r.coords||[]).map(p=>({...p}));state.lastTrailAt=state.pos?{...state.pos}:null;
   setNavigationShell(true);
   stopHeadingUp(false);
@@ -268,7 +268,7 @@ async function calculateRoute(autoStart=false){if(!state.pos||!state.dest||state
 function drawRoutes(fit=false){state.routeLines.forEach(x=>x.remove());state.routeLines=[];state.routes.forEach((r,i)=>{if(!r.coords?.length)return;const line=state.L.polyline(r.coords,{weight:i===state.routeIndex?8:5,opacity:i===state.routeIndex?.96:.42,color:i===state.routeIndex?'#14b8e6':'#94a3b8'}).addTo(state.map);line.on('click',()=>{state.routeIndex=i;state.jams=[...(state.routes[i]?.trafficJams||[]),...(state.liveJams||[])];drawRoutes(false);renderRouteCard()});state.routeLines.push(line)});const r=state.routes[state.routeIndex];if(fit&&r?.coords?.length)state.map.fitBounds(state.L.latLngBounds(r.coords),{padding:[45,45]});renderTraffic()}
 function renderRouteCard(){const r=state.routes[state.routeIndex],c=$('routeCard');if(!r){c.classList.add('hidden');return}c.classList.remove('hidden');c.innerHTML=`<b>${esc(r.routeName||r.name||'Trasa')}</b><div class="chips">${state.routes.map((x,i)=>`<button class="chip ${i===state.routeIndex?'active':''}" data-ri="${i}">${i+1}: ${fmtT(x.time||0)} · ${fmtD(x.distance||0)}</button>`).join('')}</div><div class="grid2"><button class="btn" data-r="view">${state.overview?'Späť na navigovanie':'Celá trasa'}</button><button class="btn danger" data-r="stop">Ukončiť</button></div>`;c.querySelectorAll('[data-ri]').forEach(b=>b.onclick=()=>{state.routeIndex=+b.dataset.ri;state.jams=[...(state.routes[state.routeIndex]?.trafficJams||[]),...(state.liveJams||[])];drawRoutes(false);renderRouteCard()});c.querySelector('[data-r=view]').onclick=toggleOverview;c.querySelector('[data-r=stop]').onclick=stopNavigation;renderRouteBox()}
 function toggleOverview(){const r=state.routes[state.routeIndex];if(!r)return;clearTimeout(state.overviewTimer);state.overview=!state.overview;if(state.overview){stopHeadingUp(false);state.map.fitBounds(state.L.latLngBounds(r.coords),{padding:[70,70]})}else updateNavigation();renderRouteCard();renderTeslaNavigation();$('routeModeBtn').textContent=state.overview?'Späť na navigovanie':'Celá trasa'}
-function stopNavigation(recenter=true){clearTimeout(state.overviewTimer);cancelNavigationVoice();if(state.navigating)rememberDrivenRoute();state.routeRequestSeq++;state.routeLoading=false;state.navigating=false;state.overview=false;state.routeProgress=null;state.routeCursor=0;state.routeHadHeading=false;state.tripKey='';state.tripTrail=[];state.tripOriginalRoute=null;state.lastTrailAt=null;stopHeadingUp(true);$('app').classList.remove('navcompact');$('panel').classList.remove('navcompact');$('routeModeBtn').classList.add('hidden');$('alertBox').classList.add('hidden');state.routeLines.forEach(x=>x.remove());state.routeLines=[];state.trafficLines.forEach(x=>x.remove());state.trafficLines=[];state.trafficPaintSig='';if(state.destMarker)state.destMarker.remove();state.destMarker=null;state.routes=[];state.routeIndex=0;state.dest=null;state.jams=[];$('searchInput').value='';$('searchResults').innerHTML='';$('searchStatus').textContent='';setNavigationShell(false);renderDestination();renderRouteBox();renderRouteCard();renderTeslaNavigation();if(!recenter)return;const center=state.pos||state.car?.getLatLng?.();[100,320].forEach(delay=>setTimeout(()=>{if(!state.map||!center)return;state.map.stop();state.map.invalidateSize({pan:false});state.map.setView(center,16,{animate:false})},delay))}
+function stopNavigation(recenter=true){clearTimeout(state.overviewTimer);cancelNavigationVoice();voiceManeuverHistory.clear();if(state.navigating)rememberDrivenRoute();state.routeRequestSeq++;state.routeLoading=false;state.navigating=false;state.overview=false;state.routeProgress=null;state.routeCursor=0;state.routeHadHeading=false;state.tripKey='';state.tripTrail=[];state.tripOriginalRoute=null;state.lastTrailAt=null;stopHeadingUp(true);$('app').classList.remove('navcompact');$('panel').classList.remove('navcompact');$('routeModeBtn').classList.add('hidden');$('alertBox').classList.add('hidden');state.routeLines.forEach(x=>x.remove());state.routeLines=[];state.trafficLines.forEach(x=>x.remove());state.trafficLines=[];state.trafficPaintSig='';if(state.destMarker)state.destMarker.remove();state.destMarker=null;state.routes=[];state.routeIndex=0;state.dest=null;state.jams=[];$('searchInput').value='';$('searchResults').innerHTML='';$('searchStatus').textContent='';setNavigationShell(false);renderDestination();renderRouteBox();renderRouteCard();renderTeslaNavigation();if(!recenter)return;const center=state.pos||state.car?.getLatLng?.();[100,320].forEach(delay=>setTimeout(()=>{if(!state.map||!center)return;state.map.stop();state.map.invalidateSize({pan:false});state.map.setView(center,16,{animate:false})},delay))}
 function routeAheadPoint(coords,startIndex,meters){if(!coords?.length)return null;let left=Math.max(0,meters||0),i=Math.max(0,Math.min(startIndex,coords.length-1));for(;i<coords.length-1;i++){const d=dist(coords[i],coords[i+1]);if(d>=left&&d>0){const t=left/d;return {lat:coords[i].lat+(coords[i+1].lat-coords[i].lat)*t,lng:coords[i].lng+(coords[i+1].lng-coords[i].lng)*t}}left-=d}return coords.at(-1)}
 /* NAV_REMAINING_ROUTE_V13 */
 function routeDestinationAtEnd(r){
@@ -358,6 +358,22 @@ function updateNavigation(){
 }
 function renderRouteBox(){const r=state.routes[state.routeIndex],p=state.routeProgress,b=$('routeBox');if(!r){b.classList.add('hidden');return}b.classList.remove('hidden');const time=p?.remainingTime??r.time,di=p?.remainingDistance??r.distance,arr=new Date(Date.now()+1000*(time||0)).toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'}),title=state.navigating?instruction(r.steps?.[p?.stepIdx||0]):(r.routeName||r.name||'Trasa');b.innerHTML=`<b>${esc(title)}</b>${state.navigating&&p?`<small>manéver o ${fmtD(p.distanceToManeuver)}${p.offRoute>50?' · odchýlka '+fmtD(p.offRoute):''}</small>`:''}<div class="routeStats"><div><b>${fmtT(time||0)}</b><small>zostáva</small></div><div><b>${fmtD(di||0)}</b><small>vzdialenosť</small></div><div><b>${arr}</b><small>príchod</small></div></div>`}
 let voiceContext=null,activeVoiceSource=null,voiceGeneration=0,cloudVoiceUnavailable=false,voiceAnnouncementTimer=null;const voiceCache=new Map();
+const voiceManeuverHistory=new Map();
+function voiceManeuverSignature(step){
+  const op=String(step?.opcode||'').replace(/-/g,'_').toUpperCase();
+  const street=norm(step?.street||'');
+  const y=Number(step?.path?.y),x=Number(step?.path?.x);
+  const loc=Number.isFinite(y)&&Number.isFinite(x)?`${y.toFixed(3)},${x.toFixed(3)}`:'';
+  return `${op}|${street}|${loc}`;
+}
+function voiceBucketRank(bucket){return ({step:6,'3000':5,'2000':4,'1000':3,'500':2,'200':1,now:0})[bucket]??6}
+function shouldSpeakManeuverBucket(step,bucket){
+  const sig=voiceManeuverSignature(step),now=Date.now(),rank=voiceBucketRank(bucket),prev=voiceManeuverHistory.get(sig);
+  for(const [k,v] of voiceManeuverHistory){if(now-v.at>20*60*1000)voiceManeuverHistory.delete(k)}
+  if(prev&&rank>=prev.rank)return false;
+  voiceManeuverHistory.set(sig,{rank,at:now});
+  return true;
+}
 /* NAV_VOICE_CANCEL_V10 */
 function cancelNavigationVoice(){
   voiceGeneration++;
@@ -404,7 +420,8 @@ function voiceNavigation(){
     if(ramp) bucket=d<=100?'now':d<=250?'200':d<=600?'500':d<=1200?'1000':d<=2200?'2000':d<=3200?'3000':'step';
     else bucket=d<=100?'now':d<=250?'200':d<=600?'500':d<=1200?'1000':'step';
   }
-  const key=`${p.stepIdx}:${bucket}`;
+  if(!shouldSpeakManeuverBucket(step,bucket))return;
+  const key=`${voiceManeuverSignature(step)}:${bucket}`;
   if(key===state.lastVoice)return;
   state.lastVoice=key;
   const distance=Number.isFinite(d)&&d>=0?`${fmtSpeechD(d)}. `:'';
@@ -897,3 +914,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* NAV_WRONG_TURN_REROUTE_V64 */
 
 /* NAV_MAP_RENDER_STABILITY_V65 */
+
+/* NAV_GPS_VOICE_STABILITY_V66 */
