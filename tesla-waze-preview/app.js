@@ -37,6 +37,13 @@ function destinationPoint(p,meters,heading){
 function navigationZoom(distanceMeters,opcode,speedKmh){const ramp=/RAMP|EXIT/i.test(String(opcode||''));if(ramp){if(distanceMeters<=250)return 18.8;if(distanceMeters<=600)return 18.2;if(distanceMeters<=1200)return 17.5;if(distanceMeters<=2500)return 16.8;return 16.2}if(distanceMeters<=250)return 19;if(distanceMeters<=700)return 18.4;if(distanceMeters<=2000)return 17.4;return speedKmh>95?15.7:16.5}
 function shouldSnapToRoute(distanceMeters,accuracy){const a=Number.isFinite(accuracy)?Math.min(30,Math.max(0,accuracy)):0;return distanceMeters<=Math.max(35,a*1.5)}
 function confirmedOffRoute(distanceMeters,accuracy){return distanceMeters>Math.max(55,(Number(accuracy)||0)*2)}
+function headingDelta(a,b){if(!Number.isFinite(a)||!Number.isFinite(b))return 0;return Math.abs(((a-b+540)%360)-180)}
+function wrongTurnDetected(r,n){
+  if(!r?.coords?.length||!n||!Number.isFinite(state.gpsHeading))return false;
+  const ahead=routePointFromProjection(r.coords,n,45);if(!ahead)return false;
+  const routeHeading=bearing(n.point,ahead),kmh=(Number(state.speed)||0)*3.6;
+  return kmh>=6&&n.distance>=18&&headingDelta(state.gpsHeading,routeHeading)>=70;
+}
 function routeLearningKey(origin,destination){if(!origin||!destination?.location)return'';return `${origin.lat.toFixed(2)},${origin.lng.toFixed(2)}>${destination.location.lat.toFixed(3)},${destination.location.lng.toFixed(3)}`}
 function safeLearnedRoutes(){const rows=load(LS.learnedRoutes,[]);return Array.isArray(rows)?rows.filter(x=>x&&typeof x.key==='string'&&Array.isArray(x.path)&&x.path.length>=2&&Number.isFinite(x.count)).slice(0,12):[]}
 function sampledPath(path,max=36){if(!Array.isArray(path)||path.length<=max)return(path||[]).map(p=>({lat:Number(p.lat),lng:Number(p.lng)})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lng));const out=[];for(let i=0;i<max;i++)out.push(path[Math.round(i*(path.length-1)/(max-1))]);return out}
@@ -290,7 +297,7 @@ function routeForwardPointToDestination(r,n,meters){
 function trimActiveRouteBehindCar(r,n,markerPosition){
   if(!state.navigating||state.overview||!r?.coords?.length||!n)return;
   const active=state.routeLines?.[state.routeIndex];
-  const offRoute=confirmedOffRoute(n.distance,state.accuracy);
+  const offRoute=confirmedOffRoute(n.distance,state.accuracy)||wrongTurnDetected(r,n);
   if(offRoute){
     active?.setStyle?.({opacity:.16,weight:6,color:'#64748b'});
     state.routeLines?.forEach((line,i)=>{if(i!==state.routeIndex)line.setStyle?.({opacity:0})});
@@ -333,7 +340,7 @@ function updateNavigation(){
   const kmh=(state.speed||0)*3.6;
   applyHeadingUp(markerPosition,navigationZoom(dm,maneuver?.opcode,kmh));
   if(Number.isFinite(state.gpsHeading)&&state.routeHadHeading===false){state.routeHadHeading=true;calculateRoute(false)}
-  const isOffRoute=!arrived&&confirmedOffRoute(n.distance,state.accuracy);
+  const isOffRoute=!arrived&&(confirmedOffRoute(n.distance,state.accuracy)||wrongTurnDetected(r,n));
   if(isOffRoute)state.offRouteHits=(state.offRouteHits||0)+1;else state.offRouteHits=0;
   if(isOffRoute&&!state.routeLoading&&Date.now()-state.lastReroute>3000){
     state.offRouteHits=0;
@@ -879,3 +886,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_MAX_SEARCH_HISTORY_V62 */
 
 /* NAV_IMMEDIATE_REROUTE_V63 */
+
+/* NAV_WRONG_TURN_REROUTE_V64 */
