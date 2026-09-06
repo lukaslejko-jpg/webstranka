@@ -57,7 +57,17 @@ function rememberLocalRoads(trail,planned){if(!trail?.length||!planned?.length)r
 function activeLocalCorridor(direction,point){const anchor=savedAnchorNear(point);if(!anchor)return null;return safeLocalCorridors().filter(x=>x.kind===anchor.kind&&x.direction===direction&&x.count>=2).sort((a,b)=>(b.count||0)-(a.count||0)||String(b.lastUsedAt).localeCompare(String(a.lastUsedAt)))[0]||null}
 function localPathLength(path){return Array.isArray(path)&&path.length>1?(cumulative(path).at(-1)||0):0}
 function mergeRoutePaths(a,b){const left=sampledPath(a,90),right=sampledPath(b,300);if(!left.length)return right;if(!right.length)return left;return dist(left.at(-1),right[0])<35?[...left,...right.slice(1)]:[...left,...right]}
-function applyLocalCorridorsToRoute(rr,outCorridor,inCorridor){let coords=rr.coords||[],added=0,steps=Array.isArray(rr.steps)?[...rr.steps]:[];if(outCorridor?.path?.length){const p=sampledPath(outCorridor.path,50);coords=mergeRoutePaths(p,coords);added+=localPathLength(p);steps.unshift({opcode:'CONTINUE',street:'',path:{x:p[Math.min(1,p.length-1)].lng,y:p[Math.min(1,p.length-1)].lat},learnedLocal:true})}if(inCorridor?.path?.length){const p=sampledPath(inCorridor.path,50);coords=mergeRoutePaths(coords,p);added+=localPathLength(p);while(steps.length&&/DESTINATION/i.test(String(steps.at(-1)?.opcode||'')))steps.pop();steps.push({opcode:'CONTINUE',street:'',path:{x:p[0].lng,y:p[0].lat},learnedLocal:true});const end=p.at(-1);steps.push({opcode:'DESTINATION',street:'',path:{x:end.lng,y:end.lat},learnedLocal:true})}rr.coords=coords;rr.steps=steps;rr.distance=cumulative(coords).at(-1)||rr.distance||0;rr.time=Math.max(1,Number(rr.time)||0)+added/7;rr.learnedLocal=!!(outCorridor||inCorridor);routeMetaCache.delete(rr);return rr}
+function applyLocalCorridorsToRoute(rr,outCorridor,inCorridor){
+  let coords=rr.coords||[],added=0;
+  if(outCorridor?.path?.length){const p=sampledPath(outCorridor.path,50);coords=mergeRoutePaths(p,coords);added+=localPathLength(p)}
+  if(inCorridor?.path?.length){const p=sampledPath(inCorridor.path,50);coords=mergeRoutePaths(coords,p);added+=localPathLength(p)}
+  rr.coords=coords;
+  rr.distance=cumulative(coords).at(-1)||rr.distance||0;
+  rr.time=Math.max(1,Number(rr.time)||0)+added/7;
+  rr.learnedLocal=!!(outCorridor||inCorridor);
+  routeMetaCache.delete(rr);
+  return rr
+}
 function rememberDrivenRoute(){const trail=sampledPath(state.tripTrail,50),planned=state.tripOriginalRoute,key=state.tripKey;if(trail.length<8||!planned?.length)return;rememberLocalRoads(trail,planned);const travelled=cumulative(trail).at(-1)||0,diff=pathDifference(trail,planned);if(!key||travelled<700||diff.ratio<.18)return;const rows=safeLearnedRoutes();let match=rows.find(x=>x.key===key&&pathDifference(trail,x.path).average<120);if(match){match.count=Math.min(99,(match.count||0)+1);match.path=trail;match.lastUsedAt=new Date().toISOString()}else rows.unshift({key,count:1,path:trail,lastUsedAt:new Date().toISOString()});save(LS.learnedRoutes,rows.sort((a,b)=>String(b.lastUsedAt).localeCompare(String(a.lastUsedAt))).slice(0,12))}
 function preferLearnedRoute(routes,key){const learned=safeLearnedRoutes().filter(x=>x.key===key&&x.count>=2).sort((a,b)=>b.count-a.count)[0];if(!learned)return 0;let best={index:0,score:Infinity};routes.forEach((r,index)=>{const score=pathDifference(learned.path,r.coords||[]).average;if(score<best.score)best={index,score}});return best.score<=350?best.index:0}
 
@@ -108,24 +118,17 @@ function applyHeadingUp(markerPosition,zoom){
   const now=Date.now();
   const h=Number.isFinite(state.gpsHeading)?state.gpsHeading:(Number.isFinite(state.lastAppliedHeading)?state.lastAppliedHeading:null);
   if(now-state.lastCameraAt<500)return;
-  const center=Number.isFinite(h)?destinationPoint(markerPosition,65,h):markerPosition;
-  const moved=state.lastCameraCenter?dist(state.lastCameraCenter,center):Infinity;
-  const zoomChanged=!Number.isFinite(state.lastCameraZoom)||Math.abs(Number(zoom)-Number(state.lastCameraZoom))>=.12;
-  const headingChanged=Number.isFinite(h)&&(!Number.isFinite(state.lastAppliedHeading)||headingDelta(h,state.lastAppliedHeading)>=2.5);
-  if(moved<12&&!zoomChanged&&!headingChanged)return;
   state.lastCameraAt=now;
-  if(headingChanged){
+  const center=Number.isFinite(h)?destinationPoint(markerPosition,65,h):markerPosition;
+  if(Number.isFinite(h)){
     if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});
     else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);
     state.lastAppliedHeading=h;state.lastBearingAt=now;
   }
-  if(moved>=14||zoomChanged){
-    state.map.setView(center,zoom,{animate:false});
-    state.lastCameraCenter={lat:center.lat,lng:center.lng};
-    state.lastCameraZoom=Number(zoom);
-  }
+  state.map.setView(center,zoom,{animate:false});
+  state.lastCameraCenter={lat:center.lat,lng:center.lng};
 }/* TMY_EXACT_NAV_V21 */
-function stopHeadingUp(reset=true){if(typeof state.map?.setHeading==='function')state.map.setHeading(null);if(typeof state.map?.stopHeadingUp==='function')state.map.stopHeadingUp();if(reset&&typeof state.map?.setBearing==='function')state.map.setBearing(0);state.lastAppliedHeading=null;state.lastCameraCenter=null;state.lastCameraZoom=null;state.lastCameraAt=0;state.lastBearingAt=0}
+function stopHeadingUp(reset=true){if(typeof state.map?.setHeading==='function')state.map.setHeading(null);if(typeof state.map?.stopHeadingUp==='function')state.map.stopHeadingUp();if(reset&&typeof state.map?.setBearing==='function')state.map.setBearing(0);state.lastAppliedHeading=null;state.lastCameraCenter=null;state.lastCameraAt=0;state.lastBearingAt=0}
 
 let searchTimer=null,searchSeq=0;async function searchPlaces(force=false){const q=$('searchInput').value.trim();if(q.length<(force?2:3)){$('searchResults').innerHTML='';$('searchStatus').textContent='';return}const seq=++searchSeq;$('searchStatus').textContent='Vyhľadávam…';try{const u=new URLSearchParams({q});if(state.pos){u.set('lat',state.pos.lat);u.set('lng',state.pos.lng)}const r=await fetch('/api/search?'+u,{cache:'no-store'}),d=await r.json();if(seq!==searchSeq)return;renderSearch(d.results||[])}catch{$('searchStatus').textContent='Vyhľadávanie zlyhalo.'}}
 function renderSearch(a){$('searchStatus').textContent='';$('searchResults').innerHTML=a.slice(0,6).map((x,i)=>`<button class="result" data-sr="${i}"><b>${esc(x.name)}</b><small>${esc(x.address)}</small></button>`).join('');document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>selectDestination(a[+b.dataset.sr]))}
@@ -304,25 +307,14 @@ function routeForwardPointToDestination(r,n,meters){
 function trimActiveRouteBehindCar(r,n,markerPosition){
   if(!state.navigating||state.overview||!r?.coords?.length||!n)return;
   const active=state.routeLines?.[state.routeIndex];
-  const offRoute=confirmedOffRoute(n.distance,state.accuracy)||wrongTurnDetected(r,n);
-  if(offRoute){
+  const rerouting=confirmedOffRoute(n.distance,state.accuracy)||wrongTurnDetected(r,n);
+  if(rerouting){
     active?.setStyle?.({opacity:.16,weight:6,color:'#64748b'});
     state.routeLines?.forEach((line,i)=>{if(i!==state.routeIndex)line.setStyle?.({opacity:0})});
     return;
   }
   if(active?.setLatLngs){
-    const eff=routeEffectiveEnd(r),proj=eff.projection,arrived=!!(state.dest?.location&&state.pos&&dist(state.pos,state.dest.location)<=routeArrivalRadius());
-    let pts;
-    if(proj){
-      const endIndex=Math.max(0,proj.index);
-      if(arrived||n.index>endIndex){pts=[markerPosition,markerPosition]}
-      else{
-        pts=[markerPosition,...r.coords.slice(Math.min(r.coords.length,n.index+1),Math.min(r.coords.length,endIndex+1))];
-        if(proj.point){const last=pts.at(-1);if(!last||dist(last,proj.point)>1)pts.push(proj.point)}
-        if(pts.length<2)pts.push(markerPosition);
-      }
-    }else pts=[markerPosition,...r.coords.slice(Math.min(r.coords.length,n.index+1))];
-    active.setLatLngs(pts);
+    active.setLatLngs([markerPosition,...r.coords.slice(Math.min(r.coords.length,n.index+1))]);
     active.setStyle?.({opacity:.96,weight:8,color:'#14b8e6'});
   }
   state.routeLines?.forEach((line,i)=>{if(i!==state.routeIndex)line.setStyle?.({opacity:0})});
@@ -331,15 +323,13 @@ function updateNavigation(){
   const r=state.routes[state.routeIndex];
   if(!state.navigating||state.overview||!state.pos||!r?.coords?.length)return;
   const n=nearest(state.pos,r.coords,state.routeCursor);if(!n)return;state.routeCursor=Math.max(state.routeCursor,n.index);
-  const meta=routeMeta(r),cum=meta.cum,rawPassed=(cum[n.index]||0)+n.t*((cum[n.index+1]??cum[n.index]??0)-(cum[n.index]||0)),eff=routeEffectiveEnd(r),total=Math.max(1,eff.distance),passed=Math.max(0,Math.min(total,rawPassed));
-  const directToDest=state.dest?.location?dist(state.pos,state.dest.location):Infinity,arrived=directToDest<=routeArrivalRadius(),remaining=arrived?0:Math.max(0,total-passed);
-  const steps=r.steps||[],destIdx=steps.findIndex(x=>/DESTINATION/i.test(String(x?.opcode||'')));
-  let si=meta.stepDistances.findIndex((d,i)=>i>0&&d>passed+12&&d<=total+25);
-  if(si<0)si=destIdx>=0?destIdx:Math.max(0,steps.length-1);
-  if(arrived&&destIdx>=0)si=destIdx;
-  const maneuver=steps[si],stepDistance=meta.stepDistances[si],isDestination=/DESTINATION/i.test(String(maneuver?.opcode||'')),dm=arrived?0:(isDestination?remaining:(Number.isFinite(stepDistance)?Math.max(0,Math.min(remaining,stepDistance-passed)):remaining));
-  const effectiveRouteTime=(r.time||0)*(total/Math.max(meta.total||total,1));
-  state.routeProgress={remainingDistance:remaining,remainingTime:effectiveRouteTime*(remaining/Math.max(total,1)),stepIdx:si,distanceToManeuver:dm,offRoute:n.distance,progressRatio:Math.max(0,Math.min(1,passed/Math.max(total,1))),arrived,directToDestination:directToDest,effectiveRouteEnd:total};
+  const meta=routeMeta(r),cum=meta.cum,total=meta.total,passed=(cum[n.index]||0)+n.t*((cum[n.index+1]??cum[n.index]??0)-(cum[n.index]||0));
+  const directToDest=state.dest?.location?dist(state.pos,state.dest.location):Infinity,arrived=directToDest<=routeArrivalRadius();
+  const remaining=arrived?0:Math.max(0,total-passed);
+  let si=meta.stepDistances.findIndex((d,i)=>i>0&&d>passed+12);if(si<0)si=Math.max(0,(r.steps||[]).length-1);
+  const destIdx=(r.steps||[]).findIndex(x=>/DESTINATION/i.test(String(x?.opcode||'')));if(arrived&&destIdx>=0)si=destIdx;
+  const maneuver=r.steps?.[si],stepDistance=meta.stepDistances[si],dm=arrived?0:(Number.isFinite(stepDistance)?Math.max(0,stepDistance-passed):remaining);
+  state.routeProgress={remainingDistance:remaining,remainingTime:arrived?0:(r.time||0)*(remaining/Math.max(total,1)),stepIdx:si,distanceToManeuver:dm,offRoute:n.distance,progressRatio:Math.max(0,Math.min(1,passed/Math.max(total,1))),arrived,directToDestination:directToDest};
   if(!state.lastTrailAt||dist(state.lastTrailAt,state.pos)>=25){state.tripTrail.push({...state.pos});state.lastTrailAt={...state.pos};if(state.tripTrail.length>500)state.tripTrail=state.tripTrail.filter((_,i)=>i%2===0)}
   const markerPosition=shouldSnapToRoute(n.distance,state.accuracy)?n.point:state.pos;
   if(state.car)state.car.setLatLng(markerPosition);
@@ -349,11 +339,7 @@ function updateNavigation(){
   if(Number.isFinite(state.gpsHeading)&&state.routeHadHeading===false){state.routeHadHeading=true;calculateRoute(false)}
   const isOffRoute=!arrived&&(confirmedOffRoute(n.distance,state.accuracy)||wrongTurnDetected(r,n));
   if(isOffRoute)state.offRouteHits=(state.offRouteHits||0)+1;else state.offRouteHits=0;
-  if(isOffRoute&&!state.routeLoading&&Date.now()-state.lastReroute>3000){
-    state.offRouteHits=0;
-    state.lastReroute=Date.now();
-    calculateRoute(false);
-  }
+  if(isOffRoute&&!state.routeLoading&&Date.now()-state.lastReroute>3000){state.offRouteHits=0;state.lastReroute=Date.now();calculateRoute(false)}
   renderRouteBox();renderTeslaNavigation();voiceNavigation();findAheadAlert();findAheadTraffic();
 }
 function renderRouteBox(){const r=state.routes[state.routeIndex],p=state.routeProgress,b=$('routeBox');if(!r){b.classList.add('hidden');return}b.classList.remove('hidden');const time=p?.remainingTime??r.time,di=p?.remainingDistance??r.distance,arr=new Date(Date.now()+1000*(time||0)).toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'}),title=state.navigating?instruction(r.steps?.[p?.stepIdx||0]):(r.routeName||r.name||'Trasa');b.innerHTML=`<b>${esc(title)}</b>${state.navigating&&p?`<small>manéver o ${fmtD(p.distanceToManeuver)}${p.offRoute>50?' · odchýlka '+fmtD(p.offRoute):''}</small>`:''}<div class="routeStats"><div><b>${fmtT(time||0)}</b><small>zostáva</small></div><div><b>${fmtD(di||0)}</b><small>vzdialenosť</small></div><div><b>${arr}</b><small>príchod</small></div></div>`}
@@ -365,14 +351,6 @@ function voiceManeuverSignature(step){
   const y=Number(step?.path?.y),x=Number(step?.path?.x);
   const loc=Number.isFinite(y)&&Number.isFinite(x)?`${y.toFixed(3)},${x.toFixed(3)}`:'';
   return `${op}|${street}|${loc}`;
-}
-function voiceBucketRank(bucket){return ({step:6,'3000':5,'2000':4,'1000':3,'500':2,'200':1,now:0})[bucket]??6}
-function shouldSpeakManeuverBucket(step,bucket){
-  const sig=voiceManeuverSignature(step),now=Date.now(),rank=voiceBucketRank(bucket),prev=voiceManeuverHistory.get(sig);
-  for(const [k,v] of voiceManeuverHistory){if(now-v.at>20*60*1000)voiceManeuverHistory.delete(k)}
-  if(prev&&rank>=prev.rank)return false;
-  voiceManeuverHistory.set(sig,{rank,at:now});
-  return true;
 }
 /* NAV_VOICE_CANCEL_V10 */
 function cancelNavigationVoice(){
@@ -420,8 +398,7 @@ function voiceNavigation(){
     if(ramp) bucket=d<=100?'now':d<=250?'200':d<=600?'500':d<=1200?'1000':d<=2200?'2000':d<=3200?'3000':'step';
     else bucket=d<=100?'now':d<=250?'200':d<=600?'500':d<=1200?'1000':'step';
   }
-  if(!shouldSpeakManeuverBucket(step,bucket))return;
-  const key=`${voiceManeuverSignature(step)}:${bucket}`;
+  const key=`${p.stepIdx}:${bucket}`;
   if(key===state.lastVoice)return;
   state.lastVoice=key;
   const distance=Number.isFinite(d)&&d>=0?`${fmtSpeechD(d)}. `:'';
@@ -916,3 +893,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* NAV_MAP_RENDER_STABILITY_V65 */
 
 /* NAV_GPS_VOICE_STABILITY_V66 */
+
+/* NAV_TMY_CORE_CONSOLIDATED_V67 */
