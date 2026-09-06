@@ -1,0 +1,57 @@
+name: Apply Smart Music maximized search V61
+
+on:
+  push:
+    branches:
+      - tesla-waze-preview-v1
+    paths:
+      - 'tesla-waze-preview/music-header-search-mode-fix.py'
+      - '.github/workflows/apply-music-max-search-v61.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+          fetch-depth: 0
+      - name: Apply V61
+        run: python3 tesla-waze-preview/music-header-search-mode-fix.py
+      - name: Verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tesla-waze-preview/app.js
+          grep -q 'MUSIC_MAX_SEARCH_MODE_V61' tesla-waze-preview/app.js
+          grep -q 'MUSIC_MAX_SEARCH_MODE_V61' tesla-waze-preview/app.css
+          grep -q "musicHeaderSearchClose" tesla-waze-preview/app.js
+          grep -q "music-header-search{display:none!important}" tesla-waze-preview/app.css
+          grep -q 'NAV_LOCAL_CORRIDOR_V58' tesla-waze-preview/app.js
+          grep -q 'MUSIC_HEADER_SEARCH_RESULTS_V60' tesla-waze-preview/app.js
+      - name: Rebuild assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd tesla-waze-preview
+          for f in app.js app.css; do
+            gzip -n -c "$f" > "$f.gz"
+            gzip -t "$f.gz"
+            base64 -w 0 "$f.gz" > "$f.gz.b64"
+            base64 -d "$f.gz.b64" > verify.gz
+            cmp <(gzip -dc verify.gz) "$f"
+            rm -f "$f.gz" verify.gz
+          done
+      - name: Commit V61
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
+          if git diff --cached --quiet; then echo 'V61 already applied.'; exit 0; fi
+          git commit -m 'music: keep header search maximized-only and add back control'
+          git push origin HEAD:tesla-waze-preview-v1
