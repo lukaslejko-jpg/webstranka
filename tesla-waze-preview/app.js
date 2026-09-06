@@ -250,7 +250,7 @@ function beginNavigationOverview(){
   state.overviewTimer=setTimeout(()=>{if(!state.navigating)return;state.overview=false;updateNavigation();renderTeslaNavigation()},3000);
 }
 
-async function calculateRoute(autoStart=false){if(!state.pos||!state.dest||state.routeLoading)return;state.routeLoading=true;state.routeHadHeading=Number.isFinite(state.gpsHeading);const outCorridor=activeLocalCorridor('out',state.pos),inCorridor=activeLocalCorridor('in',state.dest.location),requestStart=outCorridor?.path?.at(-1)||state.pos,requestEnd=inCorridor?.path?.[0]||state.dest.location,request=++state.routeRequestSeq,q=new URLSearchParams({fromLat:requestStart.lat,fromLng:requestStart.lng,toLat:requestEnd.lat,toLng:requestEnd.lng,useVignette:String(state.routing.useVignette),avoidTolls:String(state.routing.avoidTolls),avoidFerries:String(state.routing.avoidFerries)});try{const r=await fetch('https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twroute?'+q,{cache:'no-store'});if(!r.ok)throw Error('route '+r.status);const d=await r.json();if(request!==state.routeRequestSeq)return;state.routes=Array.isArray(d.routes)?d.routes:[];if(!state.routes.length)throw Error(d.error||'no routes');for(const rr of state.routes){if(rr?.coords?.length>1){const first=rr.coords[0],last=rr.coords.at(-1),forward=dist(first,requestStart)+dist(last,requestEnd),reverse=dist(last,requestStart)+dist(first,requestEnd);if(reverse<forward)rr.coords=[...rr.coords].reverse()}applyLocalCorridorsToRoute(rr,outCorridor,inCorridor)};state.routeIndex=state.navigating?0:preferLearnedRoute(state.routes,routeLearningKey(state.pos,state.dest));state.jams=[...(state.routes[state.routeIndex]?.trafficJams||[]),...(state.liveJams||[])];state.routeProgress=null;state.routeCursor=0;drawRoutes(!state.navigating);renderRouteCard();if(autoStart)beginNavigationOverview();else if(state.navigating)updateNavigation()}catch(e){if(request===state.routeRequestSeq)$('gpsNotice').querySelector('span').textContent='Trasu sa nepodarilo načítať.'}finally{if(request===state.routeRequestSeq)state.routeLoading=false}}
+async function calculateRoute(autoStart=false){if(!state.pos||!state.dest||state.routeLoading)return;state.routeLoading=true;state.routeHadHeading=Number.isFinite(state.gpsHeading);const outCorridor=state.navigating?null:activeLocalCorridor('out',state.pos),inCorridor=activeLocalCorridor('in',state.dest.location),requestStart=outCorridor?.path?.at(-1)||state.pos,requestEnd=inCorridor?.path?.[0]||state.dest.location,request=++state.routeRequestSeq,q=new URLSearchParams({fromLat:requestStart.lat,fromLng:requestStart.lng,toLat:requestEnd.lat,toLng:requestEnd.lng,useVignette:String(state.routing.useVignette),avoidTolls:String(state.routing.avoidTolls),avoidFerries:String(state.routing.avoidFerries)});try{const r=await fetch('https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twroute?'+q,{cache:'no-store'});if(!r.ok)throw Error('route '+r.status);const d=await r.json();if(request!==state.routeRequestSeq)return;state.routes=Array.isArray(d.routes)?d.routes:[];if(!state.routes.length)throw Error(d.error||'no routes');for(const rr of state.routes){if(rr?.coords?.length>1){const first=rr.coords[0],last=rr.coords.at(-1),forward=dist(first,requestStart)+dist(last,requestEnd),reverse=dist(last,requestStart)+dist(first,requestEnd);if(reverse<forward)rr.coords=[...rr.coords].reverse()}applyLocalCorridorsToRoute(rr,outCorridor,inCorridor)};state.routeIndex=state.navigating?0:preferLearnedRoute(state.routes,routeLearningKey(state.pos,state.dest));state.jams=[...(state.routes[state.routeIndex]?.trafficJams||[]),...(state.liveJams||[])];state.routeProgress=null;state.routeCursor=0;state.offRouteHits=0;drawRoutes(!state.navigating);renderRouteCard();if(autoStart)beginNavigationOverview();else if(state.navigating)updateNavigation()}catch(e){if(request===state.routeRequestSeq)$('gpsNotice').querySelector('span').textContent='Trasu sa nepodarilo načítať.'}finally{if(request===state.routeRequestSeq)state.routeLoading=false}}
 function drawRoutes(fit=false){state.routeLines.forEach(x=>x.remove());state.routeLines=[];state.routes.forEach((r,i)=>{if(!r.coords?.length)return;const line=state.L.polyline(r.coords,{weight:i===state.routeIndex?8:5,opacity:i===state.routeIndex?.96:.42,color:i===state.routeIndex?'#14b8e6':'#94a3b8'}).addTo(state.map);line.on('click',()=>{state.routeIndex=i;state.jams=[...(state.routes[i]?.trafficJams||[]),...(state.liveJams||[])];drawRoutes(false);renderRouteCard()});state.routeLines.push(line)});const r=state.routes[state.routeIndex];if(fit&&r?.coords?.length)state.map.fitBounds(state.L.latLngBounds(r.coords),{padding:[45,45]});renderTraffic()}
 function renderRouteCard(){const r=state.routes[state.routeIndex],c=$('routeCard');if(!r){c.classList.add('hidden');return}c.classList.remove('hidden');c.innerHTML=`<b>${esc(r.routeName||r.name||'Trasa')}</b><div class="chips">${state.routes.map((x,i)=>`<button class="chip ${i===state.routeIndex?'active':''}" data-ri="${i}">${i+1}: ${fmtT(x.time||0)} · ${fmtD(x.distance||0)}</button>`).join('')}</div><div class="grid2"><button class="btn" data-r="view">${state.overview?'Späť na navigovanie':'Celá trasa'}</button><button class="btn danger" data-r="stop">Ukončiť</button></div>`;c.querySelectorAll('[data-ri]').forEach(b=>b.onclick=()=>{state.routeIndex=+b.dataset.ri;state.jams=[...(state.routes[state.routeIndex]?.trafficJams||[]),...(state.liveJams||[])];drawRoutes(false);renderRouteCard()});c.querySelector('[data-r=view]').onclick=toggleOverview;c.querySelector('[data-r=stop]').onclick=stopNavigation;renderRouteBox()}
 function toggleOverview(){const r=state.routes[state.routeIndex];if(!r)return;clearTimeout(state.overviewTimer);state.overview=!state.overview;if(state.overview){stopHeadingUp(false);state.map.fitBounds(state.L.latLngBounds(r.coords),{padding:[70,70]})}else updateNavigation();renderRouteCard();renderTeslaNavigation();$('routeModeBtn').textContent=state.overview?'Späť na navigovanie':'Celá trasa'}
@@ -290,6 +290,12 @@ function routeForwardPointToDestination(r,n,meters){
 function trimActiveRouteBehindCar(r,n,markerPosition){
   if(!state.navigating||state.overview||!r?.coords?.length||!n)return;
   const active=state.routeLines?.[state.routeIndex];
+  const offRoute=confirmedOffRoute(n.distance,state.accuracy);
+  if(offRoute){
+    active?.setStyle?.({opacity:.16,weight:6,color:'#64748b'});
+    state.routeLines?.forEach((line,i)=>{if(i!==state.routeIndex)line.setStyle?.({opacity:0})});
+    return;
+  }
   if(active?.setLatLngs){
     const eff=routeEffectiveEnd(r),proj=eff.projection,arrived=!!(state.dest?.location&&state.pos&&dist(state.pos,state.dest.location)<=routeArrivalRadius());
     let pts;
@@ -327,8 +333,13 @@ function updateNavigation(){
   const kmh=(state.speed||0)*3.6;
   applyHeadingUp(markerPosition,navigationZoom(dm,maneuver?.opcode,kmh));
   if(Number.isFinite(state.gpsHeading)&&state.routeHadHeading===false){state.routeHadHeading=true;calculateRoute(false)}
-  if(!arrived&&confirmedOffRoute(n.distance,state.accuracy))state.offRouteHits=(state.offRouteHits||0)+1;else state.offRouteHits=0;
-  if(state.offRouteHits>=2&&Date.now()-state.lastReroute>15000){state.offRouteHits=0;state.lastReroute=Date.now();calculateRoute(false)}
+  const isOffRoute=!arrived&&confirmedOffRoute(n.distance,state.accuracy);
+  if(isOffRoute)state.offRouteHits=(state.offRouteHits||0)+1;else state.offRouteHits=0;
+  if(isOffRoute&&!state.routeLoading&&Date.now()-state.lastReroute>3000){
+    state.offRouteHits=0;
+    state.lastReroute=Date.now();
+    calculateRoute(false);
+  }
   renderRouteBox();renderTeslaNavigation();voiceNavigation();findAheadAlert();findAheadTraffic();
 }
 function renderRouteBox(){const r=state.routes[state.routeIndex],p=state.routeProgress,b=$('routeBox');if(!r){b.classList.add('hidden');return}b.classList.remove('hidden');const time=p?.remainingTime??r.time,di=p?.remainingDistance??r.distance,arr=new Date(Date.now()+1000*(time||0)).toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'}),title=state.navigating?instruction(r.steps?.[p?.stepIdx||0]):(r.routeName||r.name||'Trasa');b.innerHTML=`<b>${esc(title)}</b>${state.navigating&&p?`<small>manéver o ${fmtD(p.distanceToManeuver)}${p.offRoute>50?' · odchýlka '+fmtD(p.offRoute):''}</small>`:''}<div class="routeStats"><div><b>${fmtT(time||0)}</b><small>zostáva</small></div><div><b>${fmtD(di||0)}</b><small>vzdialenosť</small></div><div><b>${arr}</b><small>príchod</small></div></div>`}
@@ -866,3 +877,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_MAX_SEARCH_MODE_V61 */
 
 /* MUSIC_MAX_SEARCH_HISTORY_V62 */
+
+/* NAV_IMMEDIATE_REROUTE_V63 */
