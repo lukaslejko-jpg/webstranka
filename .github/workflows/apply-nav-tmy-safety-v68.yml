@@ -1,0 +1,60 @@
+name: Apply TM-Y navigation safety V68
+
+on:
+  push:
+    branches: [tesla-waze-preview-v1]
+    paths:
+      - 'tesla-waze-preview/navigation-tmy-safety-v68-patch.py'
+      - '.github/workflows/apply-nav-tmy-safety-v68.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+          fetch-depth: 0
+      - name: Record pre-patch application hash
+        run: sha256sum tesla-waze-preview/app.js > /tmp/app-before.sha
+      - name: Apply V68
+        run: python tesla-waze-preview/navigation-tmy-safety-v68-patch.py
+      - name: Verify JS syntax and navigation invariants
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -q 'NAV_TMY_SAFETY_V68' tesla-waze-preview/app.js
+          grep -q 'NAV_TMY_CORE_CONSOLIDATED_V67' tesla-waze-preview/app.js
+          grep -q 'TMY_FULL_NAV_V22' tesla-waze-preview/app.js
+          grep -q 'TMY_VOICE_V23' tesla-waze-preview/app.js
+          grep -q "state.offRouteHits>=2&&!state.routeLoading&&Date.now()-state.lastReroute>15000" tesla-waze-preview/app.js
+          grep -q "wrongTurn&&!state.routeLoading&&Date.now()-state.lastReroute>3000" tesla-waze-preview/app.js
+          grep -q "if(op.includes('TURN_LEFT'))return \`Odbočte doľava" tesla-waze-preview/app.js
+          grep -q "if(op.includes('CONTINUE')||op.includes('STRAIGHT'))return \`Pokračujte rovno" tesla-waze-preview/app.js
+          grep -q "return \`Pokračujte podľa trasy" tesla-waze-preview/app.js
+          grep -q 'MUSIC_DISPLAY_LATIN_FILTER_V56' tesla-waze-preview/app.js
+          ! grep -q 'learnedLocal:true' tesla-waze-preview/app.js
+      - name: Rebuild JS asset
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip, base64
+          p=Path('tesla-waze-preview/app.js')
+          data=gzip.compress(p.read_bytes(),compresslevel=9)
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(data).decode('ascii'))
+          PY
+      - name: Verify scope of generated changes
+        run: |
+          git diff --check
+          test "$(git diff --name-only | sort | tr '\n' ' ')" = "tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64 "
+      - name: Commit V68
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'nav: isolate TM-Y reroute and safe maneuver voice fallback'
+          git push origin HEAD:tesla-waze-preview-v1
