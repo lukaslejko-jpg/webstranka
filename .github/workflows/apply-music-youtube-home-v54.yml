@@ -34,7 +34,7 @@ jobs:
           grep -q 'music-home-covers' tesla-waze-preview/app.css
           grep -q 'music-home-rows' tesla-waze-preview/app.css
           grep -q 'MUSIC_QUALITY_FILTER_V52' tesla-waze-preview/app.js
-          grep -q 'MUSIC_MANUAL_GUARD_V47' tesla-waze-preview/app.js
+          grep -q 'MUSIC_MANUAL_NEXT_HOLD_V46' tesla-waze-preview/app.js
       - name: Rebuild JS and CSS assets
         shell: bash
         run: |
