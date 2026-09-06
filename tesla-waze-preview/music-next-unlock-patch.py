@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 
+# V41 wrapper: V40 is applied first only for compatibility, then the known-good pre-V17 core wins.
 p=Path('tesla-waze-preview/app.js')
 s=p.read_text(encoding='utf-8')
 marker39='/* MUSIC_MANUAL_DIRECT_NAV_V39 */'
@@ -9,7 +10,6 @@ if marker40 in s:
     subprocess.check_call(['python3','tesla-waze-preview/music-restore-prekeepalive-core.py'])
     raise SystemExit(0)
 
-# Install V39 first if an older rebuilt source is encountered.
 if marker39 not in s:
     if '/* MUSIC_NEXT_UNLOCK_V38 */' not in s:
         raise SystemExit('V38 base missing')
@@ -66,7 +66,6 @@ function mprev(){
     s=s[:start]+new+s[end:]
     s+='\n'+marker39+'\n'
 
-# V40: remove dual-player/standby behavior from all track navigation.
 start=s.find('function resetManualMusicTransition(){')
 end=s.find('let ytApiPromise=null;', start)
 if start<0 or end<0:
