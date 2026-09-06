@@ -818,3 +818,13 @@ body:not(.tesla-navigating) #alertBox{
   .music-home-covers{grid-template-columns:repeat(5,minmax(0,1fr))}
   .music-home-rows{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* MUSIC_HEADER_SEARCH_V59 */
+.music-header-search{display:flex;align-items:center;gap:5px;min-width:180px;width:min(360px,34vw);margin-left:6px}
+.music-header-search input{width:100%;height:40px;min-height:40px;border:1px solid #334556;border-radius:10px;background:#0b141d;color:#fff;padding:0 11px;font-size:13px;outline:none}
+.music-header-search input:focus{border-color:#22d3ee;box-shadow:0 0 0 2px rgba(34,211,238,.14)}
+.music-header-search-btn{width:40px;height:40px;min-width:40px;border:1px solid #334556;border-radius:10px;background:#1b2a35;color:#67e8f9;font-size:25px;line-height:1;font-weight:800;padding:0;display:flex;align-items:center;justify-content:center}
+.music-header-search-btn:active{transform:scale(.97)}
+.music-shell.music-maximized .music-header-search{width:min(440px,42vw)}
+@media(max-width:900px){.music-header-search{display:none!important}}

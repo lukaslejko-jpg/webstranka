@@ -512,6 +512,10 @@ function applyMusicWindow(){const shell=document.querySelector('.music-shell');i
 function saveMusicWindow(patch){const cfg={...musicWindowState(),...patch};save(MUSIC_WIN_KEY,cfg);applyMusicWindow()}
 function ensureMusicWindowControls(){
   const shell=document.querySelector('.music-shell'),head=document.querySelector('.music-head');if(!shell||!head||$('musicMinimize'))return;
+  const hs=document.createElement('div');hs.id='musicHeaderSearch';hs.className='music-header-search';hs.innerHTML='<input id="musicHeaderSearchInput" type="search" autocomplete="off" placeholder="Hľadať hudbu…" aria-label="Hľadať hudbu"><button id="musicHeaderSearchBtn" type="button" class="music-header-search-btn" aria-label="Hľadať">⌕</button>';head.insertBefore(hs,head.querySelector('.spacer'));
+  const runHeaderSearch=()=>{const input=$('musicHeaderSearchInput'),full=$('musicSearch');if(!input||!full)return;full.value=input.value.trim();musicSearch()};
+  $('musicHeaderSearchBtn').onclick=runHeaderSearch;
+  $('musicHeaderSearchInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();runHeaderSearch()}};
   const size=document.createElement('button');size.id='musicSize';size.className='btn music-size-btn';size.textContent='Rozmer';head.insertBefore(size,$('closeMusic'));
   const min=document.createElement('button');min.id='musicMinimize';min.className='btn music-min-btn';min.textContent='Minimalizovať';head.insertBefore(min,$('closeMusic'));
   const left=document.createElement('div');left.className='music-resize music-resize-left';left.setAttribute('aria-hidden','true');shell.appendChild(left);
@@ -524,7 +528,7 @@ function ensureMusicWindowControls(){
 }
 function syncMusicFab(){const f=$('musicFab'),m=$('musicModal');if(!f||!m)return;const open=!m.classList.contains('hidden');document.documentElement.classList.toggle('music-window-open',open);document.body.classList.toggle('music-window-open',open);f.classList.toggle('hidden',open);f.style.setProperty('display',open?'none':'flex','important')}
 function setMusicWindowOpen(on){const m=$('musicModal');if(!m)return;m.classList.toggle('hidden',!on);syncMusicFab()}
-function openMusicWindow(){ensureMusicWindowControls();setMusicWindowOpen(true);applyMusicWindow();if($('musicSearch'))$('musicSearch').placeholder='Video, rozprávka, skladba alebo interpret';renderMusicStatus();renderMusicList();const r=$('musicPlayer');const live=!!(music.current&&r&&r.children.length&&(music.audio||music.ytPlayer));if(live){refreshCurrentMusicUi();if(music.wantsPlayback&&!music.userPaused){stopMusicKeepalive();setMusicPlaying(true)}}else renderPlayer()}
+function openMusicWindow(){ensureMusicWindowControls();setMusicWindowOpen(true);applyMusicWindow();if($('musicSearch'))$('musicSearch').placeholder='Video, rozprávka, skladba alebo interpret';if($('musicHeaderSearchInput')&&$('musicSearch'))$('musicHeaderSearchInput').value=$('musicSearch').value||'';renderMusicStatus();renderMusicList();const r=$('musicPlayer');const live=!!(music.current&&r&&r.children.length&&(music.audio||music.ytPlayer));if(live){refreshCurrentMusicUi();if(music.wantsPlayback&&!music.userPaused){stopMusicKeepalive();setMusicPlaying(true)}}else renderPlayer()}
 
 const music={profile:load(LS.music,{tracks:{},artists:{},events:[],youtube:{connected:false,email:'lukaslejko@gmail.com'}}),queue:load(LS.queue,[]),current:null,audio:null,ytPlayer:null,tab:'forYou',started:0,shuffle:load('teslaWaze:musicShuffle:v1',false),autoNext:load('teslaWaze:musicAutoNext:v1',true),userPaused:false,wantsPlayback:false,resumeTimer:null,anonymousYoutube:false,fallbackAttempts:0,fallbackTimer:null,shuffleRecent:[],shuffleBack:[],playingSince:0,manualNavPending:0,manualNavTimer:null};
 function mt(t){const id=t.id||`${norm(t.artist)}::${norm(t.title)}`;return music.profile.tracks[id]||(music.profile.tracks[id]={id,title:t.title||'',artist:t.artist||'',score:0,plays:0,completed:0,skips:0,liked:false,disliked:false,lastPlayed:null,source:t.source||'',streamUrl:t.streamUrl||'',artwork:t.artwork||'',youtubeId:t.youtubeId||''})}
@@ -816,3 +820,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* NAV_DESTINATION_ARRIVAL_V57 */
 
 /* NAV_LOCAL_CORRIDOR_V58 */
+
+/* MUSIC_HEADER_SEARCH_V59 */
