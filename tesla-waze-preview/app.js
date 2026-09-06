@@ -536,15 +536,15 @@ function renderPlayer(){
 }
 let mediaSessionRefreshTimer=null;
 function stopMediaSessionRefresh(){if(mediaSessionRefreshTimer){clearInterval(mediaSessionRefreshTimer);mediaSessionRefreshTimer=null}}
-function setMusicPlaying(playing){document.querySelectorAll('[data-ma=toggle]').forEach(b=>b.textContent=playing?'Pauza':'Prehrať');try{navigator.mediaSession.playbackState=playing?'playing':'paused'}catch{}stopMediaSessionRefresh();if(playing){syncMediaSession();mediaSessionRefreshTimer=setInterval(syncMediaSession,1800)}}
+function setMusicPlaying(playing){document.querySelectorAll('[data-ma=toggle]').forEach(b=>b.textContent=playing?'Pauza':'Prehrať');stopMediaSessionRefresh();if(playing){updateMiniSeek();mediaSessionRefreshTimer=setInterval(updateMiniSeek,1800)}}
 function playMusic(){music.userPaused=false;music.wantsPlayback=true;if(music.audio){music.audio.play().catch(()=>{});return}try{music.ytPlayer?.playVideo?.()}catch{}}
 function pauseMusic(){music.userPaused=true;music.wantsPlayback=false;if(music.resumeTimer){clearTimeout(music.resumeTimer);music.resumeTimer=null}if(music.audio){music.audio.pause();return}try{music.ytPlayer?.pauseVideo?.()}catch{}}
 function toggleMusicPlayback(){if(music.audio){music.audio.paused?playMusic():pauseMusic();return}if(!music.ytPlayer)return;try{music.ytPlayer.getPlayerState()===YT.PlayerState.PLAYING?pauseMusic():playMusic()}catch{}}
 function seekMusic(seconds){try{if(music.audio){music.audio.currentTime=Math.max(0,Math.min(music.audio.duration||Infinity,music.audio.currentTime+seconds));return}if(music.ytPlayer){const now=Number(music.ytPlayer.getCurrentTime?.()||0);music.ytPlayer.seekTo(Math.max(0,now+seconds),true)}}catch{}}
 function scheduleMusicResume(){if(music.userPaused||!music.wantsPlayback||!state.navigating)return;if(music.resumeTimer)clearTimeout(music.resumeTimer);music.resumeTimer=setTimeout(()=>{music.resumeTimer=null;if(music.userPaused||!music.wantsPlayback||!state.navigating)return;if(music.audio){if(music.audio.paused)music.audio.play().catch(()=>{});return}try{const st=music.ytPlayer?.getPlayerState?.();if(st!==YT.PlayerState.PLAYING&&st!==YT.PlayerState.BUFFERING)music.ytPlayer?.playVideo?.()}catch{}},420)}
 setInterval(()=>{if(state.navigating&&music.wantsPlayback&&!music.userPaused)scheduleMusicResume()},1800);
-function syncMediaSession(){updateMiniSeek();if(!('mediaSession' in navigator)||!music.current)return;try{navigator.mediaSession.metadata=new MediaMetadata({title:music.current.title||'Bez názvu',artist:music.current.artist||'',album:'Tesla Maps Smart Music',artwork:music.current.artwork?[{src:music.current.artwork}]:[]});navigator.mediaSession.playbackState=(music.wantsPlayback&&!music.userPaused)?'playing':'paused'}catch{}const actions={play:playMusic,pause:pauseMusic,stop:pauseMusic,previoustrack:mprev,nexttrack:mnext,seekbackward:()=>seekMusic(-15),seekforward:()=>seekMusic(15)};for(const [name,handler] of Object.entries(actions))try{navigator.mediaSession.setActionHandler(name,handler)}catch{}}
-function wireAudio(){if(!music.audio)return;music.audio.onended=()=>{if(music.current)mev('complete',music.current);if(music.autoNext&&!music.userPaused){music.wantsPlayback=true;setMusicPlaying(true);mnext()}else{music.wantsPlayback=false;setMusicPlaying(false)}};music.audio.onplay=()=>{music.userPaused=false;music.wantsPlayback=true;setMusicPlaying(true)};music.audio.onpause=()=>{if(music.userPaused||!music.wantsPlayback)setMusicPlaying(false);else{setMusicPlaying(true);scheduleMusicResume()}};music.audio.ontimeupdate=()=>{updateMiniSeek();if(!('mediaSession' in navigator)||!music.audio?.duration||!Number.isFinite(music.audio.duration))return;try{navigator.mediaSession.setPositionState({duration:music.audio.duration,playbackRate:music.audio.playbackRate||1,position:Math.min(music.audio.currentTime,music.audio.duration)})}catch{}}}
+function syncMediaSession(){updateMiniSeek()}
+function wireAudio(){if(!music.audio)return;music.audio.onended=()=>{if(music.current)mev('complete',music.current);if(music.autoNext&&!music.userPaused){music.wantsPlayback=true;setMusicPlaying(true);mnext()}else{music.wantsPlayback=false;setMusicPlaying(false)}};music.audio.onplay=()=>{music.userPaused=false;music.wantsPlayback=true;setMusicPlaying(true)};music.audio.onpause=()=>{if(music.userPaused||!music.wantsPlayback)setMusicPlaying(false);else{setMusicPlaying(true);scheduleMusicResume()}};music.audio.ontimeupdate=()=>{updateMiniSeek()}}
 function ensureMusicQueue(){
   const items=Object.values(music.profile.tracks).filter(x=>!x.disliked).sort((x,y)=>(y.score+(isYoutubePreference(y)?3:0))-(x.score+(isYoutubePreference(x)?3:0)));
   const ids=items.map(x=>mt(x).id),qids=(music.queue||[]).map(x=>mt(x).id);
@@ -682,3 +682,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_SESSION_HOLD_V43 */
 
 /* MUSIC_PERSISTENT_YT_V44 */
+
+/* MUSIC_DISABLE_MEDIASESSION_V45 */
