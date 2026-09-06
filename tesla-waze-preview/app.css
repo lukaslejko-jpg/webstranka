@@ -828,3 +828,15 @@ body:not(.tesla-navigating) #alertBox{
 .music-header-search-btn:active{transform:scale(.97)}
 .music-shell.music-maximized .music-header-search{width:min(440px,42vw)}
 @media(max-width:900px){.music-header-search{display:none!important}}
+
+
+/* MUSIC_HEADER_SEARCH_RESULTS_V60 */
+.music-header-search-btn{width:auto!important;min-width:76px!important;padding:0 12px!important;font-size:12px!important;letter-spacing:0!important}
+@media (min-width:901px){
+  .music-shell.music-maximized.music-searching>.music-body>#musicMaxHome{display:none!important}
+  .music-shell.music-maximized.music-searching>.music-body>#musicSearchCard{display:block!important;background:transparent!important;border:0!important;padding:0!important;margin:0!important}
+  .music-shell.music-maximized.music-searching>.music-body>#musicSearchCard>.row{display:none!important}
+  .music-shell.music-maximized.music-searching>.music-body>#musicSearchCard>#musicSearchResults{display:block!important}
+  .music-shell.music-maximized.music-searching #musicSearchResults .music-group-title{font-size:20px!important;margin:18px 0 8px!important}
+  .music-shell.music-maximized.music-searching #musicSearchResults .music-track{display:grid!important;grid-template-columns:56px minmax(0,1fr) 92px!important;min-height:68px!important;margin:6px 0!important}
+}
