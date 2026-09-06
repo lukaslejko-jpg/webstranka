@@ -54,8 +54,7 @@ s,n=pat.subn(repl,s,count=1)
 if n!=1:
     raise SystemExit('trimActiveRouteBehindCar block missing')
 
-pat=re.compile(r"function updateNavigation\(\)\{.*?\n\}
-function renderRouteBox",re.S)
+pat=re.compile(r"function updateNavigation\(\)\{.*?\n\}\nfunction renderRouteBox",re.S)
 repl=r'''function updateNavigation(){
   const r=state.routes[state.routeIndex];
   if(!state.navigating||state.overview||!state.pos||!r?.coords?.length)return;
@@ -92,9 +91,8 @@ if old not in s:
     raise SystemExit('renderTeslaNavigation HUD anchor missing')
 s=s.replace(old,new,1)
 
-# Assertions.
-for needle in ["NAV_DESTINATION_ARRIVAL_V57","function routeDestinationProjection(r)","effectiveRouteEnd:total","displayText=arrived?'Cieľ dosiahnutý'","if(op.includes('DESTINATION'))return '✓';"]:
-    if needle!='NAV_DESTINATION_ARRIVAL_V57' and needle not in s:
+for needle in ["function routeDestinationProjection(r)","effectiveRouteEnd:total","displayText=arrived?'Cieľ dosiahnutý'","if(op.includes('DESTINATION'))return '✓';"]:
+    if needle not in s:
         raise SystemExit('missing '+needle)
 if "if(op.includes('DESTINATION'))return '◆';" in s:
     raise SystemExit('old destination diamond still present')
