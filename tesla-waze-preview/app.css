@@ -586,3 +586,6 @@ body.tesla-navigating #speed{display:flex!important;min-width:86px;background:rg
     border-radius:12px!important;
   }
 }
+
+/* TESLA_TRIP_HEIGHT_190_V50 */
+.tesla-trip{height:190px!important;}
