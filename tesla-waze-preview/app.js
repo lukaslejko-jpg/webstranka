@@ -473,7 +473,7 @@ function syncMusicFab(){const f=$('musicFab'),m=$('musicModal');if(!f||!m)return
 function setMusicWindowOpen(on){const m=$('musicModal');if(!m)return;m.classList.toggle('hidden',!on);syncMusicFab()}
 function openMusicWindow(){ensureMusicWindowControls();setMusicWindowOpen(true);applyMusicWindow();if($('musicSearch'))$('musicSearch').placeholder='Video, rozprávka, skladba alebo interpret';renderMusicStatus();renderMusicList();const r=$('musicPlayer');const live=!!(music.current&&r&&r.children.length&&(music.audio||music.ytPlayer));if(live){refreshCurrentMusicUi();if(music.wantsPlayback&&!music.userPaused){stopMusicKeepalive();setMusicPlaying(true)}}else renderPlayer()}
 
-const music={profile:load(LS.music,{tracks:{},artists:{},events:[],youtube:{connected:false,email:'lukaslejko@gmail.com'}}),queue:load(LS.queue,[]),current:null,audio:null,ytPlayer:null,tab:'forYou',started:0,shuffle:load('teslaWaze:musicShuffle:v1',false),autoNext:load('teslaWaze:musicAutoNext:v1',true),userPaused:false,wantsPlayback:false,resumeTimer:null,anonymousYoutube:false,fallbackAttempts:0,fallbackTimer:null,gaplessBusy:false,gaplessTimer:null,shuffleRecent:[],shuffleBack:[]};
+const music={profile:load(LS.music,{tracks:{},artists:{},events:[],youtube:{connected:false,email:'lukaslejko@gmail.com'}}),queue:load(LS.queue,[]),current:null,audio:null,ytPlayer:null,tab:'forYou',started:0,shuffle:load('teslaWaze:musicShuffle:v1',false),autoNext:load('teslaWaze:musicAutoNext:v1',true),userPaused:false,wantsPlayback:false,resumeTimer:null,anonymousYoutube:false,fallbackAttempts:0,fallbackTimer:null,shuffleRecent:[],shuffleBack:[]};
 function mt(t){const id=t.id||`${norm(t.artist)}::${norm(t.title)}`;return music.profile.tracks[id]||(music.profile.tracks[id]={id,title:t.title||'',artist:t.artist||'',score:0,plays:0,completed:0,skips:0,liked:false,disliked:false,lastPlayed:null,source:t.source||'',streamUrl:t.streamUrl||'',artwork:t.artwork||'',youtubeId:t.youtubeId||''})}
 function ma(n){const k=norm(n)||'unknown';return music.profile.artists[k]||(music.profile.artists[k]={name:n||'',score:0,plays:0})}
 function mev(type,t){const s=mt(t),a=ma(t.artist),d={like:5,dislike:-6,complete:3,play:.4,skip:-1.5,replay:2}[type]||0;s.score+=d;a.score+=d*.7;if(type==='play'){s.plays++;a.plays++;s.lastPlayed=new Date().toISOString()}if(type==='complete')s.completed++;if(type==='skip')s.skips++;if(type==='like'){s.liked=true;s.disliked=false}music.profile.events.push({type,id:s.id,at:new Date().toISOString()});music.profile.events=music.profile.events.slice(-500);save(LS.music,music.profile);renderMusicStatus()}
@@ -525,14 +525,8 @@ function renderPlayer(){
   r.querySelector('[data-ma=auto]').onclick=()=>{music.autoNext=!music.autoNext;save('teslaWaze:musicAutoNext:v1',music.autoNext);r.querySelector('[data-ma=auto]').classList.toggle('primary',music.autoNext)};
   r.querySelector('[data-ma=like]').onclick=()=>{
   const st=mt(music.current);
-  if(st.liked){
-    st.liked=false;st.score-=5;
-    music.profile.events.push({type:'unlike',id:st.id,at:new Date().toISOString()});
-    music.profile.events=music.profile.events.slice(-500);
-    save(LS.music,music.profile);renderMusicStatus();
-  }else{mev('like',music.current)}
-  renderMusicList();
-  const btn=r.querySelector('[data-ma=like]');if(btn)btn.classList.toggle('primary',!!mt(music.current).liked);
+  if(st.liked){st.liked=false;st.score-=5;music.profile.events.push({type:'unlike',id:st.id,at:new Date().toISOString()});music.profile.events=music.profile.events.slice(-500);save(LS.music,music.profile);renderMusicStatus()}else{mev('like',music.current)}
+  renderMusicList();const btn=r.querySelector('[data-ma=like]');if(btn)btn.classList.toggle('primary',!!mt(music.current).liked);
 };
   const byId=new Map(q.map(t=>[mt(t).id,t]));
   r.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)});
@@ -559,9 +553,9 @@ function ensureMusicQueue(){
   return music.queue;
 }
 function mplay(t){const st=mt(t),yt=t.youtubeId||st.youtubeId||(String(t.id||'').startsWith('youtube:')?String(t.id).slice(8):'');if(!t.streamUrl&&!yt)return musicSources(t);if(music.current&&music.started&&Date.now()-music.started<15000)mev('skip',music.current);const replay=music.current&&mt(music.current).id===mt(t).id;music.current=t;music.userPaused=false;music.wantsPlayback=true;renderPlayer();music.started=Date.now();mev(replay?'replay':'play',t);if(music.audio)music.audio.play().catch(()=>{})}
-function youtubeIdForTrack(t){if(!t)return'';const st=mt(t);return t.youtubeId||st.youtubeId||(String(t.id||'').startsWith('youtube:')?String(t.id).slice(8):'')}
-function nextMusicTrack(){
-  const q=ensureMusicQueue();if(!q.length)return null;
+function mnext(){
+  const q=ensureMusicQueue();if(!q.length)return false;
+  let n=null;
   if(music.shuffle&&q.length>1){
     const cur=music.current?mt(music.current).id:'';
     if(cur){music.shuffleBack.push(cur);music.shuffleBack=music.shuffleBack.slice(-50)}
@@ -569,36 +563,41 @@ function nextMusicTrack(){
     const blocked=new Set([cur,...music.shuffleRecent.slice(-recentLimit)]);
     let candidates=q.filter(x=>!blocked.has(mt(x).id));
     if(!candidates.length)candidates=q.filter(x=>mt(x).id!==cur);
-    const pick=candidates[Math.floor(Math.random()*candidates.length)]||null;
-    if(pick){music.shuffleRecent.push(mt(pick).id);music.shuffleRecent=music.shuffleRecent.slice(-recentLimit)}
-    return pick;
+    n=candidates[Math.floor(Math.random()*candidates.length)]||null;
+    if(n){music.shuffleRecent.push(mt(n).id);music.shuffleRecent=music.shuffleRecent.slice(-recentLimit)}
+  }else{
+    const i=q.findIndex(x=>music.current&&mt(x).id===mt(music.current).id);
+    n=q[(i+1+q.length)%q.length]||null;
   }
-  const i=q.findIndex(x=>music.current&&mt(x).id===mt(music.current).id);
-  return q[(i+1+q.length)%q.length]||null;
+  if(!n)return false;
+  mplay(n);
+  return true;
 }
-function prevMusicTrack(){
-  const q=ensureMusicQueue();if(!q.length)return null;
+function mprev(){
+  const q=ensureMusicQueue();if(!q.length)return false;
+  let p=null;
   if(music.shuffle){
     const cur=music.current?mt(music.current).id:'';
     while(music.shuffleBack.length){
       const id=music.shuffleBack.pop();
-      if(id&&id!==cur){const t=q.find(x=>mt(x).id===id);if(t)return t}
+      if(id&&id!==cur){p=q.find(x=>mt(x).id===id)||null;if(p)break}
     }
   }
-  const i=q.findIndex(x=>music.current&&mt(x).id===mt(music.current).id);
-  return q[(i-1+q.length)%q.length]||null;
+  if(!p){
+    const i=q.findIndex(x=>music.current&&mt(x).id===mt(music.current).id);
+    p=q[(i-1+q.length)%q.length]||null;
+  }
+  if(!p)return false;
+  mplay(p);
+  return true;
 }
-function refreshCurrentMusicUi(){const r=$('musicPlayer'),t=music.current;if(!r||!t)return;const st=mt(t),art=r.querySelector('.music-now .music-art'),title=r.querySelector('.music-now .music-title'),sub=r.querySelector('.music-now .music-sub');if(art)art.src=t.artwork||st.artwork||'';if(title)title.textContent=t.title||st.title||'Bez názvu';if(sub)sub.textContent=`${t.artist||st.artist||''} · ${t.source||st.source||''}`;const like=r.querySelector('[data-ma=like]');if(like)like.classList.toggle('primary',!!st.liked);wireMiniQueue(r.querySelector('.music-mini-queue'),ensureMusicQueue(),st.id);syncMediaSession();setTimeout(updateMiniSeek,80)}
-function handoffYoutubeTrack(next,reason='next'){if(!next||music.gaplessBusy||!music.ytPlayer)return false;const id=youtubeIdForTrack(next);if(!id)return false;const currentId=currentYoutubeId();if(!currentId)return false;music.gaplessBusy=true;const prev=music.current;music.current=next;music.userPaused=false;music.wantsPlayback=true;music.started=Date.now();if(prev)mev(reason==='auto'?'complete':'skip',prev);mev('play',next);refreshCurrentMusicUi();try{music.ytPlayer.loadVideoById(id,0,'default');setMusicPlaying(true);setTimeout(()=>{music.gaplessBusy=false},900);return true}catch{music.gaplessBusy=false;music.current=prev;return false}}
-function mnext(reason='next'){const n=nextMusicTrack();if(!n)return;if(handoffYoutubeTrack(n,reason))return;mplay(n)}function mprev(){const p=prevMusicTrack();if(!p)return;if(handoffYoutubeTrack(p,'prev'))return;mplay(p)}
 let ytApiPromise=null;function loadYoutubeApi(){if(window.YT&&window.YT.Player)return Promise.resolve();if(ytApiPromise)return ytApiPromise;ytApiPromise=new Promise(resolve=>{const prev=window.onYouTubeIframeAPIReady;window.onYouTubeIframeAPIReady=()=>{try{prev&&prev()}catch{}resolve()};if(!document.querySelector('script[data-yt-api]')){const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';s.dataset.ytApi='1';document.head.appendChild(s)}});return ytApiPromise}
 function currentYoutubeId(){const t=music.current;if(!t)return'';const s=mt(t);return t.youtubeId||s.youtubeId||(String(t.id||'').startsWith('youtube:')?String(t.id).slice(8):'')}
 function setYoutubeFallbackStatus(text,active=false){const el=document.querySelector('[data-free-status]');if(el){el.textContent=text;el.classList.toggle('active',active)}}
 async function switchYoutubeToFree(yt,manual=false){if(!yt)return;music.anonymousYoutube=true;music.fallbackAttempts=0;if(music.fallbackTimer){clearTimeout(music.fallbackTimer);music.fallbackTimer=null}setYoutubeFallbackStatus(manual?'Spúšťam bezplatné YouTube s reklamami…':'YouTube účet je blokovaný · prepínam na prehrávanie s reklamami…',true);try{music.ytPlayer?.destroy?.()}catch{}music.ytPlayer=null;const host=document.getElementById('ytPlayerHost');if(host){host.innerHTML=''}await setupYoutubePlayer(yt,true)}
 function noteYoutubeBlockedState(yt){if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback)return;music.fallbackAttempts=(music.fallbackAttempts||0)+1;if(music.fallbackAttempts>=3)switchYoutubeToFree(yt,false)}
-async function setupYoutubePlayer(yt,anonymous=music.anonymousYoutube){try{await loadYoutubeApi();const host=document.getElementById('ytPlayerHost');if(!host)return;music.anonymousYoutube=!!anonymous;try{music.ytPlayer?.destroy?.()}catch{}host.innerHTML='';setYoutubeFallbackStatus(anonymous?'Free YouTube · reklamy môžu byť zobrazené':'YouTube účet',anonymous);music.ytPlayer=new YT.Player('ytPlayerHost',{host:anonymous?'https://www.youtube-nocookie.com':'https://www.youtube.com',videoId:yt,playerVars:{autoplay:1,playsinline:1,rel:0,origin:location.origin},events:{onReady:e=>{syncMediaSession();try{e.target.playVideo()}catch{}},onStateChange:e=>{if(e.data===YT.PlayerState.PLAYING){music.gaplessBusy=false;music.fallbackAttempts=0;setMusicPlaying(true)}else if(e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.CUED||e.data===YT.PlayerState.UNSTARTED){if(!music.gaplessBusy){setMusicPlaying(false);scheduleMusicResume();noteYoutubeBlockedState(currentYoutubeId()||yt)}}else if(e.data===YT.PlayerState.ENDED){if(music.autoNext&&mnext('auto'))return;music.wantsPlayback=false;setMusicPlaying(false);if(music.current)mev('complete',music.current)}},onError:()=>{if(!anonymous&&music.wantsPlayback&&!music.userPaused)noteYoutubeBlockedState(yt)}}})}catch{const h=document.getElementById('ytPlayerHost');if(h){const base=anonymous?'https://www.youtube-nocookie.com':'https://www.youtube.com';h.innerHTML=`<iframe class="yt-player" src="${base}/embed/${encodeURIComponent(yt)}?autoplay=1&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;setYoutubeFallbackStatus(anonymous?'Free YouTube · reklamy môžu byť zobrazené':'YouTube účet',anonymous)}syncMediaSession()}}
-setInterval(()=>{if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.();if(st!==YT.PlayerState.PLAYING&&st!==YT.PlayerState.BUFFERING)noteYoutubeBlockedState(currentYoutubeId())}catch{}},2600);setInterval(()=>{if(!music.autoNext||music.userPaused||!music.wantsPlayback||music.gaplessBusy||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.(),d=Number(music.ytPlayer.getDuration?.()||0),t=Number(music.ytPlayer.getCurrentTime?.()||0);if(st===YT.PlayerState.PLAYING&&d>2&&d-t>0&&d-t<=0.38){const n=nextMusicTrack();if(n)handoffYoutubeTrack(n,'auto')}}catch{}},120);
-/* MUSIC_GAPLESS_HANDOFF_V16 *//* MUSIC_FREE_FALLBACK_V15 */
+async function setupYoutubePlayer(yt,anonymous=music.anonymousYoutube){try{await loadYoutubeApi();const host=document.getElementById('ytPlayerHost');if(!host)return;music.anonymousYoutube=!!anonymous;try{music.ytPlayer?.destroy?.()}catch{}host.innerHTML='';setYoutubeFallbackStatus(anonymous?'Free YouTube · reklamy môžu byť zobrazené':'YouTube účet',anonymous);music.ytPlayer=new YT.Player('ytPlayerHost',{host:anonymous?'https://www.youtube-nocookie.com':'https://www.youtube.com',videoId:yt,playerVars:{autoplay:1,playsinline:1,rel:0,origin:location.origin},events:{onReady:e=>{syncMediaSession();try{e.target.playVideo()}catch{}},onStateChange:e=>{if(e.data===YT.PlayerState.PLAYING){music.fallbackAttempts=0;setMusicPlaying(true)}else if(e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.CUED||e.data===YT.PlayerState.UNSTARTED){setMusicPlaying(false);scheduleMusicResume();noteYoutubeBlockedState(yt)}else if(e.data===YT.PlayerState.ENDED){music.wantsPlayback=false;setMusicPlaying(false);if(music.current)mev('complete',music.current);if(music.autoNext)mnext()}},onError:()=>{if(!anonymous&&music.wantsPlayback&&!music.userPaused)noteYoutubeBlockedState(yt)}}})}catch{const h=document.getElementById('ytPlayerHost');if(h){const base=anonymous?'https://www.youtube-nocookie.com':'https://www.youtube.com';h.innerHTML=`<iframe class="yt-player" src="${base}/embed/${encodeURIComponent(yt)}?autoplay=1&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;setYoutubeFallbackStatus(anonymous?'Free YouTube · reklamy môžu byť zobrazené':'YouTube účet',anonymous)}syncMediaSession()}}
+setInterval(()=>{if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.();if(st!==YT.PlayerState.PLAYING&&st!==YT.PlayerState.BUFFERING)noteYoutubeBlockedState(currentYoutubeId())}catch{}},2600);/* MUSIC_FREE_FALLBACK_V15 */
 
 function startMusicKeepalive(){}
 function stopMusicKeepalive(){}
@@ -654,3 +653,6 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_TRANSITION_KEEPALIVE_V18 */
 /* MUSIC_TESLA_MEDIA_CONTROLS_V26 */
 /* MUSIC_PREKEEPALIVE_CORE_V41 */
+
+/* MUSIC_GAPLESS_HANDOFF_V16 */
+/* MUSIC_PREGAPLESS_CORE_V42 */
