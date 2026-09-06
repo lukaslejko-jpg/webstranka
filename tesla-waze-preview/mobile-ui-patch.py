@@ -139,7 +139,32 @@ if marker_v7 not in css:
 }
 '''
 
-for required in (marker, marker_v2, marker_v3, marker_v4, marker_v5, marker_v6, marker_v7):
+marker_v48 = '/* TESLA_TRIP_HEIGHT_V48 */'
+if marker_v48 not in css:
+    css += r'''
+
+/* TESLA_TRIP_HEIGHT_V48 */
+@media (min-width:701px){
+  body.tesla-navigating .tesla-trip{
+    height:170px!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  body.tesla-navigating .tesla-trip-stats{
+    flex:1 1 auto!important;
+    align-items:center!important;
+    padding-top:22px!important;
+    padding-bottom:16px!important;
+  }
+  body.tesla-navigating .tesla-progress{flex:0 0 auto!important}
+  body.tesla-navigating .tesla-trip-actions{
+    flex:0 0 auto!important;
+    margin-top:auto!important;
+  }
+}
+'''
+
+for required in (marker, marker_v2, marker_v3, marker_v4, marker_v5, marker_v6, marker_v7, marker_v48):
     if required not in css:
         raise SystemExit(f'{required} marker missing after patch')
 
