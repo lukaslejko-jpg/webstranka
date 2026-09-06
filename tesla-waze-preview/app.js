@@ -501,18 +501,27 @@ sanitizeMusicProfile();
 function musicItems(){let a=Object.values(music.profile.tracks).filter(isEligibleMusic);if(music.tab==='likes')a=a.filter(x=>x.liked);if(music.tab==='recent')a=a.filter(x=>x.lastPlayed).sort((x,y)=>Date.parse(y.lastPlayed)-Date.parse(x.lastPlayed));else a.sort((x,y)=>(y.score+(isYoutubePreference(y)?3:0))-(x.score+(isYoutubePreference(x)?3:0)));return a}
 function renderMusicStatus(){const n=Object.values(music.profile.tracks).filter(isEligibleMusic).length,y=music.profile.youtube;$('musicStatus').textContent=`${n} naučených skladieb`;$('musicAccount').textContent=y.connected?`${y.email||'lukaslejko@gmail.com'} · synchronizované`:'lukaslejko@gmail.com · YouTube nepripojený';$('musicMiniStatus').textContent=$('musicAccount').textContent}
 function canPlayInApp(t){return !!(t?.streamUrl||t?.youtubeId||String(t?.id||'').startsWith('youtube:'))}
-function musicCard(t){const s=mt(t),play=!!t.streamUrl,yt=isYoutubePreference(t)||isYoutubePreference(s),inApp=play||yt;return `<div class="music-track" data-mrow="${esc(s.id)}"><img class="music-art" src="${esc(t.artwork||'')}" onerror="this.style.visibility='hidden'"><div><div class="music-title">${esc(t.title||'Bez názvu')}</div><div class="music-sub">${esc(t.artist||'')} · ${esc(t.source||'')}</div><span class="music-source">${play?'▶ FREE':yt?'▶ YOUTUBE':esc((t.source||'NÁJSŤ').toUpperCase())}</span>${s.liked?' <span class="music-source">♥</span>':''}</div><button class="btn ${inApp?'primary':''}" data-mplay="${esc(s.id)}">${inApp?'Prehrať':'Nájsť zdroj'}</button></div>`}
+function musicDisplayText(v,fallback=''){
+  let x=String(v??'');
+  x=x.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ue000-\uf8ff\ufffd]/g,'');
+  try{x=x.replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu,'')}catch{}
+  x=x.replace(/[□■▪▫◻◼◽◾▢▣▤▥▦▧▨▩]+/g,'');
+  x=x.replace(/\s+/g,' ').trim();
+  return x||fallback;
+}
+
+function musicCard(t){const s=mt(t),play=!!t.streamUrl,yt=isYoutubePreference(t)||isYoutubePreference(s),inApp=play||yt;return `<div class="music-track" data-mrow="${esc(s.id)}"><img class="music-art" src="${esc(t.artwork||'')}" onerror="this.style.visibility='hidden'"><div><div class="music-title">${esc(musicDisplayText(t.title,'Bez názvu'))}</div><div class="music-sub">${esc(musicDisplayText(t.artist))} · ${esc(musicDisplayText(t.source))}</div><span class="music-source">${play?'▶ FREE':yt?'▶ YOUTUBE':esc((t.source||'NÁJSŤ').toUpperCase())}</span>${s.liked?' <span class="music-source">♥</span>':''}</div><button class="btn ${inApp?'primary':''}" data-mplay="${esc(s.id)}">${inApp?'Prehrať':'Nájsť zdroj'}</button></div>`}
 function renderMusicList(a=musicItems(),node=$('musicList')){node.innerHTML=a.length?a.map(musicCard).join(''):'<div class="music-empty">Zatiaľ nič. Synchronizuj YouTube alebo vyhľadaj video či skladbu.</div>';const open=t=>{if(!t)return;canPlayInApp(t)?mplay(t):musicSources(t)};node.querySelectorAll('[data-mplay]').forEach(b=>b.onclick=e=>{e.stopPropagation();open(a.find(x=>mt(x).id===b.dataset.mplay))});node.querySelectorAll('[data-mrow]').forEach(r=>r.onclick=()=>open(a.find(x=>mt(x).id===r.dataset.mrow)));if(document.querySelector('.music-shell')?.classList.contains('music-maximized'))renderMusicMaxHome()}
 function renderMusicGroups(groups,node){const all=groups.flatMap(g=>g.items),byId=new Map(all.map(t=>[mt(t).id,t]));node.innerHTML=groups.filter(g=>g.items.length).map(g=>`<div class="music-group-title">${esc(g.title)} <span>${g.items.length}</span></div>${g.items.map(musicCard).join('')}`).join('')||'<div class="music-empty">Nenašli sa žiadne výsledky. Skontrolujte pripojenie YouTube alebo skúste iný názov.</div>';const open=t=>{if(!t)return;canPlayInApp(t)?mplay(t):musicSources(t)};node.querySelectorAll('[data-mplay]').forEach(b=>b.onclick=e=>{e.stopPropagation();open(byId.get(b.dataset.mplay))});node.querySelectorAll('[data-mrow]').forEach(r=>r.onclick=()=>open(byId.get(r.dataset.mrow)))}
 
 /* MUSIC_YOUTUBE_HOME_V54 */
 function musicHomeLargeCard(t){
   const s=mt(t),art=t.artwork||s.artwork||'';
-  return `<button type="button" class="music-home-cover" data-home-play="${esc(s.id)}"><span class="music-home-cover-art">${art?`<img src="${esc(art)}" onerror="this.style.visibility='hidden'">`:''}<i class="music-home-play">▶</i></span><b>${esc(t.title||s.title||'Bez názvu')}</b><small>${esc(t.artist||s.artist||'')}</small></button>`;
+  return `<button type="button" class="music-home-cover" data-home-play="${esc(s.id)}"><span class="music-home-cover-art">${art?`<img src="${esc(art)}" onerror="this.style.visibility='hidden'">`:''}<i class="music-home-play">▶</i></span><b>${esc(musicDisplayText(t.title||s.title,'Bez názvu'))}</b><small>${esc(musicDisplayText(t.artist||s.artist))}</small></button>`;
 }
 function musicHomeListCard(t){
   const s=mt(t),art=t.artwork||s.artwork||'';
-  return `<button type="button" class="music-home-row" data-home-play="${esc(s.id)}">${art?`<img src="${esc(art)}" onerror="this.style.visibility='hidden'">`:'<span class="music-home-row-empty">♫</span>'}<span><b>${esc(t.title||s.title||'Bez názvu')}</b><small>${esc(t.artist||s.artist||'')}</small></span><i>▶</i></button>`;
+  return `<button type="button" class="music-home-row" data-home-play="${esc(s.id)}">${art?`<img src="${esc(art)}" onerror="this.style.visibility='hidden'">`:'<span class="music-home-row-empty">♫</span>'}<span><b>${esc(musicDisplayText(t.title||s.title,'Bez názvu'))}</b><small>${esc(musicDisplayText(t.artist||s.artist))}</small></span><i>▶</i></button>`;
 }
 function renderMusicMaxHome(){
   const shell=document.querySelector('.music-shell');
@@ -521,7 +530,7 @@ function renderMusicMaxHome(){
   let home=body.querySelector('#musicMaxHome');
   if(!home){home=document.createElement('div');home.id='musicMaxHome';home.className='music-max-home';body.prepend(home)}
   const all=Object.values(music.profile.tracks).filter(isEligibleMusic);
-  const quick=[...all].sort((a,b)=>((b.score||0)+(b.plays||0)*.7+(b.completed||0)*.6+(b.liked?4:0))-((a.score||0)+(a.plays||0)*.7+(a.completed||0)*.6+(a.liked?4:0))).slice(0,7);
+  const quick=[...all].sort((a,b)=>((b.score||0)+(b.plays||0)*.7+(b.completed||0)*.6+(b.liked?4:0))-((a.score||0)+(a.plays||0)*.7+(a.completed||0)*.6+(a.liked?4:0))).slice(0,10);
   const liked=[...all].filter(x=>x.liked).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,12);
   const recent=[...all].filter(x=>x.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed||0)-Date.parse(a.lastPlayed||0)).slice(0,12);
   const fallback=[...all].sort((a,b)=>(b.score||0)-(a.score||0));
@@ -539,7 +548,7 @@ function musicCurrentTime(){try{if(music.audio)return Number(music.audio.current
 function musicDuration(){try{if(music.audio)return Number(music.audio.duration||0);if(music.ytPlayer)return Number(music.ytPlayer.getDuration?.()||0)}catch{}return 0}
 function seekMusicTo(seconds){try{const d=musicDuration(),v=Math.max(0,Math.min(d||Infinity,Number(seconds)||0));if(music.audio){music.audio.currentTime=v;return}if(music.ytPlayer)music.ytPlayer.seekTo(v,true)}catch{}}
 function updateMiniSeek(){const seek=$('musicMiniSeek'),now=$('musicMiniNow'),total=$('musicMiniTotal');if(!seek)return;const d=musicDuration(),p=musicCurrentTime();if(now)now.textContent=fmtMusicClock(p);if(total)total.textContent=d>0?fmtMusicClock(d):'--:--';seek.disabled=!(d>0);if(d>0&&document.activeElement!==seek)seek.value=String(Math.max(0,Math.min(1000,Math.round(p/d*1000))))}
-function miniQueueMarkup(q,currentId){return q.map((t,i)=>{const s=mt(t),active=s.id===currentId;return `<button type="button" class="music-mini-track ${active?'active':''}" data-mini-play="${esc(s.id)}"><span class="music-mini-index">${i+1}</span><img class="music-mini-art" src="${esc(t.artwork||s.artwork||'')}" onerror="this.style.visibility='hidden'"><span class="music-mini-meta"><b>${esc(t.title||s.title||'Bez názvu')}</b><small>${esc(t.artist||s.artist||'')}</small></span>${active?'<span class="music-mini-playing">▶</span>':''}</button>`}).join('')}
+function miniQueueMarkup(q,currentId){return q.map((t,i)=>{const s=mt(t),active=s.id===currentId;return `<button type="button" class="music-mini-track ${active?'active':''}" data-mini-play="${esc(s.id)}"><span class="music-mini-index">${i+1}</span><img class="music-mini-art" src="${esc(t.artwork||s.artwork||'')}" onerror="this.style.visibility='hidden'"><span class="music-mini-meta"><b>${esc(musicDisplayText(t.title||s.title,'Bez názvu'))}</b><small>${esc(musicDisplayText(t.artist||s.artist))}</small></span>${active?'<span class="music-mini-playing">▶</span>':''}</button>`}).join('')}
 
 /* MUSIC_MINI_SEARCH_V6 */
 function wireMiniQueue(container,q,currentId){if(!container)return;container.innerHTML=miniQueueMarkup(q,currentId||'');const byId=new Map(q.map(t=>[mt(t).id,t]));container.querySelectorAll('[data-mini-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.miniPlay);if(t)mplay(t)})}
@@ -563,7 +572,7 @@ function renderPlayer(){
   const media=yt?`<div id="ytPlayerHost" class="yt-player"></div>`:'<audio controls></audio>';
   const freeRow=yt?`<div class="music-free-row"><span data-free-status>${music.anonymousYoutube?'Free YouTube · reklamy môžu byť zobrazené':'YouTube účet'}</span><button type="button" class="btn" data-ma="free">S reklamami</button></div>`:'';
   const controls=`<div class="music-controls music-controls-6"><button class="btn" data-ma="prev" title="Predchádzajúca skladba">Späť</button><button class="btn primary" data-ma="toggle">Prehrať</button><button class="btn" data-ma="next" title="Ďalšia skladba">Ďalšia</button><button class="btn ${music.shuffle?'primary':''}" data-ma="shuffle">Náhodne</button><button class="btn ${music.autoNext?'primary':''}" data-ma="auto">Auto</button><button class="btn ${s.liked?'primary':''}" data-ma="like">Obľúbiť</button></div>`;
-  r.innerHTML=`<div class="music-mini-search"><input id="musicMiniSearch" type="search" placeholder="Hľadať skladbu…" autocomplete="off"><button id="musicMiniSearchBtn" type="button" class="btn primary">Hľadať</button></div><div class="music-now"><img class="music-art" src="${esc(music.current.artwork||'')}"><div><div class="music-title">${esc(music.current.title)}</div><div class="music-sub">${esc(music.current.artist||'')} · ${esc(music.current.source||'')}</div></div></div>${media}${freeRow}${controls}<div class="music-mini-panel"><div class="music-mini-seekrow"><span id="musicMiniNow">0:00</span><input id="musicMiniSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Pozícia skladby"><span id="musicMiniTotal">--:--</span></div><div class="music-mini-queue" style="flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,curId)}</div></div>`;
+  r.innerHTML=`<div class="music-mini-search"><input id="musicMiniSearch" type="search" placeholder="Hľadať skladbu…" autocomplete="off"><button id="musicMiniSearchBtn" type="button" class="btn primary">Hľadať</button></div><div class="music-now"><img class="music-art" src="${esc(music.current.artwork||'')}"><div><div class="music-title">${esc(musicDisplayText(music.current.title,'Bez názvu'))}</div><div class="music-sub">${esc(musicDisplayText(music.current.artist))} · ${esc(musicDisplayText(music.current.source))}</div></div></div>${media}${freeRow}${controls}<div class="music-mini-panel"><div class="music-mini-seekrow"><span id="musicMiniNow">0:00</span><input id="musicMiniSeek" type="range" min="0" max="1000" value="0" step="1" aria-label="Pozícia skladby"><span id="musicMiniTotal">--:--</span></div><div class="music-mini-queue" style="flex:1;min-height:0;overflow-y:auto">${miniQueueMarkup(q,curId)}</div></div>`;
   music.audio=r.querySelector('audio');music.ytPlayer=null;
   if(music.audio){music.audio.src=music.current.streamUrl||'';wireAudio()}else if(yt){setupYoutubePlayer(yt)}
   const freeBtn=r.querySelector('[data-ma=free]');if(freeBtn)freeBtn.onclick=()=>switchYoutubeToFree(yt,true);
@@ -757,3 +766,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_STARTUP_NAV_GUARD_V47 */
 
 /* MUSIC_QUALITY_FILTER_V52 */
+
+/* MUSIC_HOME_POLISH_V55 */
