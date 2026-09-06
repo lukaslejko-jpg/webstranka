@@ -840,3 +840,17 @@ body:not(.tesla-navigating) #alertBox{
   .music-shell.music-maximized.music-searching #musicSearchResults .music-group-title{font-size:20px!important;margin:18px 0 8px!important}
   .music-shell.music-maximized.music-searching #musicSearchResults .music-track{display:grid!important;grid-template-columns:56px minmax(0,1fr) 92px!important;min-height:68px!important;margin:6px 0!important}
 }
+
+
+/* MUSIC_MAX_SEARCH_MODE_V61 */
+/* Keep the original compact/minimized Smart Music header completely unchanged. */
+.music-header-search{display:none!important}
+.music-header-search-close{display:none!important;height:40px;min-width:62px;border:1px solid #334556;border-radius:10px;background:#1b2a35;color:#f8fafc;font-size:12px;font-weight:800;padding:0 10px}
+@media (min-width:901px){
+  .music-shell.music-maximized .music-header-search{display:flex!important;width:min(520px,46vw)!important;min-width:300px!important}
+  .music-shell.music-maximized.music-searching .music-header-search-close{display:block!important}
+  .music-shell.music-maximized.music-searching>.music-body>#musicSearchCard{display:block!important}
+  .music-shell.music-maximized.music-searching>.music-body>#musicSearchCard>.row{display:none!important}
+  .music-shell.music-maximized.music-searching>.music-body>#musicSearchCard>#musicSearchResults{display:block!important}
+  .music-shell.music-maximized:not(.music-searching)>.music-body>#musicSearchCard{display:none!important}
+}
