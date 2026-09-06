@@ -468,7 +468,7 @@ function startDeviceInbox(){
 // Smart Music window
 const MUSIC_WIN_KEY='teslaWaze:musicWindow:v1';
 function musicWindowState(){return load(MUSIC_WIN_KEY,{width:520,height:Math.min(window.innerHeight,760),miniHeight:520,minimized:false})}
-function applyMusicWindow(){const shell=document.querySelector('.music-shell');if(!shell)return;const cfg=musicWindowState(),maxW=Math.max(340,window.innerWidth-20),maxH=Math.max(360,window.innerHeight-20),isMax=!!cfg.maximized;if(isMax){shell.style.width=`${maxW}px`;shell.style.height=`${maxH}px`}else{const normalMaxW=Math.max(340,Math.min(window.innerWidth-20,760));shell.style.width=`${Math.max(340,Math.min(normalMaxW,cfg.width||520))}px`;const miniH=Math.max(360,Math.min(maxH,cfg.miniHeight||520));const fullH=Math.max(360,Math.min(maxH,cfg.height||Math.min(window.innerHeight,760)));shell.style.height=`${cfg.minimized?miniH:fullH}px`}shell.classList.toggle('music-minimized',!!cfg.minimized);shell.classList.toggle('music-maximized',isMax);const b=$('musicMinimize');if(b)b.textContent=cfg.minimized?'Rozbaliť':'Minimalizovať';const s=$('musicSize');if(s)s.textContent=isMax?'Pôvodný rozmer':'Maximalizovať'}/* MUSIC_MINI_RESIZE_V4 *//* MUSIC_MAX_TWO_COL_V8 */
+function applyMusicWindow(){const shell=document.querySelector('.music-shell');if(!shell)return;const cfg=musicWindowState(),maxW=Math.max(340,window.innerWidth-20),maxH=Math.max(360,window.innerHeight-20),isMax=!!cfg.maximized;if(isMax){shell.style.width=`${maxW}px`;shell.style.height=`${maxH}px`}else{const normalMaxW=Math.max(340,Math.min(window.innerWidth-20,760));shell.style.width=`${Math.max(340,Math.min(normalMaxW,cfg.width||520))}px`;const miniH=Math.max(360,Math.min(maxH,cfg.miniHeight||520));const fullH=Math.max(360,Math.min(maxH,cfg.height||Math.min(window.innerHeight,760)));shell.style.height=`${cfg.minimized?miniH:fullH}px`}shell.classList.toggle('music-minimized',!!cfg.minimized);shell.classList.toggle('music-maximized',isMax);const b=$('musicMinimize');if(b)b.textContent=cfg.minimized?'Rozbaliť':'Minimalizovať';const s=$('musicSize');if(s)s.textContent=isMax?'Pôvodný rozmer':'Maximalizovať';if(isMax)renderMusicMaxHome()}/* MUSIC_MINI_RESIZE_V4 *//* MUSIC_MAX_TWO_COL_V8 */
 function saveMusicWindow(patch){const cfg={...musicWindowState(),...patch};save(MUSIC_WIN_KEY,cfg);applyMusicWindow()}
 function ensureMusicWindowControls(){
   const shell=document.querySelector('.music-shell'),head=document.querySelector('.music-head');if(!shell||!head||$('musicMinimize'))return;
@@ -502,8 +502,37 @@ function musicItems(){let a=Object.values(music.profile.tracks).filter(isEligibl
 function renderMusicStatus(){const n=Object.values(music.profile.tracks).filter(isEligibleMusic).length,y=music.profile.youtube;$('musicStatus').textContent=`${n} naučených skladieb`;$('musicAccount').textContent=y.connected?`${y.email||'lukaslejko@gmail.com'} · synchronizované`:'lukaslejko@gmail.com · YouTube nepripojený';$('musicMiniStatus').textContent=$('musicAccount').textContent}
 function canPlayInApp(t){return !!(t?.streamUrl||t?.youtubeId||String(t?.id||'').startsWith('youtube:'))}
 function musicCard(t){const s=mt(t),play=!!t.streamUrl,yt=isYoutubePreference(t)||isYoutubePreference(s),inApp=play||yt;return `<div class="music-track" data-mrow="${esc(s.id)}"><img class="music-art" src="${esc(t.artwork||'')}" onerror="this.style.visibility='hidden'"><div><div class="music-title">${esc(t.title||'Bez názvu')}</div><div class="music-sub">${esc(t.artist||'')} · ${esc(t.source||'')}</div><span class="music-source">${play?'▶ FREE':yt?'▶ YOUTUBE':esc((t.source||'NÁJSŤ').toUpperCase())}</span>${s.liked?' <span class="music-source">♥</span>':''}</div><button class="btn ${inApp?'primary':''}" data-mplay="${esc(s.id)}">${inApp?'Prehrať':'Nájsť zdroj'}</button></div>`}
-function renderMusicList(a=musicItems(),node=$('musicList')){node.innerHTML=a.length?a.map(musicCard).join(''):'<div class="music-empty">Zatiaľ nič. Synchronizuj YouTube alebo vyhľadaj video či skladbu.</div>';const open=t=>{if(!t)return;canPlayInApp(t)?mplay(t):musicSources(t)};node.querySelectorAll('[data-mplay]').forEach(b=>b.onclick=e=>{e.stopPropagation();open(a.find(x=>mt(x).id===b.dataset.mplay))});node.querySelectorAll('[data-mrow]').forEach(r=>r.onclick=()=>open(a.find(x=>mt(x).id===r.dataset.mrow)))}
+function renderMusicList(a=musicItems(),node=$('musicList')){node.innerHTML=a.length?a.map(musicCard).join(''):'<div class="music-empty">Zatiaľ nič. Synchronizuj YouTube alebo vyhľadaj video či skladbu.</div>';const open=t=>{if(!t)return;canPlayInApp(t)?mplay(t):musicSources(t)};node.querySelectorAll('[data-mplay]').forEach(b=>b.onclick=e=>{e.stopPropagation();open(a.find(x=>mt(x).id===b.dataset.mplay))});node.querySelectorAll('[data-mrow]').forEach(r=>r.onclick=()=>open(a.find(x=>mt(x).id===r.dataset.mrow)));if(document.querySelector('.music-shell')?.classList.contains('music-maximized'))renderMusicMaxHome()}
 function renderMusicGroups(groups,node){const all=groups.flatMap(g=>g.items),byId=new Map(all.map(t=>[mt(t).id,t]));node.innerHTML=groups.filter(g=>g.items.length).map(g=>`<div class="music-group-title">${esc(g.title)} <span>${g.items.length}</span></div>${g.items.map(musicCard).join('')}`).join('')||'<div class="music-empty">Nenašli sa žiadne výsledky. Skontrolujte pripojenie YouTube alebo skúste iný názov.</div>';const open=t=>{if(!t)return;canPlayInApp(t)?mplay(t):musicSources(t)};node.querySelectorAll('[data-mplay]').forEach(b=>b.onclick=e=>{e.stopPropagation();open(byId.get(b.dataset.mplay))});node.querySelectorAll('[data-mrow]').forEach(r=>r.onclick=()=>open(byId.get(r.dataset.mrow)))}
+
+/* MUSIC_YOUTUBE_HOME_V54 */
+function musicHomeLargeCard(t){
+  const s=mt(t),art=t.artwork||s.artwork||'';
+  return `<button type="button" class="music-home-cover" data-home-play="${esc(s.id)}"><span class="music-home-cover-art">${art?`<img src="${esc(art)}" onerror="this.style.visibility='hidden'">`:''}<i class="music-home-play">▶</i></span><b>${esc(t.title||s.title||'Bez názvu')}</b><small>${esc(t.artist||s.artist||'')}</small></button>`;
+}
+function musicHomeListCard(t){
+  const s=mt(t),art=t.artwork||s.artwork||'';
+  return `<button type="button" class="music-home-row" data-home-play="${esc(s.id)}">${art?`<img src="${esc(art)}" onerror="this.style.visibility='hidden'">`:'<span class="music-home-row-empty">♫</span>'}<span><b>${esc(t.title||s.title||'Bez názvu')}</b><small>${esc(t.artist||s.artist||'')}</small></span><i>▶</i></button>`;
+}
+function renderMusicMaxHome(){
+  const shell=document.querySelector('.music-shell');
+  if(!shell?.classList.contains('music-maximized'))return;
+  const body=shell.querySelector('.music-body');if(!body)return;
+  let home=body.querySelector('#musicMaxHome');
+  if(!home){home=document.createElement('div');home.id='musicMaxHome';home.className='music-max-home';body.prepend(home)}
+  const all=Object.values(music.profile.tracks).filter(isEligibleMusic);
+  const quick=[...all].sort((a,b)=>((b.score||0)+(b.plays||0)*.7+(b.completed||0)*.6+(b.liked?4:0))-((a.score||0)+(a.plays||0)*.7+(a.completed||0)*.6+(a.liked?4:0))).slice(0,7);
+  const liked=[...all].filter(x=>x.liked).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,12);
+  const recent=[...all].filter(x=>x.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed||0)-Date.parse(a.lastPlayed||0)).slice(0,12);
+  const fallback=[...all].sort((a,b)=>(b.score||0)-(a.score||0));
+  const fav=liked.length?liked:fallback.slice(0,9);
+  const rec=recent.length?recent:fallback.slice(0,9);
+  const section=(title,items,kind)=>items.length?`<section class="music-home-section music-home-${kind}"><header><h3>${esc(title)}</h3><span>${items.length}</span></header><div class="${kind==='quick'?'music-home-covers':'music-home-rows'}">${items.map(kind==='quick'?musicHomeLargeCard:musicHomeListCard).join('')}</div></section>`:'';
+  home.innerHTML=`${section('Rýchly výber',quick,'quick')}${section('Obľúbené',fav,'favorites')}${section('Naposledy prehrané',rec,'recent')}`;
+  const byId=new Map(all.map(t=>[mt(t).id,t]));
+  home.querySelectorAll('[data-home-play]').forEach(b=>b.onclick=()=>{const t=byId.get(b.dataset.homePlay);if(t)mplay(t)});
+}
+
 /* MUSIC_MINI_QUEUE_V1 */
 function fmtMusicClock(seconds){const s=Math.max(0,Math.floor(Number(seconds)||0)),m=Math.floor(s/60),r=s%60;return `${m}:${String(r).padStart(2,'0')}`}
 function musicCurrentTime(){try{if(music.audio)return Number(music.audio.currentTime||0);if(music.ytPlayer)return Number(music.ytPlayer.getCurrentTime?.()||0)}catch{}return 0}
