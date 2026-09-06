@@ -61,7 +61,7 @@ function applyLocalCorridorsToRoute(rr,outCorridor,inCorridor){let coords=rr.coo
 function rememberDrivenRoute(){const trail=sampledPath(state.tripTrail,50),planned=state.tripOriginalRoute,key=state.tripKey;if(trail.length<8||!planned?.length)return;rememberLocalRoads(trail,planned);const travelled=cumulative(trail).at(-1)||0,diff=pathDifference(trail,planned);if(!key||travelled<700||diff.ratio<.18)return;const rows=safeLearnedRoutes();let match=rows.find(x=>x.key===key&&pathDifference(trail,x.path).average<120);if(match){match.count=Math.min(99,(match.count||0)+1);match.path=trail;match.lastUsedAt=new Date().toISOString()}else rows.unshift({key,count:1,path:trail,lastUsedAt:new Date().toISOString()});save(LS.learnedRoutes,rows.sort((a,b)=>String(b.lastUsedAt).localeCompare(String(a.lastUsedAt))).slice(0,12))}
 function preferLearnedRoute(routes,key){const learned=safeLearnedRoutes().filter(x=>x.key===key&&x.count>=2).sort((a,b)=>b.count-a.count)[0];if(!learned)return 0;let best={index:0,score:Infinity};routes.forEach((r,index)=>{const score=pathDifference(learned.path,r.coords||[]).average;if(score<best.score)best={index,score}});return best.score<=350?best.index:0}
 
-const state={pos:null,accuracy:null,speed:null,gpsHeading:null,lastPos:null,heading:null,map:null,L:null,baseLayers:null,baseLayer:null,mapType:['roadmap','hybrid','satellite'].includes(load(LS.mapType,'roadmap'))?load(LS.mapType,'roadmap'):'roadmap',car:null,destMarker:null,routeLines:[],alertMarkers:[],chargerMarkers:[],trafficLines:[],routes:[],routeIndex:0,navigating:false,overview:false,routeCursor:0,routeProgress:null,dest:null,alerts:[],alertsOn:load(LS.alerts,true),jams:[],liveJams:[],chargers:[],chargersOn:false,chargeFilter:load(LS.chargeFilter,'all'),routing:{useVignette:true,avoidTolls:false,avoidFerries:false,...load(LS.routing,{})},voice:load(LS.voice,true),voiceMode:load(LS.voiceMode,'soft'),voiceVolume:Math.max(.2,Math.min(1,Number(load(LS.voiceVolume,.85))||.85)),favorites:load(LS.fav,[]),recents:load(LS.recent,[]),panelHidden:false,lastVoice:'',lastReroute:0,offRouteHits:0,overviewTimer:null,searchHome:null,routeLoading:false,routeRequestSeq:0,lastCameraAt:0,lastCameraCenter:null,lastBearingAt:0,lastAppliedHeading:null,trafficPaintSig:'',alertPaintSig:'',tripKey:'',tripTrail:[],tripOriginalRoute:null,lastTrailAt:null,pendingAutoRoute:false,routeHadHeading:false};
+const state={pos:null,accuracy:null,speed:null,gpsHeading:null,lastPos:null,heading:null,map:null,L:null,baseLayers:null,baseLayer:null,mapType:['roadmap','hybrid','satellite'].includes(load(LS.mapType,'roadmap'))?load(LS.mapType,'roadmap'):'roadmap',car:null,destMarker:null,routeLines:[],alertMarkers:[],chargerMarkers:[],trafficLines:[],routes:[],routeIndex:0,navigating:false,overview:false,routeCursor:0,routeProgress:null,dest:null,alerts:[],alertsOn:load(LS.alerts,true),jams:[],liveJams:[],chargers:[],chargersOn:false,chargeFilter:load(LS.chargeFilter,'all'),routing:{useVignette:true,avoidTolls:false,avoidFerries:false,...load(LS.routing,{})},voice:load(LS.voice,true),voiceMode:load(LS.voiceMode,'soft'),voiceVolume:Math.max(.2,Math.min(1,Number(load(LS.voiceVolume,.85))||.85)),favorites:load(LS.fav,[]),recents:load(LS.recent,[]),panelHidden:false,lastVoice:'',lastReroute:0,offRouteHits:0,overviewTimer:null,searchHome:null,routeLoading:false,routeRequestSeq:0,lastCameraAt:0,lastCameraCenter:null,lastCameraZoom:null,lastBearingAt:0,lastAppliedHeading:null,trafficPaintSig:'',alertPaintSig:'',tripKey:'',tripTrail:[],tripOriginalRoute:null,lastTrailAt:null,pendingAutoRoute:false,routeHadHeading:false};
 
 function ensureQuickPlaces(){const search=document.querySelector('.searchbox'),row=search?.querySelector('.row');if(!search||!row)return null;let quick=$('searchQuickPlaces');if(!quick){quick=document.createElement('div');quick.id='searchQuickPlaces';quick.className='search-quick-places';quick.innerHTML='<button id="quickHomeBtn" class="quick-place" aria-label="Navigovať domov">Domov</button><button id="quickWorkBtn" class="quick-place" aria-label="Navigovať do práce">Práca</button>';row.insertAdjacentElement('afterend',quick)}return quick}
 function useQuickPlace(place,label){if(place){selectDestination(place);return}const status=$('searchStatus');if(status)status.textContent=`${label} ešte nie je nastavený. Vyhľadajte adresu a uložte ju v nastaveniach.`}
@@ -79,7 +79,7 @@ function setMapType(type,persist=true){
   state.trafficLines.forEach(line=>line.bringToFront?.());
 }
 
-async function initMap(){const L=window.L;state.L=L;state.map=L.map('map',{zoomControl:true,attributionControl:true,rotate:true,bearing:0,rotateControl:false,dragRotate:false,touchRotate:false,shiftKeyRotate:false,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false}).setView([48.9984,21.2393],12);const common={maxZoom:20,keepBuffer:8,updateWhenIdle:false,updateWhenZooming:false},imagery=()=>L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{...common,attribution:'Esri, Maxar, Earthstar Geographics'}),labels=()=>L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{...common,attribution:'Esri'});state.baseLayers={roadmap:L.tileLayer('https://www.waze.com/row-tiles/live/base/{z}/{x}/{y}/tile.png',{...common,attribution:'Waze'}),satellite:imagery(),hybrid:L.layerGroup([imagery(),labels()])};setMapType(state.mapType,false);startGPS();setInterval(loadAlerts,30000);setTimeout(loadAlerts,2200)}
+async function initMap(){const L=window.L;state.L=L;state.map=L.map('map',{zoomControl:true,attributionControl:true,rotate:true,bearing:0,rotateControl:false,dragRotate:false,touchRotate:false,shiftKeyRotate:false,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false}).setView([48.9984,21.2393],12);const common={maxZoom:20,keepBuffer:3,updateWhenIdle:false,updateWhenZooming:false},imagery=()=>L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{...common,attribution:'Esri, Maxar, Earthstar Geographics'}),labels=()=>L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{...common,attribution:'Esri'});state.baseLayers={roadmap:L.tileLayer('https://www.waze.com/row-tiles/live/base/{z}/{x}/{y}/tile.png',{...common,attribution:'Waze'}),satellite:imagery(),hybrid:L.layerGroup([imagery(),labels()])};setMapType(state.mapType,false);startGPS();setInterval(loadAlerts,30000);setTimeout(loadAlerts,2200)}
 function carIcon(){return state.L.divIcon({className:'car-wrap',html:'<div class="car-arrow">▲</div>',iconSize:[40,40],iconAnchor:[20,20]})}
 function startGPS(){
   if(!navigator.geolocation){$('gpsNotice').querySelector('span').textContent='GPS nie je dostupné.';return}
@@ -108,17 +108,24 @@ function applyHeadingUp(markerPosition,zoom){
   const now=Date.now();
   const h=Number.isFinite(state.gpsHeading)?state.gpsHeading:(Number.isFinite(state.lastAppliedHeading)?state.lastAppliedHeading:null);
   if(now-state.lastCameraAt<500)return;
-  state.lastCameraAt=now;
   const center=Number.isFinite(h)?destinationPoint(markerPosition,65,h):markerPosition;
-  if(Number.isFinite(h)){
+  const moved=state.lastCameraCenter?dist(state.lastCameraCenter,center):Infinity;
+  const zoomChanged=!Number.isFinite(state.lastCameraZoom)||Math.abs(Number(zoom)-Number(state.lastCameraZoom))>=.12;
+  const headingChanged=Number.isFinite(h)&&(!Number.isFinite(state.lastAppliedHeading)||headingDelta(h,state.lastAppliedHeading)>=2.5);
+  if(moved<12&&!zoomChanged&&!headingChanged)return;
+  state.lastCameraAt=now;
+  if(headingChanged){
     if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});
     else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);
     state.lastAppliedHeading=h;state.lastBearingAt=now;
   }
-  state.map.setView(center,zoom,{animate:false});
-  state.lastCameraCenter={lat:center.lat,lng:center.lng};
+  if(moved>=12||zoomChanged){
+    state.map.setView(center,zoom,{animate:false});
+    state.lastCameraCenter={lat:center.lat,lng:center.lng};
+    state.lastCameraZoom=Number(zoom);
+  }
 }/* TMY_EXACT_NAV_V21 */
-function stopHeadingUp(reset=true){if(typeof state.map?.setHeading==='function')state.map.setHeading(null);if(typeof state.map?.stopHeadingUp==='function')state.map.stopHeadingUp();if(reset&&typeof state.map?.setBearing==='function')state.map.setBearing(0);state.lastAppliedHeading=null;state.lastCameraCenter=null;state.lastCameraAt=0;state.lastBearingAt=0}
+function stopHeadingUp(reset=true){if(typeof state.map?.setHeading==='function')state.map.setHeading(null);if(typeof state.map?.stopHeadingUp==='function')state.map.stopHeadingUp();if(reset&&typeof state.map?.setBearing==='function')state.map.setBearing(0);state.lastAppliedHeading=null;state.lastCameraCenter=null;state.lastCameraZoom=null;state.lastCameraAt=0;state.lastBearingAt=0}
 
 let searchTimer=null,searchSeq=0;async function searchPlaces(force=false){const q=$('searchInput').value.trim();if(q.length<(force?2:3)){$('searchResults').innerHTML='';$('searchStatus').textContent='';return}const seq=++searchSeq;$('searchStatus').textContent='Vyhľadávam…';try{const u=new URLSearchParams({q});if(state.pos){u.set('lat',state.pos.lat);u.set('lng',state.pos.lng)}const r=await fetch('/api/search?'+u,{cache:'no-store'}),d=await r.json();if(seq!==searchSeq)return;renderSearch(d.results||[])}catch{$('searchStatus').textContent='Vyhľadávanie zlyhalo.'}}
 function renderSearch(a){$('searchStatus').textContent='';$('searchResults').innerHTML=a.slice(0,6).map((x,i)=>`<button class="result" data-sr="${i}"><b>${esc(x.name)}</b><small>${esc(x.address)}</small></button>`).join('');document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>selectDestination(a[+b.dataset.sr]))}
@@ -888,3 +895,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* NAV_IMMEDIATE_REROUTE_V63 */
 
 /* NAV_WRONG_TURN_REROUTE_V64 */
+
+/* NAV_MAP_RENDER_STABILITY_V65 */
