@@ -121,6 +121,19 @@ function ensureTeslaNavUI(){
     <button id="teslaSettingsClose" class="hidden"></button>
     <section id="teslaSettings" class="tesla-settings hidden"></section>`;
   document.body.appendChild(wrap);
+  const mainSearchRow=document.querySelector('.searchbox .row');
+  if(mainSearchRow&&!document.getElementById('mainRouteSettingsBtn')){
+    const btn=document.createElement('button');
+    btn.id='mainRouteSettingsBtn';
+    btn.type='button';
+    btn.className='btn main-route-settings';
+    btn.setAttribute('aria-label','Nastavenia');
+    btn.title='Nastavenia';
+    btn.textContent='•••';
+    btn.onclick=e=>{e.preventDefault();e.stopPropagation();toggleTeslaSettings()};
+    mainSearchRow.appendChild(btn);
+  }
+  /* TESLA_MAIN_SETTINGS_BUTTON_V49 */
   state.searchHome=document.createComment('search-home');
   const sb=document.querySelector('.searchbox');
   sb?.parentNode?.insertBefore(state.searchHome,sb);
