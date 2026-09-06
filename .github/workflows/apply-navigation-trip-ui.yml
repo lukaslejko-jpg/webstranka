@@ -1,0 +1,60 @@
+name: Apply navigation trip UI
+
+on:
+  push:
+    branches:
+      - tesla-waze-preview-v1
+    paths:
+      - 'tesla-waze-preview/navigation-trip-ui-patch.py'
+      - '.github/workflows/apply-navigation-trip-ui.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-preview-v1
+          fetch-depth: 0
+
+      - name: Apply navigation trip UI patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/navigation-trip-ui-patch.py
+
+      - name: Verify navigation UI only
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tesla-waze-preview/app.js
+          grep -q 'TESLA_MAIN_SETTINGS_BUTTON_V49' tesla-waze-preview/app.js
+          grep -q 'TESLA_TRIP_LAYOUT_V49' tesla-waze-preview/app.css
+          grep -q 'id=.mainRouteSettingsBtn.' tesla-waze-preview/app.js || grep -q "mainRouteSettingsBtn" tesla-waze-preview/app.js
+          grep -q 'height:205px' tesla-waze-preview/app.css
+          grep -q 'width:380px' tesla-waze-preview/app.css
+
+      - name: Rebuild JS and CSS assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd tesla-waze-preview
+          for f in app.js app.css; do
+            gzip -n -c "$f" | base64 -w 0 > "$f.gz.b64"
+            test -s "$f.gz.b64"
+          done
+
+      - name: Commit navigation UI assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
+          if git diff --cached --quiet; then echo 'Navigation UI already applied.'; exit 0; fi
+          git commit -m 'nav: enlarge trip panel and add search settings button'
+          git push origin HEAD:tesla-waze-preview-v1
