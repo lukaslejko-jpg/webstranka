@@ -502,11 +502,13 @@ function musicItems(){let a=Object.values(music.profile.tracks).filter(isEligibl
 function renderMusicStatus(){const n=Object.values(music.profile.tracks).filter(isEligibleMusic).length,y=music.profile.youtube;$('musicStatus').textContent=`${n} naučených skladieb`;$('musicAccount').textContent=y.connected?`${y.email||'lukaslejko@gmail.com'} · synchronizované`:'lukaslejko@gmail.com · YouTube nepripojený';$('musicMiniStatus').textContent=$('musicAccount').textContent}
 function canPlayInApp(t){return !!(t?.streamUrl||t?.youtubeId||String(t?.id||'').startsWith('youtube:'))}
 function musicDisplayText(v,fallback=''){
-  let x=String(v??'');
+  let x=String(v??'').normalize('NFC');
   x=x.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ue000-\uf8ff\ufffd]/g,'');
-  try{x=x.replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu,'')}catch{}
-  x=x.replace(/[□■▪▫◻◼◽◾▢▣▤▥▦▧▨▩]+/g,'');
-  x=x.replace(/\s+/g,' ').trim();
+  // Tesla browser font shows several valid Unicode glyphs as square boxes. For music metadata
+  // keep Latin text (incl. SK/CZ diacritics), digits and common punctuation only.
+  x=x.replace(/[^A-Za-z0-9\u00C0-\u024F\u1E00-\u1EFF À-ž'’`´.,:;!?()\[\]{}+&@#%°/_\-–—\s]/g,' ');
+  x=x.replace(/[□■▪▫◻◼◽◾▢▣▤▥▦▧▨▩]+/g,' ');
+  x=x.replace(/\s+/g,' ').replace(/^[·•|\-–—\s]+|[·•|\-–—\s]+$/g,'').trim();
   return x||fallback;
 }
 
@@ -768,3 +770,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_QUALITY_FILTER_V52 */
 
 /* MUSIC_HOME_POLISH_V55 */
+
+/* MUSIC_DISPLAY_LATIN_FILTER_V56 */
