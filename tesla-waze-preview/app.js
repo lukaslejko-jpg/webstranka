@@ -18,7 +18,7 @@ const fmtT=s=>s<3600?`${Math.max(1,Math.round(s/60))} min`:`${Math.floor(s/3600)
 const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
 function bearing(a,b){const p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180,dl=(b.lng-a.lng)*Math.PI/180;return (Math.atan2(Math.sin(dl)*Math.cos(p2),Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl))*180/Math.PI+360)%360}
 function smoothHeading(prev,next,alpha=.35){if(prev==null)return next;let d=((next-prev+540)%360)-180;return (prev+d*alpha+360)%360}
-function instruction(step){const op=String(step?.opcode||'').toUpperCase(), street=step?.street?` na ${step.street}`:'';if(op.includes('RAMP_RIGHT')||op.includes('EXIT_RIGHT'))return `Zíďte z diaľnice vpravo${street}.`;if(op.includes('RAMP_LEFT')||op.includes('EXIT_LEFT'))return `Zíďte z diaľnice vľavo${street}.`;if(op.includes('TURN_RIGHT'))return `Odbočte doprava${street}.`;if(op.includes('TURN_LEFT'))return `Odbočte doľava${street}.`;if(op.includes('ROUNDABOUT'))return `Pokračujte cez kruhový objazd${street}.`;if(op.includes('DESTINATION'))return 'Cieľ je pred vami.';if(op.includes('KEEP_RIGHT'))return `Držte sa vpravo${street}.`;if(op.includes('KEEP_LEFT'))return `Držte sa vľavo${street}.`;return `Pokračujte rovno${street}.`}
+function instruction(step){const op=String(step?.opcode||'').replace(/-/g,'_').toUpperCase(), street=step?.street?` na ${step.street}`:'';if(op.includes('RAMP_RIGHT')||op.includes('EXIT_RIGHT'))return `Zíďte z diaľnice vpravo${street}.`;if(op.includes('RAMP_LEFT')||op.includes('EXIT_LEFT'))return `Zíďte z diaľnice vľavo${street}.`;if(op.includes('TURN_RIGHT'))return `Odbočte doprava${street}.`;if(op.includes('TURN_LEFT'))return `Odbočte doľava${street}.`;if(op.includes('ROUNDABOUT'))return `Pokračujte cez kruhový objazd${street}.`;if(op.includes('DESTINATION'))return 'Cieľ je pred vami.';if(op.includes('KEEP_RIGHT'))return `Držte sa vpravo${street}.`;if(op.includes('KEEP_LEFT'))return `Držte sa vľavo${street}.`;if(op.includes('CONTINUE')||op.includes('STRAIGHT'))return `Pokračujte rovno${street}.`;return `Pokračujte podľa trasy${street}.`}
 function normalizeSpeechText(text){return String(text||'').replace(/\s*\/\s*/g,' smerom na ').replace(/\bul\.\s*/gi,'ulicu ').replace(/\bnám\.\s*/gi,'námestie ').replace(/\bč\.\s*/gi,'číslo ').replace(/\bcestu\s+cestu\b/gi,'cestu').replace(/\s+/g,' ').trim()}
 function maneuverIcon(step){const op=String(step?.opcode||'').toUpperCase();if(op.includes('ROUNDABOUT'))return 'O';if(op.includes('TURN_RIGHT')||op.includes('RAMP_RIGHT')||op.includes('EXIT_RIGHT'))return '→';if(op.includes('TURN_LEFT')||op.includes('RAMP_LEFT')||op.includes('EXIT_LEFT'))return '←';if(op.includes('KEEP_RIGHT'))return '↗';if(op.includes('KEEP_LEFT'))return '↖';if(op.includes('DESTINATION'))return '✓';return '↑'}/* NAV_SAFE_ICONS_V13 */
 function nearest(p,coords,start=0){if(!coords?.length)return null;let best=null;const cos=111320*Math.cos(p.lat*Math.PI/180);for(let i=Math.max(0,start-20);i<Math.min(coords.length-1,start+600);i++){const a=coords[i],b=coords[i+1],ax=(a.lng-p.lng)*cos,ay=(a.lat-p.lat)*111320,bx=(b.lng-p.lng)*cos,by=(b.lat-p.lat)*111320,dx=bx-ax,dy=by-ay,l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/l)):0,d=Math.hypot(ax+t*dx,ay+t*dy);if(!best||d<best.distance)best={index:i,t,distance:d,point:{lat:a.lat+(b.lat-a.lat)*t,lng:a.lng+(b.lng-a.lng)*t}}}return best}
@@ -337,9 +337,11 @@ function updateNavigation(){
   const kmh=(state.speed||0)*3.6;
   applyHeadingUp(markerPosition,navigationZoom(dm,maneuver?.opcode,kmh));
   if(Number.isFinite(state.gpsHeading)&&state.routeHadHeading===false){state.routeHadHeading=true;calculateRoute(false)}
-  const isOffRoute=!arrived&&(confirmedOffRoute(n.distance,state.accuracy)||wrongTurnDetected(r,n));
+  const isOffRoute=!arrived&&confirmedOffRoute(n.distance,state.accuracy);
   if(isOffRoute)state.offRouteHits=(state.offRouteHits||0)+1;else state.offRouteHits=0;
-  if(isOffRoute&&!state.routeLoading&&Date.now()-state.lastReroute>3000){state.offRouteHits=0;state.lastReroute=Date.now();calculateRoute(false)}
+  if(state.offRouteHits>=2&&!state.routeLoading&&Date.now()-state.lastReroute>15000){state.offRouteHits=0;state.lastReroute=Date.now();calculateRoute(false)}
+  const wrongTurn=!arrived&&wrongTurnDetected(r,n);
+  if(wrongTurn&&!state.routeLoading&&Date.now()-state.lastReroute>3000){state.lastReroute=Date.now();calculateRoute(false)}
   renderRouteBox();renderTeslaNavigation();voiceNavigation();findAheadAlert();findAheadTraffic();
 }
 function renderRouteBox(){const r=state.routes[state.routeIndex],p=state.routeProgress,b=$('routeBox');if(!r){b.classList.add('hidden');return}b.classList.remove('hidden');const time=p?.remainingTime??r.time,di=p?.remainingDistance??r.distance,arr=new Date(Date.now()+1000*(time||0)).toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'}),title=state.navigating?instruction(r.steps?.[p?.stepIdx||0]):(r.routeName||r.name||'Trasa');b.innerHTML=`<b>${esc(title)}</b>${state.navigating&&p?`<small>manéver o ${fmtD(p.distanceToManeuver)}${p.offRoute>50?' · odchýlka '+fmtD(p.offRoute):''}</small>`:''}<div class="routeStats"><div><b>${fmtT(time||0)}</b><small>zostáva</small></div><div><b>${fmtD(di||0)}</b><small>vzdialenosť</small></div><div><b>${arr}</b><small>príchod</small></div></div>`}
@@ -895,3 +897,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* NAV_GPS_VOICE_STABILITY_V66 */
 
 /* NAV_TMY_CORE_CONSOLIDATED_V67 */
+
+/* NAV_TMY_SAFETY_V68 */
