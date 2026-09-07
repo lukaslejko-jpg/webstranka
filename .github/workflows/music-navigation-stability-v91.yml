@@ -1,0 +1,53 @@
+name: Music navigation stability V91
+on:
+  push:
+    branches: [tesla-waze-v91-work]
+    paths: ['.github/workflows/music-navigation-stability-v91.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v91-work
+      - name: Apply narrow V91 patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text()
+          old="setInterval(()=>{if(state.navigating&&music.wantsPlayback&&!music.userPaused)scheduleMusicResume()},1800);"
+          assert s.count(old)==1, s.count(old)
+          s=s.replace(old,"/* MUSIC_NAV_RESUME_WATCHDOG_REMOVED_V91 */")
+          old2="else if(e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.CUED||e.data===YT.PlayerState.UNSTARTED){if(music.userPaused||!music.wantsPlayback)setMusicPlaying(false);else{setMusicPlaying(true);scheduleMusicResume();noteYoutubeBlockedState(yt)}}"
+          new2="else if(e.data===YT.PlayerState.PAUSED){if(music.userPaused||!music.wantsPlayback)setMusicPlaying(false);else{setMusicPlaying(true);scheduleMusicResume();noteYoutubeBlockedState(yt)}}else if(e.data===YT.PlayerState.CUED||e.data===YT.PlayerState.UNSTARTED){if(music.userPaused||!music.wantsPlayback)setMusicPlaying(false);else setMusicPlaying(true)}/* MUSIC_YT_STARTUP_STABLE_V91 */"
+          assert s.count(old2)==1, s.count(old2)
+          s=s.replace(old2,new2)
+          p.write_text(s)
+          PY
+      - name: Verify JS and rebuild runtime gzip
+        run: |
+          node --check tesla-waze-preview/app.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          raw=p.read_bytes()
+          out=base64.b64encode(gzip.compress(raw,compresslevel=9,mtime=0)).decode()
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(out)
+          assert gzip.decompress(base64.b64decode(out))==raw
+          s=raw.decode()
+          assert s.count('MUSIC_NAV_RESUME_WATCHDOG_REMOVED_V91')==1
+          assert s.count('MUSIC_YT_STARTUP_STABLE_V91')==1
+          assert 'setInterval(()=>{if(state.navigating&&music.wantsPlayback&&!music.userPaused)scheduleMusicResume()},1800);' not in s
+          PY
+      - name: Commit runtime patch
+        run: |
+          git config user.name 'lukaslejko-jpg'
+          git config user.email 'lukaslejko@gmail.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git diff --cached --quiet && exit 1
+          git commit -m 'music: stop navigation from retriggering playback V91'
+          git push origin HEAD:tesla-waze-v91-work
