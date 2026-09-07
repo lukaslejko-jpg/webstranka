@@ -1147,3 +1147,6 @@ body:not(.tesla-navigating) #alertBox{
 /* MUSIC_V83_RESIZE_AND_ADS */
 .music-shell:not(.music-maximized) #musicAds{display:none!important}
 .music-shell.music-maximized #musicAds{display:inline-flex!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important}
+
+/* MUSIC_ACCOUNT_LINE_V88 */
+.music-compact-account{width:100%;box-sizing:border-box;padding:0 4px 2px;font-size:11px;line-height:15px;font-weight:400;opacity:.62;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
