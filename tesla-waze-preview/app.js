@@ -557,7 +557,7 @@ function startDeviceInbox(){
 // Smart Music window
 const MUSIC_WIN_KEY='teslaWaze:musicWindow:v1';
 function musicWindowState(){return load(MUSIC_WIN_KEY,{width:520,height:Math.min(window.innerHeight,760),miniHeight:520,minimized:false})}
-function applyMusicWindow(){const shell=document.querySelector('.music-shell');if(!shell)return;const cfg=musicWindowState(),maxW=Math.max(340,window.innerWidth-20),maxH=Math.max(360,window.innerHeight-20),isMax=!!cfg.maximized;if(isMax){shell.style.width=`${maxW}px`;shell.style.height=`${maxH}px`}else{const normalMaxW=Math.max(340,Math.min(window.innerWidth-20,760));shell.style.width=`${Math.max(340,Math.min(normalMaxW,cfg.width||520))}px`;const miniH=Math.max(360,Math.min(maxH,cfg.miniHeight||520));const fullH=Math.max(360,Math.min(maxH,cfg.height||Math.min(window.innerHeight,760)));shell.style.height=`${cfg.minimized?miniH:fullH}px`}shell.classList.toggle('music-minimized',!!cfg.minimized);shell.classList.toggle('music-maximized',isMax);if(!isMax&&shell.classList.contains('music-searching')){const full=$('musicSearch'),hi=$('musicHeaderSearchInput');if(full)full.value='';if(hi)hi.value='';setMusicSearchMode(false);shell.classList.remove('music-searching')}const b=$('musicMinimize');if(b)b.textContent=cfg.minimized?'Rozbaliť':'Minimalizovať';const s=$('musicSize');if(s)s.textContent=isMax?'Pôvodný rozmer':'Maximalizovať';if(isMax){ensureMaxMusicHeaderSearch();renderMusicMaxHome()}else removeMaxMusicHeaderSearch();syncMusicMinimizedHeader();syncMusicCompactHeader()}/* MUSIC_MINI_RESIZE_V4 *//* MUSIC_MAX_TWO_COL_V8 */
+function applyMusicWindow(){const shell=document.querySelector('.music-shell');if(!shell)return;const cfg=musicWindowState(),maxW=Math.max(340,window.innerWidth-20),maxH=Math.max(360,window.innerHeight-20),isMax=!!cfg.maximized;if(isMax){shell.style.width=`${maxW}px`;shell.style.height=`${maxH}px`}else{const normalMaxW=Math.max(340,Math.min(window.innerWidth-20,760));shell.style.width=`${Math.max(340,Math.min(normalMaxW,cfg.width||520))}px`;const miniH=Math.max(360,Math.min(maxH,cfg.miniHeight||520));const fullH=Math.max(360,Math.min(maxH,cfg.height||Math.min(window.innerHeight,760)));shell.style.height=`${miniH}px`}shell.classList.remove('music-minimized');shell.classList.toggle('music-maximized',isMax);if(!isMax&&shell.classList.contains('music-searching')){const full=$('musicSearch'),hi=$('musicHeaderSearchInput');if(full)full.value='';if(hi)hi.value='';setMusicSearchMode(false);shell.classList.remove('music-searching')}const b=$('musicMinimize');if(b)b.textContent='Minimalizovať';const s=$('musicSize');if(s)s.textContent=isMax?'Pôvodný rozmer':'Maximalizovať';if(isMax){ensureMaxMusicHeaderSearch();renderMusicMaxHome()}else removeMaxMusicHeaderSearch();syncMusicMinimizedHeader();syncMusicCompactHeader()}/* MUSIC_MINI_RESIZE_V4 *//* MUSIC_MAX_TWO_COL_V8 */
 function saveMusicWindow(patch){const cfg={...musicWindowState(),...patch};save(MUSIC_WIN_KEY,cfg);applyMusicWindow()}
 let musicSyncHome=null;
 function syncMusicMinimizedHeader(){
@@ -633,7 +633,7 @@ function ensureMusicCompactHeader(){
     shell.insertBefore(head,shell.firstChild);
     $('musicCompactSync').onclick=()=>syncYoutube();
     $('musicCompactMax').onclick=()=>saveMusicWindow({maximized:true,minimized:false});
-    $('musicCompactMin').onclick=()=>{const cfg=musicWindowState();saveMusicWindow({minimized:!cfg.minimized,maximized:false});updateMiniSeek()};
+    $('musicCompactMin').onclick=()=>{saveMusicWindow({minimized:false,maximized:false});updateMiniSeek()};
     $('musicCompactBack').onclick=()=>setMusicWindowOpen(false);
   }
   syncMusicCompactHeader();
@@ -647,6 +647,7 @@ function syncMusicCompactHeader(){
 }
 /* MUSIC_COMPACT_HEADER_V74 */
 /* MUSIC_COMPACT_HEADER_V76 */
+/* MUSIC_STATE_V77 */
 
 function ensureMusicWindowControls(){
   const shell=document.querySelector('.music-shell'),head=document.querySelector('.music-head');if(!shell||!head||$('musicMinimize'))return;
@@ -661,7 +662,7 @@ function ensureMusicWindowControls(){
   const left=document.createElement('div');left.className='music-resize music-resize-left';left.setAttribute('aria-hidden','true');shell.appendChild(left);
   const top=document.createElement('div');top.className='music-resize music-resize-top';top.setAttribute('aria-hidden','true');shell.appendChild(top);
   const corner=document.createElement('div');corner.className='music-resize music-resize-corner';corner.setAttribute('aria-label','Zmeniť veľkosť hudobného okna');shell.appendChild(corner);
-  min.onclick=()=>{saveMusicWindow({minimized:!musicWindowState().minimized});updateMiniSeek()};/* MUSIC_LAYOUT_NO_RESTART_V5 */
+  min.onclick=()=>{saveMusicWindow({minimized:false,maximized:false});updateMiniSeek()};/* MUSIC_LAYOUT_NO_RESTART_V5 */
   size.onclick=()=>{const cfg=musicWindowState();saveMusicWindow({maximized:!cfg.maximized})};
   syncMusicMinimizedHeader();
   const bindResize=(node,mode)=>node.addEventListener('pointerdown',e=>{e.preventDefault();node.setPointerCapture?.(e.pointerId);const sx=e.clientX,sy=e.clientY,sw=shell.getBoundingClientRect().width,sh=shell.getBoundingClientRect().height;const move=ev=>{if(mode==='w'||mode==='both'){const w=Math.max(340,Math.min(Math.min(window.innerWidth-20,760),sw+(sx-ev.clientX)));shell.style.width=w+'px'}if(mode==='h'||mode==='both'){const h=Math.max(360,Math.min(window.innerHeight-20,sh+(sy-ev.clientY)));shell.style.height=h+'px'}};const up=ev=>{node.releasePointerCapture?.(ev.pointerId);node.removeEventListener('pointermove',move);node.removeEventListener('pointerup',up);node.removeEventListener('pointercancel',up);(()=>{const rect=shell.getBoundingClientRect(),mini=musicWindowState().minimized;saveMusicWindow(mini?{width:Math.round(rect.width),miniHeight:Math.round(rect.height),minimized:true}:{width:Math.round(rect.width),height:Math.round(rect.height),minimized:false})})()};node.addEventListener('pointermove',move);node.addEventListener('pointerup',up);node.addEventListener('pointercancel',up)});
