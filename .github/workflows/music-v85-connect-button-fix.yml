@@ -1,0 +1,49 @@
+name: Smart Music V85 connect button fix
+on:
+  push:
+    branches: [tesla-waze-v85-work]
+    paths:
+      - 'tesla-waze-preview/music-v85-connect-button-fix.py'
+      - '.github/workflows/music-v85-connect-button-fix.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v85-work
+      - name: Apply V85 patch
+        run: python tesla-waze-preview/music-v85-connect-button-fix.py
+      - name: Syntax check
+        run: node --check tesla-waze-preview/app.js
+      - name: Verify only connect flow changed
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('tesla-waze-preview/app.js').read_text()
+          assert s.count('MUSIC_CONNECT_BUTTON_V85')==1
+          assert "function connectYoutube()" in s
+          assert "$('musicCompactSync').onclick=connectYoutube;" in s
+          assert "$('youtubeSync').onclick=connectYoutube;" in s
+          assert "functions/v1/twyoutubesearch?q=" in s
+          assert "'/api/music/youtube/likes'" in s
+          PY
+      - name: Rebuild JS runtime payload
+        run: |
+          python - <<'PY'
+          import gzip,base64,pathlib
+          p=pathlib.Path('tesla-waze-preview/app.js')
+          raw=p.read_bytes()
+          out=base64.b64encode(gzip.compress(raw,mtime=0)).decode()
+          pathlib.Path('tesla-waze-preview/app.js.gz.b64').write_text(out,encoding='ascii')
+          assert gzip.decompress(base64.b64decode(out))==raw
+          PY
+      - name: Commit V85
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m 'music: fix connect button V85'
+          git push origin HEAD:tesla-waze-v85-work
