@@ -643,9 +643,10 @@ function syncMusicCompactHeader(){
   const cfg=musicWindowState(),small=!shell.classList.contains('music-maximized');
   head.classList.toggle('music-compact-active',small);
   const st=$('musicCompactStatus'),src=$('musicStatus');if(st)st.textContent=src?.textContent||'Smart Music';
-  const min=$('musicCompactMin');if(min)min.textContent=cfg.minimized?'Rozbaliť':'Minimalizovať';
+  const min=$('musicCompactMin');if(min)min.textContent='Minimalizovať';
 }
 /* MUSIC_COMPACT_HEADER_V74 */
+/* MUSIC_COMPACT_HEADER_V76 */
 
 function ensureMusicWindowControls(){
   const shell=document.querySelector('.music-shell'),head=document.querySelector('.music-head');if(!shell||!head||$('musicMinimize'))return;
