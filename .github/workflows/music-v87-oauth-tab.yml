@@ -1,0 +1,46 @@
+name: Smart Music V87 OAuth tab
+on:
+  push:
+    branches: [tesla-waze-v87-oauth-work]
+    paths:
+      - 'tesla-waze-preview/music-v87-oauth-tab-patch.py'
+      - '.github/workflows/music-v87-oauth-tab.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v87-oauth-work
+      - name: Apply V87 patch
+        run: python tesla-waze-preview/music-v87-oauth-tab-patch.py
+      - name: Syntax check
+        run: node --check tesla-waze-preview/app.js
+      - name: Verify OAuth tab only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('tesla-waze-preview/app.js').read_text()
+          assert s.count('MUSIC_CONNECT_OAUTH_TAB_V87')==1
+          assert "window.open(PROD_ORIGIN+'/api/music/google/start','_blank')" in s
+          assert "$('musicCompactSync').onclick=connectYoutube" in s
+          PY
+      - name: Rebuild JS runtime payload
+        run: |
+          python - <<'PY'
+          import gzip,base64,pathlib
+          p=pathlib.Path('tesla-waze-preview/app.js')
+          raw=p.read_bytes()
+          out=base64.b64encode(gzip.compress(raw,mtime=0)).decode()
+          pathlib.Path('tesla-waze-preview/app.js.gz.b64').write_text(out,encoding='ascii')
+          assert gzip.decompress(base64.b64decode(out))==raw
+          PY
+      - name: Commit V87
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m 'music: open OAuth in browser tab V87'
+          git push origin HEAD:tesla-waze-v87-oauth-work
