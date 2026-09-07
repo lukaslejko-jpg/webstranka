@@ -1,0 +1,16 @@
+from pathlib import Path
+p=Path('tesla-waze-preview/app.js')
+s=p.read_text(encoding='utf-8')
+old="async function syncYoutube(){try{const r=await fetch(PROD_ORIGIN+'/api/music/youtube/likes',{cache:'no-store',credentials:'include'});if(r.status===401){const u=PROD_ORIGIN+'/api/music/google/start',auth=window.open(u,'tesla-youtube-auth','popup,width=560,height=760');if($('musicAccount'))$('musicAccount').textContent=auth?'Dokončite prihlásenie v otvorenom okne':'Povoľte v prehliadači vyskakovacie okno pre prihlásenie';return}if(!r.ok)throw new Error('youtube '+r.status);const d=await r.json();(d.items||[]).forEach(t=>{const s=mt(t);s.score=Math.max(s.score,4);s.liked=true;s.artwork=t.artwork||s.artwork;s.source='YouTube Like';ma(t.artist).score=Math.max(ma(t.artist).score,2.5)});music.profile.youtube={connected:true,email:d.email||'lukaslejko@gmail.com',lastSync:new Date().toISOString(),count:d.count||0};save(LS.music,music.profile);music.queue=musicItems();save(LS.queue,music.queue);renderMusicStatus();renderMusicList()}catch(e){console.warn('YouTube synchronizácia zlyhala:',e?.message||e);if($('musicAccount'))$('musicAccount').textContent='YouTube synchronizácia zlyhala · skúste znova'}}"
+new="async function syncYoutube(authWindow=null){try{const r=await fetch(PROD_ORIGIN+'/api/music/youtube/likes',{cache:'no-store',credentials:'include'});if(r.status===401){const u=PROD_ORIGIN+'/api/music/google/start',auth=authWindow||window.open(u,'tesla-youtube-auth','popup,width=560,height=760');if(authWindow&&!authWindow.closed)authWindow.location.href=u;if($('musicAccount'))$('musicAccount').textContent=auth?'Dokončite prihlásenie v otvorenom okne':'Povoľte v prehliadači vyskakovacie okno pre prihlásenie';return}if(authWindow&&!authWindow.closed)authWindow.close();if(!r.ok)throw new Error('youtube '+r.status);const d=await r.json();(d.items||[]).forEach(t=>{const s=mt(t);s.score=Math.max(s.score,4);s.liked=true;s.artwork=t.artwork||s.artwork;s.source='YouTube Like';ma(t.artist).score=Math.max(ma(t.artist).score,2.5)});music.profile.youtube={connected:true,email:d.email||'lukaslejko@gmail.com',lastSync:new Date().toISOString(),count:d.count||0};save(LS.music,music.profile);music.queue=musicItems();save(LS.queue,music.queue);renderMusicStatus();renderMusicList()}catch(e){if(authWindow&&!authWindow.closed)authWindow.close();console.warn('YouTube synchronizácia zlyhala:',e?.message||e);if($('musicAccount'))$('musicAccount').textContent='YouTube synchronizácia zlyhala · skúste znova'}}\nfunction connectYoutube(){const auth=window.open('about:blank','tesla-youtube-auth','popup,width=560,height=760');if(!auth){if($('musicAccount'))$('musicAccount').textContent='Povoľte v prehliadači vyskakovacie okno pre prihlásenie';return}syncYoutube(auth)}/* MUSIC_CONNECT_BUTTON_V85 */"
+if s.count(old)!=1: raise SystemExit(f'syncYoutube match count {s.count(old)}')
+s=s.replace(old,new,1)
+repls={
+"$('musicCompactSync').onclick=()=>syncYoutube();":"$('musicCompactSync').onclick=connectYoutube;",
+"$('youtubeSync').onclick=syncYoutube;":"$('youtubeSync').onclick=connectYoutube;",
+"syncYoutube()},true);":"connectYoutube()},true);"
+}
+for a,b in repls.items():
+    if s.count(a)!=1: raise SystemExit(f'handler match count {s.count(a)} for {a}')
+    s=s.replace(a,b,1)
+p.write_text(s,encoding='utf-8')
