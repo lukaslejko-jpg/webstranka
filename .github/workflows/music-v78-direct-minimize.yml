@@ -24,15 +24,7 @@ jobs:
           grep -q "musicMaxHome')?.remove" tesla-waze-preview/app.js
           grep -q 'cfg.miniHeight||520' tesla-waze-preview/app.js
       - name: Rebuild JS gzip runtime
-        run: python - <<'PY'
-          from pathlib import Path
-          import gzip,base64
-          p=Path('tesla-waze-preview/app.js')
-          out=base64.b64encode(gzip.compress(p.read_bytes(),mtime=0)).decode()
-          Path('tesla-waze-preview/app.js.gz.b64').write_text(out,encoding='ascii')
-          assert gzip.decompress(base64.b64decode(out))==p.read_bytes()
-          print('gzip exact')
-          PY
+        run: python -c "from pathlib import Path; import gzip,base64; p=Path('tesla-waze-preview/app.js'); raw=p.read_bytes(); out=base64.b64encode(gzip.compress(raw,mtime=0)).decode(); Path('tesla-waze-preview/app.js.gz.b64').write_text(out,encoding='ascii'); assert gzip.decompress(base64.b64decode(out))==raw; print('gzip exact')"
       - name: Commit V78 runtime
         run: |
           git config user.name github-actions[bot]
