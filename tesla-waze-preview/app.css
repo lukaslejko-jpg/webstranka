@@ -1142,3 +1142,8 @@ body:not(.tesla-navigating) #alertBox{
     left:8px!important;top:64px!important;width:calc(100vw - 16px)!important;max-height:calc(100vh - 150px)!important;
   }
 }
+
+
+/* MUSIC_V83_RESIZE_AND_ADS */
+.music-shell:not(.music-maximized) #musicAds{display:none!important}
+.music-shell.music-maximized #musicAds{display:inline-flex!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important}
