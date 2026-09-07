@@ -20,14 +20,21 @@ jobs:
           ref: tesla-waze-preview-v1
           fetch-depth: 0
 
+      - name: Fetch approved V75 work branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin tesla-waze-v75-work:refs/remotes/origin/tesla-waze-v75-work
+          test "$(git rev-parse origin/tesla-waze-v75-work)" = "04213e711681bf764f08b314cbee91f30d0d8e04"
+
       - name: Copy only approved V75 CSS runtime
         shell: bash
         run: |
           set -euo pipefail
           BEFORE_JS=$(git hash-object tesla-waze-preview/app.js)
           BEFORE_JSGZ=$(git hash-object tesla-waze-preview/app.js.gz.b64)
-          git show 04213e711681bf764f08b314cbee91f30d0d8e04:tesla-waze-preview/app.css > tesla-waze-preview/app.css
-          git show 04213e711681bf764f08b314cbee91f30d0d8e04:tesla-waze-preview/app.css.gz.b64 > tesla-waze-preview/app.css.gz.b64
+          git show origin/tesla-waze-v75-work:tesla-waze-preview/app.css > tesla-waze-preview/app.css
+          git show origin/tesla-waze-v75-work:tesla-waze-preview/app.css.gz.b64 > tesla-waze-preview/app.css.gz.b64
           grep -q 'MUSIC_COMPACT_HEADER_V75' tesla-waze-preview/app.css
           grep -q 'grid-template-columns:1fr!important' tesla-waze-preview/app.css
           grep -q 'grid-template-rows:repeat(3,44px)!important' tesla-waze-preview/app.css
