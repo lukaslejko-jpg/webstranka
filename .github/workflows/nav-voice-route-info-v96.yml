@@ -1,0 +1,82 @@
+name: Navigation voice volume and route info V96
+on:
+  push:
+    branches: [tesla-waze-v96-work]
+    paths:
+      - '.github/workflows/nav-voice-route-info-v96.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'apply V96') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v96-work
+          fetch-depth: 0
+      - name: Apply narrow V96 patch
+        shell: python
+        run: |
+          from pathlib import Path
+          import gzip, base64
+          js=Path('tesla-waze-preview/app.js')
+          s=js.read_text()
+          old="gain.gain.value=4*state.voiceVolume;"
+          new="gain.gain.value=state.voiceVolume;/* NAV_VOICE_VOLUME_V96 */"
+          assert old in s, 'cloud voice gain pattern missing'
+          s=s.replace(old,new,1)
+          old="lastTrailAt:null,pendingAutoRoute:false,routeHadHeading:false"
+          new="lastTrailAt:null,tripStartLabel:'',pendingAutoRoute:false,routeHadHeading:false"
+          assert old in s, 'state trip label insertion point missing'
+          s=s.replace(old,new,1)
+          old="state.tripKey=routeLearningKey(state.pos,state.dest);state.tripTrail=state.pos?[{...state.pos}]:[];state.tripOriginalRoute=(r.coords||[]).map(p=>({...p}));state.lastTrailAt=state.pos?{...state.pos}:null;"
+          new="const startAnchor=savedAnchorNear(state.pos,180)?.place;state.tripStartLabel=startAnchor?.name||startAnchor?.address||'Štart';state.tripKey=routeLearningKey(state.pos,state.dest);state.tripTrail=state.pos?[{...state.pos}]:[];state.tripOriginalRoute=(r.coords||[]).map(p=>({...p}));state.lastTrailAt=state.pos?{...state.pos}:null;/* NAV_TRIP_START_V96 */"
+          assert old in s, 'begin navigation trip state pattern missing'
+          s=s.replace(old,new,1)
+          old="trip.innerHTML=`<div class=\"tesla-trip-stats\"><b>${arr}</b><span>${fmtT(time)}</span><span>${fmtD(remaining)}</span></div><div class=\"tesla-progress\"><i style=\"width:${Math.round(ratio*100)}%\"></i></div>"
+          new="trip.innerHTML=`<div class=\"tesla-trip-stats\"><b>${arr}</b><span>${fmtT(time)}</span><span>${fmtD(remaining)}</span></div><div class=\"tesla-trip-route\">${esc(state.tripStartLabel||'Štart')} → ${esc(state.dest?.name||state.dest?.address||'Cieľ')}</div><div class=\"tesla-progress\"><i style=\"width:${Math.round(ratio*100)}%\"></i></div>"
+          assert old in s, 'trip card html pattern missing'
+          s=s.replace(old,new,1)
+          old="state.tripKey='';state.tripTrail=[];state.tripOriginalRoute=null;state.lastTrailAt=null;"
+          new="state.tripKey='';state.tripTrail=[];state.tripOriginalRoute=null;state.lastTrailAt=null;state.tripStartLabel='';"
+          assert old in s, 'stop navigation trip state pattern missing'
+          s=s.replace(old,new,1)
+          js.write_text(s)
+          raw=js.read_bytes()
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(raw,compresslevel=9,mtime=0)).decode())
+
+          css=Path('tesla-waze-preview/app.css')
+          c=css.read_text()
+          marker='/* NAV_TRIP_ROUTE_LINE_V96 */'
+          if marker not in c:
+              c += '''\n\n/* NAV_TRIP_ROUTE_LINE_V96 */\nbody.tesla-navigating .tesla-trip-route{width:100%;padding:0 16px 8px;color:#dce8ec;font-size:12px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}\n'''
+          css.write_text(c)
+          rawc=css.read_bytes()
+          Path('tesla-waze-preview/app.css.gz.b64').write_text(base64.b64encode(gzip.compress(rawc,compresslevel=9,mtime=0)).decode())
+      - name: Verify V96
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -q 'NAV_VOICE_VOLUME_V96' tesla-waze-preview/app.js
+          grep -q 'NAV_TRIP_START_V96' tesla-waze-preview/app.js
+          grep -q 'tesla-trip-route' tesla-waze-preview/app.js
+          grep -q 'NAV_TRIP_ROUTE_LINE_V96' tesla-waze-preview/app.css
+          ! grep -q 'gain.gain.value=4\*state.voiceVolume' tesla-waze-preview/app.js
+          python - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          for stem in ['app.js','app.css']:
+              raw=Path('tesla-waze-preview/'+stem).read_bytes()
+              enc=Path('tesla-waze-preview/'+stem+'.gz.b64').read_text().strip()
+              assert gzip.decompress(base64.b64decode(enc))==raw
+          PY
+          changed="$(git diff --name-only)"
+          echo "$changed"
+          test "$changed" = $'tesla-waze-preview/app.css\ntesla-waze-preview/app.css.gz.b64\ntesla-waze-preview/app.js\ntesla-waze-preview/app.js.gz.b64'
+      - name: Commit V96
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64
+          git commit -m 'nav: apply V96 voice volume and route info'
+          git push origin HEAD:tesla-waze-v96-work
