@@ -1,0 +1,66 @@
+name: Apply Smart Music compact header V74
+on:
+  push:
+    branches: [tesla-waze-v74-work]
+    paths:
+      - 'tesla-waze-preview/music-compact-header-v74-patch.py'
+      - '.github/workflows/apply-music-compact-v74.yml'
+      - 'tesla-waze-preview/.v74-trigger'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v74-work
+          fetch-depth: 0
+      - name: Apply V74 patch
+        run: python tesla-waze-preview/music-compact-header-v74-patch.py
+      - name: Check JavaScript syntax
+        run: node --check tesla-waze-preview/app.js
+      - name: Verify V74 invariants
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          js=Path('tesla-waze-preview/app.js').read_text()
+          css=Path('tesla-waze-preview/app.css').read_text()
+          req_js=['MUSIC_COMPACT_HEADER_V74','musicCompactSync','musicCompactMax','musicCompactMin','musicCompactBack','ensureMusicCompactHeader();']
+          req_css=['MUSIC_COMPACT_HEADER_V74','.music-shell:not(.music-maximized)>.music-compact-head{display:grid!important','.music-shell:not(.music-maximized)>.music-head{display:none!important','.music-compact-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important']
+          for x in req_js:
+              assert x in js, x
+          for x in req_css:
+              assert x in css, x
+          assert 'Prepojiť / synchronizovať YouTube' in js
+          assert 'Späť na plochu' in js
+          print('V74 invariants OK')
+          PY
+      - name: Rebuild compressed assets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          for name in ['app.js','app.css']:
+              raw=Path('tesla-waze-preview/'+name).read_bytes()
+              out=base64.b64encode(gzip.compress(raw,mtime=0)).decode('ascii')+'\n'
+              Path('tesla-waze-preview/'+name+'.gz.b64').write_text(out)
+          PY
+      - name: Verify compressed assets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          for name in ['app.js','app.css']:
+              raw=Path('tesla-waze-preview/'+name).read_bytes()
+              got=gzip.decompress(base64.b64decode(Path('tesla-waze-preview/'+name+'.gz.b64').read_text().strip()))
+              assert raw==got, name
+          print('gzip assets exact')
+          PY
+      - name: Commit runtime V74
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
+          git commit -m 'music: isolated compact Smart Music header V74'
+          git push origin HEAD:tesla-waze-v74-work
