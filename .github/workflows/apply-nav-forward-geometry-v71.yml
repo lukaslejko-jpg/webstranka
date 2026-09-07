@@ -1,0 +1,67 @@
+name: Apply forward geometry V71
+
+on:
+  push:
+    branches: [tesla-waze-v71-work]
+    paths:
+      - 'tesla-waze-preview/navigation-v71-forward-geometry-patch.py'
+      - '.github/workflows/apply-nav-forward-geometry-v71.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v71-work
+          fetch-depth: 0
+      - name: Record pre-patch hashes
+        run: |
+          sha256sum tesla-waze-preview/app.js > /tmp/app.before
+      - name: Apply V71
+        run: python tesla-waze-preview/navigation-v71-forward-geometry-patch.py
+      - name: Verify JS syntax and invariants
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -q 'NAV_CORE_STABILITY_V69' tesla-waze-preview/app.js
+          grep -q 'NAV_FORWARD_GEOMETRY_V71' tesla-waze-preview/app.js
+          grep -q 'routeGeometryForward(rr,requestStart,requestEnd)' tesla-waze-preview/app.js
+          grep -q "invalid route orientation" tesla-waze-preview/app.js
+          ! grep -Fq 'rr.coords=[...rr.coords].reverse()' tesla-waze-preview/app.js
+          grep -Fq 'return [markerPosition,...coords.slice(Math.min(coords.length,n.index+1))]' tesla-waze-preview/app.js
+          grep -q 'MUSIC_' tesla-waze-preview/app.js
+      - name: Rebuild JS asset
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip, base64
+          p=Path('tesla-waze-preview/app.js')
+          data=gzip.compress(p.read_bytes(),compresslevel=9)
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(data).decode('ascii'))
+          PY
+      - name: Verify generated asset decodes to app.js
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          js=Path('tesla-waze-preview/app.js').read_bytes()
+          packed=Path('tesla-waze-preview/app.js.gz.b64').read_text().strip()
+          assert gzip.decompress(base64.b64decode(packed))==js
+          PY
+      - name: Verify scope of generated changes
+        run: |
+          changed=$(git diff --name-only)
+          echo "$changed"
+          test "$changed" = $'tesla-waze-preview/app.js\ntesla-waze-preview/app.js.gz.b64'
+      - name: Commit V71 result
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'nav: enforce forward geometry and step alignment V71'
+          git push origin HEAD:tesla-waze-v71-work
