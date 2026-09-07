@@ -1,5 +1,18 @@
 (()=>{
 'use strict';
+/* OFFLINE_TILE_CACHE_V98 */
+const V98_BRANCH_PATH='/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/';
+if(location.hostname==='raw.githack.com'&&!location.pathname.startsWith(V98_BRANCH_PATH)){
+  location.replace('https://raw.githack.com'+V98_BRANCH_PATH+'live3.html'+location.search+location.hash);
+  return;
+}
+if('serviceWorker' in navigator&&location.hostname==='raw.githack.com'){
+  const sendNetworkState=()=>{try{navigator.serviceWorker.controller?.postMessage({type:'TESLA_NETWORK_STATE',online:navigator.onLine!==false})}catch{}};
+  navigator.serviceWorker.register('./offline-sw-v98.js',{scope:'./'}).then(()=>navigator.serviceWorker.ready).then(()=>sendNetworkState()).catch(e=>console.warn('Offline tile cache unavailable:',e?.message||e));
+  navigator.serviceWorker.addEventListener('controllerchange',sendNetworkState);
+  window.addEventListener('online',sendNetworkState);
+  window.addEventListener('offline',sendNetworkState);
+}
 /* MOBILE_NATIVE_GPS_V12 */
 (function restoreNativeGeolocationForDirectBrowser(){
   try{
