@@ -564,8 +564,8 @@ function syncMusicMinimizedHeader(){
   const shell=document.querySelector('.music-shell'),btn=$('youtubeSync'),slot=$('musicHeaderSyncSlot'),close=$('closeMusic');
   if(!shell||!btn||!slot)return;
   if(!musicSyncHome)musicSyncHome={parent:btn.parentNode,next:btn.nextSibling};
-  const minimized=shell.classList.contains('music-minimized');
-  if(minimized){
+  const compact=!shell.classList.contains('music-maximized');
+  if(compact){
     if(btn.parentNode!==slot)slot.appendChild(btn);
     btn.classList.remove('wide');btn.classList.add('music-head-sync-btn');
     if(close)close.textContent='Späť na plochu';
@@ -579,6 +579,7 @@ function syncMusicMinimizedHeader(){
   }
 }
 /* MUSIC_MIN_HEADER_V72 */
+/* MUSIC_COMPACT_HEADER_V73 */
 
 
 const MUSIC_SEARCH_HISTORY_KEY='teslaWaze:musicSearchHistory:v1';
