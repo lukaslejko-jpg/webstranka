@@ -1,0 +1,69 @@
+name: Apply navigation core stability V69
+
+on:
+  push:
+    branches: [tesla-waze-v69-work]
+    paths:
+      - 'tesla-waze-preview/navigation-v69-core-stability-patch.py'
+      - '.github/workflows/apply-nav-core-v69.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v69-work
+          fetch-depth: 0
+      - name: Record pre-patch hash
+        run: sha256sum tesla-waze-preview/app.js > /tmp/app-before.sha
+      - name: Apply V69
+        run: python tesla-waze-preview/navigation-v69-core-stability-patch.py
+      - name: Verify JS syntax and invariants
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -q 'NAV_CORE_STABILITY_V69' tesla-waze-preview/app.js
+          grep -q 'NAV_TMY_SAFETY_V68' tesla-waze-preview/app.js
+          grep -q 'TMY_VOICE_V23' tesla-waze-preview/app.js
+          grep -q 'MUSIC_DISPLAY_LATIN_FILTER_V56' tesla-waze-preview/app.js
+          grep -q 'function nextActionableStepIndex' tesla-waze-preview/app.js
+          grep -q 'function nearestNavigation' tesla-waze-preview/app.js
+          grep -q 'active.setLatLngs(\[\])' tesla-waze-preview/app.js
+          grep -q 'state.wrongTurnHits>=1' tesla-waze-preview/app.js
+          ! grep -q 'state.routeHadHeading=true;calculateRoute(false)' tesla-waze-preview/app.js
+          ! grep -q 'state.map.setView(x.location,15);' tesla-waze-preview/app.js
+      - name: Rebuild JS asset
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip, base64
+          p=Path('tesla-waze-preview/app.js')
+          data=gzip.compress(p.read_bytes(),compresslevel=9)
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(data).decode('ascii'))
+          PY
+      - name: Verify generated asset decodes to app.js
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip, base64
+          js=Path('tesla-waze-preview/app.js').read_bytes()
+          enc=Path('tesla-waze-preview/app.js.gz.b64').read_text().strip()
+          dec=gzip.decompress(base64.b64decode(enc))
+          assert dec==js, 'generated app.js.gz.b64 does not match app.js'
+          PY
+      - name: Verify scope of generated changes
+        run: |
+          changed="$(git diff --name-only)"
+          echo "$changed"
+          test "$changed" = $'tesla-waze-preview/app.js\ntesla-waze-preview/app.js.gz.b64' || { echo 'Unexpected changed files'; exit 1; }
+      - name: Commit V69 result
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m 'nav: stabilize map, maneuvers and immediate reroute V69'
+          git push origin HEAD:tesla-waze-v69-work
