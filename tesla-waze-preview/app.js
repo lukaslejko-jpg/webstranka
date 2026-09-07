@@ -141,11 +141,11 @@ function startGPS(){
   setInterval(()=>{const now=Date.now();if(now-lastTs>8000&&now-lastRestart>8000){lastRestart=now;$('gpsNotice').querySelector('span').textContent='GPS neposiela novú polohu. Overujem sledovanie.';navigator.geolocation.getCurrentPosition(onPosition,()=>{if(now-lastTs>12000)restart()},{enableHighAccuracy:true,timeout:8000,maximumAge:1500})}},2500);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')navigator.geolocation.getCurrentPosition(onPosition,()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0})});
 }
-function applyHeadingUp(markerPosition,zoom){
+function applyHeadingUp(markerPosition,zoom,headingOverride=null){
   if(!state.map||!state.navigating||!markerPosition)return;
   const now=Date.now();
   if(now-state.lastCameraAt<800)return;
-  const h=Number.isFinite(state.gpsHeading)?state.gpsHeading:(Number.isFinite(state.lastAppliedHeading)?state.lastAppliedHeading:null),center=Number.isFinite(h)?destinationPoint(markerPosition,65,h):markerPosition;
+  const h=Number.isFinite(headingOverride)?headingOverride:(Number.isFinite(state.gpsHeading)?state.gpsHeading:(Number.isFinite(state.lastAppliedHeading)?state.lastAppliedHeading:null)),center=Number.isFinite(h)?destinationPoint(markerPosition,65,h):markerPosition;
   const moved=state.lastCameraCenter?dist(state.lastCameraCenter,center):Infinity,headingChanged=Number.isFinite(h)&&(!Number.isFinite(state.lastAppliedHeading)||headingDelta(h,state.lastAppliedHeading)>=25),zoomChanged=!Number.isFinite(state.lastCameraZoom)||Math.abs(Number(zoom)-Number(state.lastCameraZoom))>=.35;
   if(moved<10&&!headingChanged&&!zoomChanged)return;
   state.lastCameraAt=now;
@@ -361,7 +361,7 @@ function updateNavigation(){
   if(wrongTurn)state.wrongTurnHits=(state.wrongTurnHits||0)+1;else state.wrongTurnHits=0;
   trimActiveRouteBehindCar(r,n,markerPosition);
   const kmh=(state.speed||0)*3.6;
-  applyHeadingUp(markerPosition,navigationZoom(dm,maneuver?.opcode,kmh));
+  const routeAheadForCamera=routePointFromProjection(r.coords,n,80),routeCameraHeading=routeAheadForCamera?bearing(n.point,routeAheadForCamera):null;applyHeadingUp(markerPosition,navigationZoom(dm,maneuver?.opcode,kmh),routeCameraHeading);
   if(state.wrongTurnHits>=1&&!state.routeLoading&&Date.now()-state.lastReroute>1200){
     state.wrongTurnHits=0;state.offRouteHits=0;state.lastReroute=Date.now();
     state.routeLines?.forEach(line=>{if(line?.setLatLngs)line.setLatLngs([]);line?.setStyle?.({opacity:0})});
@@ -464,12 +464,12 @@ function findAheadTraffic(){
 function renderTraffic(){
   const r=state.routes[state.routeIndex];
   if(!state.map||!r?.coords?.length||!state.jams?.length){state.trafficLines.forEach(x=>x.remove());state.trafficLines=[];state.trafficPaintSig='';return}
-  const visible=[];
+  const visible=[],carProj=state.navigating&&state.pos?nearestNavigation(state.pos,r.coords,state.routeCursor||0):null;
   for(const j of state.jams){
     if(!j.line?.length)continue;
     const probes=[j.line[0],j.line[Math.floor(j.line.length/2)],j.line.at(-1)].filter(Boolean);
     let near=Infinity;for(const p of probes){const n=nearest(p,r.coords,state.routeCursor||0);if(n)near=Math.min(near,n.distance)}
-    const level=Number(j.level||0);if(near<=420&&level>0)visible.push(j);
+    const level=Number(j.level||0);if(near<=420&&level>0){let drawLine=j.line;if(carProj){drawLine=j.line.filter(p=>{const pn=nearestNavigation(p,r.coords,state.routeCursor||0);return !!(pn&&pn.distance<=420&&(pn.index>carProj.index||(pn.index===carProj.index&&pn.t>=carProj.t)))})}if(drawLine.length>=2)visible.push(drawLine===j.line?j:{...j,line:drawLine})}
   }
   const sig=visible.map(j=>`${j.id||''}:${Number(j.level||0)}:${j.line?.length||0}:${j.line?.[0]?.lat||0}:${j.line?.[0]?.lng||0}`).join('|');
   if(sig===state.trafficPaintSig)return;
@@ -997,3 +997,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* NAV_CORE_V90_IMMEDIATE_REROUTE */
 
 /* MAP_BEARING_STABILITY_V92 */
+
+/* NAV_ROUTE_ALIGNED_CAMERA_TRAFFIC_TRIM_V95 */
