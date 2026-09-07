@@ -1150,3 +1150,8 @@ body:not(.tesla-navigating) #alertBox{
 
 /* MUSIC_ACCOUNT_LINE_V88 */
 .music-compact-account{width:100%;box-sizing:border-box;padding:0 4px 2px;font-size:11px;line-height:15px;font-weight:400;opacity:.62;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* MUSIC_ACCOUNT_VISIBLE_V89 */
+.music-shell:not(.music-maximized)>.music-compact-head{grid-template-rows:auto 15px auto!important}
+.music-shell:not(.music-maximized) #musicCompactAccount{display:block!important;visibility:visible!important;grid-row:2!important;width:100%!important;height:15px!important;min-height:15px!important;line-height:15px!important;padding:0 2px!important;margin:0!important;color:#91a7b6!important;opacity:.72!important;font-size:10px!important;font-weight:400!important;text-align:right!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.music-shell:not(.music-maximized) .music-compact-actions{grid-row:3!important}
