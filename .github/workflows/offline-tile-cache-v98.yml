@@ -45,15 +45,17 @@ jobs:
           '''
               s=s.replace(needle,needle+code,1)
               p.write_text(s)
-      - name: Verify JS and invariants
+      - name: Verify JS and preserved core functions
         run: |
           node --check tesla-waze-preview/app.js
           grep -q 'OFFLINE_TILE_CACHE_V98' tesla-waze-preview/app.js
           grep -q "navigator.serviceWorker.register('./offline-sw-v98.js'" tesla-waze-preview/app.js
           grep -q 'TESLA_NETWORK_STATE' tesla-waze-preview/app.js
-          grep -q 'NAV_FREE_DRIVE_HEADING_V97' tesla-waze-preview/app.js
-          grep -q 'NAV_VOICE_VOLUME_ROUTE_INFO_V96' tesla-waze-preview/app.js
-          grep -q 'NAV_ROUTE_CAMERA_TRAFFIC_TRIM_V95' tesla-waze-preview/app.js
+          grep -q 'function nearestNavigation' tesla-waze-preview/app.js
+          grep -q 'function applyHeadingUp' tesla-waze-preview/app.js
+          grep -q 'function renderTraffic' tesla-waze-preview/app.js
+          grep -q 'function mnext' tesla-waze-preview/app.js
+          grep -q 'gain.gain.value=state.voiceVolume' tesla-waze-preview/app.js
       - name: Rebuild JS runtime asset
         run: |
           python - <<'PY'
