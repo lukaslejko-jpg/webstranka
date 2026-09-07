@@ -146,10 +146,10 @@ function applyHeadingUp(markerPosition,zoom){
   const now=Date.now();
   if(now-state.lastCameraAt<800)return;
   const h=Number.isFinite(state.gpsHeading)?state.gpsHeading:(Number.isFinite(state.lastAppliedHeading)?state.lastAppliedHeading:null),center=Number.isFinite(h)?destinationPoint(markerPosition,65,h):markerPosition;
-  const moved=state.lastCameraCenter?dist(state.lastCameraCenter,center):Infinity,headingChanged=Number.isFinite(h)&&(!Number.isFinite(state.lastAppliedHeading)||headingDelta(h,state.lastAppliedHeading)>=12),zoomChanged=!Number.isFinite(state.lastCameraZoom)||Math.abs(Number(zoom)-Number(state.lastCameraZoom))>=.35;
+  const moved=state.lastCameraCenter?dist(state.lastCameraCenter,center):Infinity,headingChanged=Number.isFinite(h)&&(!Number.isFinite(state.lastAppliedHeading)||headingDelta(h,state.lastAppliedHeading)>=25),zoomChanged=!Number.isFinite(state.lastCameraZoom)||Math.abs(Number(zoom)-Number(state.lastCameraZoom))>=.35;
   if(moved<10&&!headingChanged&&!zoomChanged)return;
   state.lastCameraAt=now;
-  if(headingChanged){
+  if(headingChanged&&now-(state.lastBearingAt||0)>=2500){
     if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});
     else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);
     state.lastAppliedHeading=h;state.lastBearingAt=now;
@@ -995,3 +995,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* NAV_FORWARD_GEOMETRY_V71 */
 
 /* NAV_CORE_V90_IMMEDIATE_REROUTE */
+
+/* MAP_BEARING_STABILITY_V92 */
