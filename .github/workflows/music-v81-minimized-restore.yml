@@ -1,0 +1,42 @@
+name: Smart Music V81 minimized restore
+on:
+  push:
+    branches: [tesla-waze-v81-work]
+    paths:
+      - 'tesla-waze-preview/music-v81-minimized-fix.py'
+      - '.github/workflows/music-v81-minimized-restore.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v81-work
+      - name: Apply V81
+        run: python tesla-waze-preview/music-v81-minimized-fix.py
+      - name: Verify syntax and invariants
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -F "shell.classList.toggle('music-minimized',!isMax)" tesla-waze-preview/app.js
+          grep -F "if(!isMax)shell.classList.remove('music-video-open')" tesla-waze-preview/app.js
+          grep -F ".music-shell.music-minimized .music-mini-search" tesla-waze-preview/app.css
+      - name: Rebuild runtime
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          b=p.read_bytes()
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(b,mtime=0)).decode(),encoding='ascii')
+          out=gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.js.gz.b64').read_text()))
+          assert out==b
+          PY
+      - name: Commit V81
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m "music: restore minimized search and queue V81" || exit 0
+          git push origin HEAD:tesla-waze-v81-work
