@@ -1114,3 +1114,31 @@ body:not(.tesla-navigating) #alertBox{
   .music-shell:not(.music-maximized) .music-compact-actions .btn{font-size:11px!important;padding:0 4px!important}
   .music-shell:not(.music-maximized) #musicCompactBack{font-size:10px!important}
 }
+
+
+/* MUSIC_V80_MAX_VIDEO_ONLY */
+
+.music-shell.music-maximized.music-video-open .music-player .yt-player{
+  position:fixed!important;
+  z-index:7005!important;
+  left:20px!important;
+  top:72px!important;
+  width:calc(100vw - 40px)!important;
+  height:auto!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:none!important;
+  max-height:calc(100vh - 170px)!important;
+  aspect-ratio:16/9!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  overflow:hidden!important;
+  margin:0!important;
+  border-radius:14px!important;
+  background:#000!important;
+}
+@media(max-width:900px){
+  .music-shell.music-maximized.music-video-open .music-player .yt-player{
+    left:8px!important;top:64px!important;width:calc(100vw - 16px)!important;max-height:calc(100vh - 150px)!important;
+  }
+}
