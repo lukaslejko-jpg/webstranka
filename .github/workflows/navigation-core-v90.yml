@@ -1,0 +1,46 @@
+name: Tesla navigation core V90
+on:
+  push:
+    branches: [tesla-waze-v90-work]
+    paths:
+      - 'tesla-waze-preview/navigation-core-v90-patch.py'
+      - '.github/workflows/navigation-core-v90.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v90-work
+          fetch-depth: 0
+      - name: Apply focused navigation patch
+        run: python3 tesla-waze-preview/navigation-core-v90-patch.py
+      - name: Verify JS and scope markers
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -q 'NAV_CORE_V90_IMMEDIATE_REROUTE' tesla-waze-preview/app.js
+          grep -q 'Math.max(0,start);i<Math.min(coords.length-1,start+350)' tesla-waze-preview/app.js
+          grep -q 'Math.max(35,(Number(accuracy)||0)*1.5)' tesla-waze-preview/app.js
+          grep -q 'headingDelta(h,state.lastAppliedHeading)>=12' tesla-waze-preview/app.js
+          grep -q 'state.offRouteHits>=1' tesla-waze-preview/app.js
+          grep -q 'Date.now()-state.lastReroute>1200' tesla-waze-preview/app.js
+      - name: Rebuild exact JS runtime asset
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          src=Path('tesla-waze-preview/app.js').read_bytes()
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(src,compresslevel=9)).decode(),encoding='ascii')
+          assert gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.js.gz.b64').read_text())) == src
+          PY
+      - name: Commit runtime only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git diff --cached --quiet && exit 0
+          git commit -m 'nav: immediate reroute and stable forward route V90'
+          git push origin HEAD:tesla-waze-v90-work
