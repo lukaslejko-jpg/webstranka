@@ -1,0 +1,45 @@
+name: Smart Music V89 account visible
+on:
+  push:
+    branches: [tesla-waze-v89-work]
+    paths:
+      - 'tesla-waze-preview/music-v89-account-visible-patch.py'
+      - '.github/workflows/music-v89-account-visible.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v89-work
+      - name: Apply V89 patch
+        run: python tesla-waze-preview/music-v89-account-visible-patch.py
+      - name: Verify account layout only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('tesla-waze-preview/app.css').read_text()
+          assert s.count('MUSIC_ACCOUNT_VISIBLE_V89')==1
+          assert 'grid-template-rows:auto 15px auto!important' in s
+          assert '#musicCompactAccount{display:block!important;visibility:visible!important;grid-row:2!important' in s
+          assert '.music-compact-actions{grid-row:3!important}' in s
+          PY
+      - name: Rebuild CSS runtime payload
+        run: |
+          python - <<'PY'
+          import gzip,base64,pathlib
+          p=pathlib.Path('tesla-waze-preview/app.css')
+          raw=p.read_bytes()
+          out=base64.b64encode(gzip.compress(raw,mtime=0)).decode()
+          pathlib.Path('tesla-waze-preview/app.css.gz.b64').write_text(out,encoding='ascii')
+          assert gzip.decompress(base64.b64decode(out))==raw
+          PY
+      - name: Commit V89
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64
+          git commit -m 'music: force connected account row visible V89'
+          git push origin HEAD:tesla-waze-v89-work
