@@ -579,7 +579,7 @@ function startDeviceInbox(){
 // Smart Music window
 const MUSIC_WIN_KEY='teslaWaze:musicWindow:v1';
 function musicWindowState(){return load(MUSIC_WIN_KEY,{width:520,height:Math.min(window.innerHeight,760),miniHeight:520,minimized:false})}
-function applyMusicWindow(){const shell=document.querySelector('.music-shell');if(!shell)return;const cfg=musicWindowState(),maxW=Math.max(340,window.innerWidth-20),maxH=Math.max(360,window.innerHeight-20),isMax=!!cfg.maximized;if(isMax){shell.style.width=`${maxW}px`;shell.style.height=`${maxH}px`}else{const normalMaxW=Math.max(340,Math.min(window.innerWidth-20,760));shell.style.width=`${Math.max(340,Math.min(normalMaxW,cfg.width||520))}px`;const miniH=Math.max(360,Math.min(maxH,cfg.miniHeight||520));const fullH=Math.max(360,Math.min(maxH,cfg.height||Math.min(window.innerHeight,760)));shell.style.height=`${miniH}px`}shell.classList.toggle('music-minimized',!isMax);shell.classList.toggle('music-maximized',isMax);if(!isMax&&shell.classList.contains('music-searching')){const full=$('musicSearch'),hi=$('musicHeaderSearchInput');if(full)full.value='';if(hi)hi.value='';setMusicSearchMode(false);shell.classList.remove('music-searching')}const b=$('musicMinimize');if(b)b.textContent='Minimalizovať';const s=$('musicSize');if(s){s.textContent=isMax?(shell.classList.contains('music-video-open')?'Skryť video':'Video'):'Maximalizovať';s.classList.toggle('music-video-btn',isMax)};if(!isMax)shell.classList.remove('music-video-open');if(isMax){ensureMaxMusicHeaderSearch();renderMusicMaxHome()}else removeMaxMusicHeaderSearch();syncMusicMinimizedHeader();syncMusicCompactHeader()}/* MUSIC_MINIMIZED_RESTORE_V81 */
+function applyMusicWindow(){const shell=document.querySelector('.music-shell');if(!shell)return;const cfg=musicWindowState(),maxW=Math.max(340,window.innerWidth-20),maxH=Math.max(360,window.innerHeight-20),isMax=!!cfg.maximized;if(isMax){shell.style.width=`${maxW}px`;shell.style.height=`${maxH}px`}else{const normalMaxW=Math.max(340,Math.min(window.innerWidth-20,760));shell.style.width=`${Math.max(340,Math.min(normalMaxW,cfg.width||520))}px`;const miniH=Math.max(360,Math.min(maxH,cfg.miniHeight||520));const fullH=Math.max(360,Math.min(maxH,cfg.height||Math.min(window.innerHeight,760)));shell.style.height=`${miniH}px`}shell.classList.toggle('music-minimized',!isMax);shell.classList.toggle('music-maximized',isMax);if(!isMax&&shell.classList.contains('music-searching')){const full=$('musicSearch'),hi=$('musicHeaderSearchInput');if(full)full.value='';if(hi)hi.value='';setMusicSearchMode(false);shell.classList.remove('music-searching')}const b=$('musicMinimize');if(b)b.textContent='Minimalizovať';const s=$('musicSize');if(s){s.textContent=isMax?(shell.classList.contains('music-video-open')?'Skryť video':'Video'):'Maximalizovať';s.classList.toggle('music-video-btn',isMax)};if(!isMax)shell.classList.remove('music-video-open');if(isMax){ensureMaxMusicHeaderSearch();ensureMobileMaxSearch();renderMusicMaxHome()}else{removeMaxMusicHeaderSearch();ensureMobileMaxSearch()}syncMusicMinimizedHeader();syncMusicCompactHeader()}/* MUSIC_MINIMIZED_RESTORE_V81 */
 /* MUSIC_NO_RESTART_ON_MINIMIZE_V82 *//* MUSIC_MINI_RESIZE_V4 *//* MUSIC_MAX_TWO_COL_V8 */
 function saveMusicWindow(patch){const cfg={...musicWindowState(),...patch};save(MUSIC_WIN_KEY,cfg);applyMusicWindow()}
 let musicSyncHome=null;
@@ -625,6 +625,22 @@ function renderMusicHeaderHistory(){
     if(input)input.value=q;if(full)full.value=q;host.classList.add('hidden');musicSearch();
   });
 }
+function ensureMobileMaxSearch(){
+  const shell=document.querySelector('.music-shell'),head=document.querySelector('.music-head');
+  if(!shell||!head)return;
+  const mobile=window.matchMedia?.('(max-width:900px)')?.matches;
+  let box=$('musicMobileMaxSearch');
+  if(!shell.classList.contains('music-maximized')||!mobile){if(box)box.remove();return}
+  if(box)return;
+  box=document.createElement('div');box.id='musicMobileMaxSearch';box.className='music-mobile-max-search';
+  box.innerHTML='<input id="musicMobileMaxSearchInput" type="search" autocomplete="off" placeholder="Hľadať hudbu…" aria-label="Hľadať hudbu"><button id="musicMobileMaxSearchBtn" type="button" class="btn primary">Hľadať</button>';
+  head.appendChild(box);
+  const input=$('musicMobileMaxSearchInput'),full=$('musicSearch'),run=()=>{if(!input||!full)return;full.value=input.value.trim();musicSearch()};
+  if(input&&full)input.value=full.value||'';
+  $('musicMobileMaxSearchBtn').onclick=run;
+  input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();run()}};
+  input.oninput=()=>{if(full)full.value=input.value};
+}/* MUSIC_MOBILE_SEARCH_V103 */
 function ensureMaxMusicHeaderSearch(){
   const shell=document.querySelector('.music-shell'),head=document.querySelector('.music-head');
   if(!shell?.classList.contains('music-maximized')||!head)return;
