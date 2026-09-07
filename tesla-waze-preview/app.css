@@ -1114,4 +1114,31 @@ body:not(.tesla-navigating) #alertBox{
   .music-shell:not(.music-maximized) .music-compact-actions .btn{font-size:11px!important;padding:0 4px!important}
   .music-shell:not(.music-maximized) #musicCompactBack{font-size:10px!important}
 }
-\n\n/* MUSIC_TWO_STATE_VIDEO_V79 */\n#musicVideo{display:none}\n.music-shell.music-maximized #musicVideo{display:block!important}\n.music-shell.music-maximized #musicMinimize{display:none!important}\n.music-shell.music-maximized.music-video-open::before{\n  content:'';position:fixed;inset:58px 18px 92px;background:rgba(0,0,0,.82);z-index:6100;pointer-events:none;border-radius:14px;\n}\n.music-shell.music-maximized.music-video-open .music-player .yt-player{\n  position:fixed!important;left:50%!important;top:74px!important;bottom:auto!important;transform:translateX(-50%)!important;\n  width:min(1100px,calc(100vw - 70px))!important;height:auto!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:calc(100vh - 190px)!important;\n  aspect-ratio:16/9!important;opacity:1!important;pointer-events:auto!important;overflow:visible!important;margin:0!important;z-index:6200!important;\n  border-radius:14px!important;background:#000!important;box-shadow:0 14px 40px rgba(0,0,0,.65)!important;\n}\n@media(max-width:900px){\n  .music-shell.music-maximized.music-video-open .music-player .yt-player{top:70px!important;width:calc(100vw - 24px)!important;max-height:calc(100vh - 170px)!important}\n}\n
+
+
+/* MUSIC_V80_MAX_VIDEO_ONLY */
+
+.music-shell.music-maximized.music-video-open .music-player .yt-player{
+  position:fixed!important;
+  z-index:7005!important;
+  left:20px!important;
+  top:72px!important;
+  width:calc(100vw - 40px)!important;
+  height:auto!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:none!important;
+  max-height:calc(100vh - 170px)!important;
+  aspect-ratio:16/9!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  overflow:hidden!important;
+  margin:0!important;
+  border-radius:14px!important;
+  background:#000!important;
+}
+@media(max-width:900px){
+  .music-shell.music-maximized.music-video-open .music-player .yt-player{
+    left:8px!important;top:64px!important;width:calc(100vw - 16px)!important;max-height:calc(100vh - 150px)!important;
+  }
+}
