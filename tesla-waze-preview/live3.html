@@ -7,7 +7,6 @@
 <title>Tesla Waze 2.0</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.css" />
-<link rel="stylesheet" href="./mobile-v102.css?v=105" />
 
 <style>
 html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
@@ -77,7 +76,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
    nf(RAW+'app.css.gz.b64?v='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('css '+r.status);return r.text()}),
    nf(RAW+'app.js.gz.b64?v='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('js '+r.status);return r.text()})
  ]);
- const st=document.createElement('style');st.textContent=ung(css64);document.head.appendChild(st);
+ const st=document.createElement('style');st.textContent=ung(css64);document.head.appendChild(st);const mob=document.createElement('link');mob.rel='stylesheet';mob.href='./mobile-v102.css?v=107';document.head.appendChild(mob);
  const dock=document.createElement('div');dock.id='preSearchDock';document.body.appendChild(dock);const sb=document.querySelector('.searchbox');if(sb)dock.appendChild(sb);
  const blob=new Blob([ung(js64)],{type:'text/javascript'}),url=URL.createObjectURL(blob),sc=document.createElement('script');
  sc.src=url;sc.onload=()=>{URL.revokeObjectURL(url);setTimeout(()=>{
