@@ -630,7 +630,7 @@ function ensureMusicCompactHeader(){
   let head=$('musicCompactHead');
   if(!head){
     head=document.createElement('div');head.id='musicCompactHead';head.className='music-compact-head';
-    head.innerHTML='<div class="music-compact-top"><div class="music-compact-brand"><span class="music-compact-icon">♫</span><div><b>Smart Music</b><small id="musicCompactStatus">Hudba</small></div></div><button id="musicCompactSync" type="button" class="btn primary">Prepojiť / synchronizovať YouTube</button></div><div class="music-compact-actions"><button id="musicCompactMax" type="button" class="btn">Maximalizovať</button><button id="musicCompactMin" type="button" class="btn">Minimalizovať</button><button id="musicCompactBack" type="button" class="btn">Späť na plochu</button></div>';
+    head.innerHTML='<div class="music-compact-top"><div class="music-compact-brand"><span class="music-compact-icon">♫</span><div><b>Smart Music</b><small id="musicCompactStatus">Hudba</small></div></div><button id="musicCompactSync" type="button" class="btn primary">Prepojiť / synchronizovať YouTube</button></div><div id="musicCompactAccount" class="music-compact-account">YouTube nepripojený</div><div class="music-compact-actions"><button id="musicCompactMax" type="button" class="btn">Maximalizovať</button><button id="musicCompactMin" type="button" class="btn">Minimalizovať</button><button id="musicCompactBack" type="button" class="btn">Späť na plochu</button></div>';
     shell.insertBefore(head,shell.firstChild);
     $('musicCompactSync').onclick=connectYoutube;
     $('musicCompactMax').onclick=()=>saveMusicWindow({maximized:true,minimized:false});
@@ -644,6 +644,7 @@ function syncMusicCompactHeader(){
   const cfg=musicWindowState(),small=!shell.classList.contains('music-maximized');
   head.classList.toggle('music-compact-active',small);
   const st=$('musicCompactStatus'),src=$('musicStatus');if(st)st.textContent=src?.textContent||'Smart Music';
+  const acct=$('musicCompactAccount'),y=music?.profile?.youtube||{};if(acct)acct.textContent=y.connected&&y.email?`${y.email} · synchronizované`:'YouTube nepripojený';
   const min=$('musicCompactMin');if(min)min.textContent='Minimalizovať';
 }
 /* MUSIC_COMPACT_HEADER_V74 */
@@ -689,7 +690,7 @@ function invalidateCurrentMedia(reason,duration=0){if(!music.current)return fals
 function sanitizeMusicProfile(){let changed=false;for(const t of Object.values(music.profile.tracks||{})){if(!t.invalidMedia&&(looksLikeNonSong(t)||(declaredMusicDuration(t)>0&&declaredMusicDuration(t)<MUSIC_MIN_SECONDS))){t.invalidMedia=true;t.invalidReason=looksLikeNonSong(t)?'non-song':'short';changed=true}}if(changed)save(LS.music,music.profile);music.queue=(music.queue||[]).filter(isEligibleMusic);save(LS.queue,music.queue)}
 sanitizeMusicProfile();
 function musicItems(){let a=Object.values(music.profile.tracks).filter(isEligibleMusic);if(music.tab==='likes')a=a.filter(x=>x.liked);if(music.tab==='recent')a=a.filter(x=>x.lastPlayed).sort((x,y)=>Date.parse(y.lastPlayed)-Date.parse(x.lastPlayed));else a.sort((x,y)=>(y.score+(isYoutubePreference(y)?3:0))-(x.score+(isYoutubePreference(x)?3:0)));return a}
-function renderMusicStatus(){const n=Object.values(music.profile.tracks).filter(isEligibleMusic).length,y=music.profile.youtube;$('musicStatus').textContent=`${n} naučených skladieb`;$('musicAccount').textContent=y.connected?`${y.email||'lukaslejko@gmail.com'} · synchronizované`:'lukaslejko@gmail.com · YouTube nepripojený';$('musicMiniStatus').textContent=$('musicAccount').textContent}
+function renderMusicStatus(){const n=Object.values(music.profile.tracks).filter(isEligibleMusic).length,y=music.profile.youtube;$('musicStatus').textContent=`${n} naučených skladieb`;$('musicAccount').textContent=y.connected?`${y.email||''} · synchronizované`:'YouTube nepripojený';$('musicMiniStatus').textContent=$('musicAccount').textContent;syncMusicCompactHeader()}/* MUSIC_ACCOUNT_LINE_V88 */
 function canPlayInApp(t){return !!(t?.streamUrl||t?.youtubeId||String(t?.id||'').startsWith('youtube:'))}
 function musicDisplayText(v,fallback=''){
   let x=String(v??'').normalize('NFC');
