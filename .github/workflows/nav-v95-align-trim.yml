@@ -1,0 +1,69 @@
+name: Navigation alignment and traffic trim V95
+on:
+  push:
+    branches: [tesla-waze-v95-work]
+    paths:
+      - '.github/workflows/nav-v95-align-trim.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'apply V95') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v95-work
+      - name: Apply narrow V95 patch
+        shell: python
+        run: |
+          from pathlib import Path
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text()
+          old='function applyHeadingUp(markerPosition,zoom){'
+          new='function applyHeadingUp(markerPosition,zoom,headingOverride=null){'
+          assert old in s
+          s=s.replace(old,new,1)
+          old="const h=Number.isFinite(state.gpsHeading)?state.gpsHeading:(Number.isFinite(state.lastAppliedHeading)?state.lastAppliedHeading:null),center=Number.isFinite(h)?destinationPoint(markerPosition,65,h):markerPosition;"
+          new="const h=Number.isFinite(headingOverride)?headingOverride:(Number.isFinite(state.gpsHeading)?state.gpsHeading:(Number.isFinite(state.lastAppliedHeading)?state.lastAppliedHeading:null)),center=Number.isFinite(h)?destinationPoint(markerPosition,65,h):markerPosition;"
+          assert old in s
+          s=s.replace(old,new,1)
+          old='applyHeadingUp(markerPosition,navigationZoom(dm,maneuver?.opcode,kmh));'
+          new='const routeAheadForCamera=routePointFromProjection(r.coords,n,80),routeCameraHeading=routeAheadForCamera?bearing(n.point,routeAheadForCamera):null;applyHeadingUp(markerPosition,navigationZoom(dm,maneuver?.opcode,kmh),routeCameraHeading);'
+          assert old in s
+          s=s.replace(old,new,1)
+          old='const visible=[];\n  for(const j of state.jams){'
+          new='const visible=[],carProj=state.navigating&&state.pos?nearestNavigation(state.pos,r.coords,state.routeCursor||0):null;\n  for(const j of state.jams){'
+          assert old in s
+          s=s.replace(old,new,1)
+          old='const level=Number(j.level||0);if(near<=420&&level>0)visible.push(j);'
+          new="const level=Number(j.level||0);if(near<=420&&level>0){let drawLine=j.line;if(carProj){drawLine=j.line.filter(p=>{const pn=nearestNavigation(p,r.coords,state.routeCursor||0);return !!(pn&&pn.distance<=420&&(pn.index>carProj.index||(pn.index===carProj.index&&pn.t>=carProj.t)))})}if(drawLine.length>=2)visible.push(drawLine===j.line?j:{...j,line:drawLine})}"
+          assert old in s
+          s=s.replace(old,new,1)
+          s+='\n/* NAV_ROUTE_ALIGNED_CAMERA_TRAFFIC_TRIM_V95 */\n'
+          p.write_text(s)
+          raw=p.read_bytes()
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(raw,compresslevel=9,mtime=0)).decode())
+      - name: Verify
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -q 'NAV_ROUTE_ALIGNED_CAMERA_TRAFFIC_TRIM_V95' tesla-waze-preview/app.js
+          grep -q 'routeCameraHeading' tesla-waze-preview/app.js
+          grep -q 'drawLine=j.line.filter' tesla-waze-preview/app.js
+          python - <<'PY'
+          import gzip,base64,pathlib
+          js=pathlib.Path('tesla-waze-preview/app.js').read_bytes()
+          enc=pathlib.Path('tesla-waze-preview/app.js.gz.b64').read_text().strip()
+          assert gzip.decompress(base64.b64decode(enc))==js
+          PY
+          test "$(git diff --name-only | wc -l)" -eq 2
+          git diff --name-only | grep -qx 'tesla-waze-preview/app.js'
+          git diff --name-only | grep -qx 'tesla-waze-preview/app.js.gz.b64'
+      - name: Commit
+        run: |
+          git config user.name lukaslejko-jpg
+          git config user.email lukaslejko@gmail.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m 'nav: apply V95 route-aligned camera and traffic trim'
+          git push origin HEAD:tesla-waze-v95-work
