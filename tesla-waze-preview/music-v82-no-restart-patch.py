@@ -1,8 +1,8 @@
 from pathlib import Path
 p=Path('tesla-waze-preview/app.js')
 s=p.read_text(encoding='utf-8')
-old="saveMusicWindow({minimized:true,maximized:false,height:h});$('musicMaxHome')?.remove();renderMusicList();renderPlayer();updateMiniSeek()"
-new="saveMusicWindow({minimized:true,maximized:false,height:h});$('musicMaxHome')?.remove();updateMiniSeek()"
+old="saveMusicWindow({minimized:false,maximized:false,height:h});$('musicMaxHome')?.remove();renderMusicList();renderPlayer();updateMiniSeek()"
+new="saveMusicWindow({minimized:false,maximized:false,height:h});$('musicMaxHome')?.remove();updateMiniSeek()"
 count=s.count(old)
 if count!=2:
     raise SystemExit(f'expected 2 minimize handlers, found {count}')
