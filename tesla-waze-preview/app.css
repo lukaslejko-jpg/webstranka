@@ -1168,3 +1168,10 @@ body.tesla-navigating .tesla-trip-stats span{color:#fff!important;opacity:1!impo
 
 /* NAV_TRIP_ROUTE_LINE_V96 */
 body.tesla-navigating .tesla-trip-route{width:100%;padding:0 16px 8px;color:#dce8ec;font-size:12px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+
+/* MUSIC_HORIZONTAL_RAILS_V100 */
+.music-shell.music-maximized .music-home-rail{display:grid!important;grid-auto-flow:column!important;grid-template-columns:none!important;grid-auto-columns:minmax(240px,28vw)!important;gap:12px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:4px 2px 12px!important;overscroll-behavior-inline:contain;scroll-snap-type:x proximity;touch-action:pan-x;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.music-shell.music-maximized .music-home-rail.music-home-covers{grid-auto-columns:minmax(150px,180px)!important}
+.music-shell.music-maximized .music-home-rail>*{scroll-snap-align:start}
+.music-shell.music-maximized .music-home-rail .music-home-row{width:100%;min-width:0}
+@media(max-width:900px){.music-shell.music-maximized .music-home-rail{grid-auto-columns:minmax(210px,78vw)!important}.music-shell.music-maximized .music-home-rail.music-home-covers{grid-auto-columns:minmax(145px,46vw)!important}}
