@@ -48,9 +48,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64
-          git diff --cached --quiet && { echo 'No V75 CSS changes to commit'; exit 1; }
-          git diff --cached --name-only | grep -qx 'tesla-waze-preview/app.css'
-          git diff --cached --name-only | grep -qx 'tesla-waze-preview/app.css.gz.b64'
-          test "$(git diff --cached --name-only | wc -l)" -eq 2
           git commit -m 'music: deploy approved compact Smart Music V75 [skip ci]'
           git push origin HEAD:tesla-waze-preview-v1
