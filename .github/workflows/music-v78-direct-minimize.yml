@@ -1,0 +1,43 @@
+name: Smart Music V78 direct minimize
+on:
+  push:
+    branches: [tesla-waze-v78-work4]
+    paths:
+      - 'tesla-waze-preview/music-v78-direct-minimize-patch.py'
+      - '.github/workflows/music-v78-direct-minimize.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v78-work4
+      - name: Apply V78 patch
+        run: python tesla-waze-preview/music-v78-direct-minimize-patch.py
+      - name: Check JS syntax
+        run: node --check tesla-waze-preview/app.js
+      - name: Check V78 invariants
+        run: |
+          grep -q 'MUSIC_DIRECT_MINIMIZE_V78' tesla-waze-preview/app.js
+          grep -q "musicMaxHome')?.remove" tesla-waze-preview/app.js
+          grep -q 'cfg.miniHeight||520' tesla-waze-preview/app.js
+      - name: Rebuild JS gzip runtime
+        run: python - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          out=base64.b64encode(gzip.compress(p.read_bytes(),mtime=0)).decode()
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(out,encoding='ascii')
+          assert gzip.decompress(base64.b64decode(out))==p.read_bytes()
+          print('gzip exact')
+          PY
+      - name: Commit V78 runtime
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git diff --cached --quiet && exit 0
+          git commit -m 'music: direct maximize to compact player V78'
+          git push origin HEAD:tesla-waze-v78-work4
