@@ -14,3 +14,4 @@ if old2 not in s: raise SystemExit('main minimize anchor not found')
 s=s.replace(old2,new2,1)
 p.write_text(s,encoding='utf-8')
 print('V78 patch applied')
+# trigger-v78
