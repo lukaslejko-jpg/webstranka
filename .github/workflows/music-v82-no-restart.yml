@@ -1,0 +1,41 @@
+name: Smart Music V82 no restart on minimize
+on:
+  push:
+    branches: [tesla-waze-v82-work]
+    paths:
+      - 'tesla-waze-preview/music-v82-no-restart-patch.py'
+      - '.github/workflows/music-v82-no-restart.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v82-work
+      - name: Apply V82 patch
+        run: python tesla-waze-preview/music-v82-no-restart-patch.py
+      - name: Syntax check
+        run: node --check tesla-waze-preview/app.js
+      - name: Verify V82 invariants
+        run: |
+          grep -q 'MUSIC_NO_RESTART_ON_MINIMIZE_V82' tesla-waze-preview/app.js
+          test "$(grep -o "renderMusicList();renderPlayer();updateMiniSeek()" tesla-waze-preview/app.js | wc -l)" -eq 0
+          test "$(grep -o "saveMusicWindow({minimized:true,maximized:false,height:h});$('musicMaxHome')?.remove();updateMiniSeek()" tesla-waze-preview/app.js | wc -l)" -eq 2
+      - name: Rebuild JS runtime payload
+        run: python - <<'PY'
+          import gzip,base64,pathlib
+          p=pathlib.Path('tesla-waze-preview/app.js')
+          raw=p.read_bytes()
+          pathlib.Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(raw,mtime=0)).decode(),encoding='ascii')
+          dec=gzip.decompress(base64.b64decode(pathlib.Path('tesla-waze-preview/app.js.gz.b64').read_text()))
+          assert dec==raw
+          PY
+      - name: Commit V82
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m 'music: preserve playback on minimize V82'
+          git push origin HEAD:tesla-waze-v82-work
