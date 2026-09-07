@@ -1,0 +1,69 @@
+name: Music map flash V99
+
+on:
+  push:
+    branches: [tesla-waze-v99-work]
+    paths:
+      - '.github/workflows/music-map-flash-v99.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'apply V99') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v99-work
+          fetch-depth: 0
+      - name: Patch non-destructive YouTube switching
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text()
+          a="const canReuseYoutube=!!(yt&&music.ytPlayer&&typeof music.ytPlayer.loadVideoById==='function'&&!music.audio);"
+          b="const canReuseYoutube=!!(yt&&music.ytPlayer&&typeof music.ytPlayer.loadVideoById==='function');/* MUSIC_NEXT_REUSE_V99 */"
+          assert a in s, 'canReuseYoutube anchor missing'
+          s=s.replace(a,b,1)
+          a="function noteYoutubeBlockedState(yt){if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback)return;music.fallbackAttempts=(music.fallbackAttempts||0)+1;if(music.fallbackAttempts>=3)switchYoutubeToFree(yt,false)}"
+          b="function noteYoutubeBlockedState(yt){if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback)return;music.fallbackAttempts=(music.fallbackAttempts||0)+1;if(music.fallbackAttempts>=3){music.fallbackAttempts=3;setYoutubeFallbackStatus('YouTube môže byť blokovaný · použi S reklamami',true)}}/* MUSIC_NONDESTRUCTIVE_FALLBACK_V99 */"
+          assert a in s, 'fallback anchor missing'
+          s=s.replace(a,b,1)
+          a="setInterval(()=>{if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.();if(st!==YT.PlayerState.PLAYING&&st!==YT.PlayerState.BUFFERING)noteYoutubeBlockedState(currentYoutubeId())}catch{}},2600);/* MUSIC_FREE_FALLBACK_V15 */"
+          b="setInterval(()=>{if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.();if(st!==YT.PlayerState.PLAYING&&st!==YT.PlayerState.BUFFERING)setYoutubeFallbackStatus('YouTube čaká · ak nehrá, použi S reklamami',true)}catch{}},2600);/* MUSIC_FREE_FALLBACK_NONDESTRUCTIVE_V99 */"
+          assert a in s, 'watchdog anchor missing'
+          s=s.replace(a,b,1)
+          p.write_text(s)
+      - name: Verify JS and exact scope
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -q 'MUSIC_NEXT_REUSE_V99' tesla-waze-preview/app.js
+          grep -q 'MUSIC_NONDESTRUCTIVE_FALLBACK_V99' tesla-waze-preview/app.js
+          grep -q 'MUSIC_FREE_FALLBACK_NONDESTRUCTIVE_V99' tesla-waze-preview/app.js
+          grep -q 'OFFLINE_TILE_CACHE_V98' tesla-waze-preview/app.js
+      - name: Rebuild JS runtime asset
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          raw=Path('tesla-waze-preview/app.js').read_bytes()
+          enc=base64.b64encode(gzip.compress(raw,compresslevel=9,mtime=0)).decode('ascii')
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(enc)
+          assert gzip.decompress(base64.b64decode(enc))==raw
+          PY
+      - name: Verify changed runtime files
+        run: |
+          changed="$(git diff --name-only)"
+          echo "$changed"
+          test "$changed" = $'tesla-waze-preview/app.js\ntesla-waze-preview/app.js.gz.b64'
+      - name: Commit V99 runtime
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m 'music: prevent destructive player rebuild flashes V99'
+          git push origin HEAD:tesla-waze-v99-work
