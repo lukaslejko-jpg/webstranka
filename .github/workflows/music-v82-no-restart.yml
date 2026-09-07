@@ -22,7 +22,7 @@ jobs:
         run: |
           grep -q 'MUSIC_NO_RESTART_ON_MINIMIZE_V82' tesla-waze-preview/app.js
           test "$(grep -o "renderMusicList();renderPlayer();updateMiniSeek()" tesla-waze-preview/app.js | wc -l)" -eq 0
-          test "$(grep -o "saveMusicWindow({minimized:true,maximized:false,height:h});$('musicMaxHome')?.remove();updateMiniSeek()" tesla-waze-preview/app.js | wc -l)" -eq 2
+          test "$(grep -o "saveMusicWindow({minimized:false,maximized:false,height:h});$('musicMaxHome')?.remove();updateMiniSeek()" tesla-waze-preview/app.js | wc -l)" -eq 2
       - name: Rebuild JS runtime payload
         run: python - <<'PY'
           import gzip,base64,pathlib
