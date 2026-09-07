@@ -1,0 +1,55 @@
+name: Free drive heading-up V97
+on:
+  push:
+    branches: [tesla-waze-v97-work]
+    paths:
+      - '.github/workflows/nav-free-drive-heading-v97.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v97-work
+      - name: Apply narrow free-drive heading patch
+        shell: python
+        run: |
+          from pathlib import Path
+          import gzip, base64
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text()
+          marker='/* FREE_DRIVE_HEADING_UP_V97 */'
+          if marker not in s:
+              anchor="function startGPS(){"
+              fn="""function updateFreeDriveHeading(p,moved,speed){\n  if(!state.map||state.navigating||!p)return;\n  const h=Number.isFinite(state.heading)?state.heading:(Number.isFinite(state.gpsHeading)?state.gpsHeading:null),moving=(Number(speed)||0)>=1.5||moved>=4;\n  if(!moving||!Number.isFinite(h))return;\n  const now=Date.now(),last=Number.isFinite(state.freeDriveHeading)?state.freeDriveHeading:null,changed=last==null||headingDelta(h,last)>=12;\n  if(changed&&now-(state.freeDriveBearingAt||0)>=1200){if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}\n  if(!state.freeDriveCenter||dist(state.freeDriveCenter,p)>=10){state.map.panTo?.(p,{animate:false});state.freeDriveCenter={...p}}\n}/* FREE_DRIVE_HEADING_UP_V97 */\n"""
+              if anchor not in s: raise SystemExit('startGPS anchor missing')
+              s=s.replace(anchor,fn+anchor,1)
+              old="else if(!state.navigating)state.car.setLatLng(p);"
+              new="else if(!state.navigating){state.car.setLatLng(p);updateFreeDriveHeading(p,moved,sp)}"
+              if old not in s: raise SystemExit('free drive marker anchor missing')
+              s=s.replace(old,new,1)
+              p.write_text(s)
+          raw=p.read_bytes(); gz=gzip.compress(raw,compresslevel=9,mtime=0)
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gz).decode())
+      - name: Verify
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -q 'FREE_DRIVE_HEADING_UP_V97' tesla-waze-preview/app.js
+          grep -q 'updateFreeDriveHeading(p,moved,sp)' tesla-waze-preview/app.js
+          python - <<'PY'
+          import gzip,base64,pathlib
+          js=pathlib.Path('tesla-waze-preview/app.js').read_bytes()
+          enc=pathlib.Path('tesla-waze-preview/app.js.gz.b64').read_text().strip()
+          assert gzip.decompress(base64.b64decode(enc))==js
+          PY
+          changed="$(git diff --name-only)"
+          test "$changed" = $'tesla-waze-preview/app.js\ntesla-waze-preview/app.js.gz.b64'
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m 'nav: keep free-drive arrow up and rotate map V97'
+          git push origin HEAD:tesla-waze-v97-work
