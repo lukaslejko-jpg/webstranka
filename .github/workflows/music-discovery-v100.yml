@@ -1,0 +1,75 @@
+name: Music discovery V100
+on:
+  push:
+    branches: [tesla-waze-v100-work]
+    paths: [.github/workflows/music-discovery-v100.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v100-work
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply V100 discovery patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip, base64
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text()
+
+          old="const music={profile:load(LS.music,{tracks:{},artists:{},events:[],youtube:{connected:false,email:'lukaslejko@gmail.com'}}),queue:load(LS.queue,[]),current:null,audio:null,ytPlayer:null,tab:'forYou',started:0,shuffle:load('teslaWaze:musicShuffle:v1',false),autoNext:load('teslaWaze:musicAutoNext:v1',true),userPaused:false,wantsPlayback:false,resumeTimer:null,anonymousYoutube:false,fallbackAttempts:0,fallbackTimer:null,shuffleRecent:[],shuffleBack:[],playingSince:0,manualNavPending:0,manualNavTimer:null};"
+          new="const music={profile:load(LS.music,{tracks:{},artists:{},events:[],youtube:{connected:false,email:'lukaslejko@gmail.com'}}),queue:load(LS.queue,[]),current:null,audio:null,ytPlayer:null,tab:'forYou',started:0,shuffle:load('teslaWaze:musicShuffle:v1',false),autoNext:load('teslaWaze:musicAutoNext:v1',true),userPaused:false,wantsPlayback:false,resumeTimer:null,anonymousYoutube:false,fallbackAttempts:0,fallbackTimer:null,shuffleRecent:[],shuffleBack:[],playingSince:0,manualNavPending:0,manualNavTimer:null,related:[],relatedBusy:false,relatedSeeds:[]};/* MUSIC_DISCOVERY_STATE_V100 */"
+          assert old in s, 'music state anchor missing'
+          s=s.replace(old,new,1)
+
+          old="music.current=t;music.userPaused=false;music.wantsPlayback=true;music.playingSince=0;setMusicPlaying(true);syncMediaSession();music.started=Date.now();mev(replay?'replay':'play',t);"
+          new="music.current=t;music.userPaused=false;music.wantsPlayback=true;music.playingSince=0;music.autoNext=true;music.shuffle=true;save('teslaWaze:musicAutoNext:v1',true);save('teslaWaze:musicShuffle:v1',true);setMusicPlaying(true);syncMediaSession();music.started=Date.now();mev(replay?'replay':'play',t);expandRelatedQueue(t);/* MUSIC_ENDLESS_DISCOVERY_V100 */"
+          assert old in s, 'mplay anchor missing'
+          s=s.replace(old,new,1)
+
+          old="async function searchYoutube(q){const r=await fetch('https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twyoutubesearch?q='+encodeURIComponent(q),{cache:'no-store'});if(!r.ok)throw new Error('youtube search '+r.status);const d=await r.json();return Array.isArray(d.items)?d.items:[]}/* MUSIC_PUBLIC_YOUTUBE_SEARCH_V84 */"
+          new=old+"\nasync function expandRelatedQueue(track){\n  if(!track||music.relatedBusy)return;\n  const st=mt(track),artist=musicDisplayText(track.artist||st.artist),title=musicDisplayText(track.title||st.title),seed=norm(artist||title);\n  if(!seed||music.relatedSeeds.includes(seed))return;\n  music.relatedBusy=true;music.relatedSeeds.push(seed);music.relatedSeeds=music.relatedSeeds.slice(-40);\n  try{\n    const queries=artist?[`${artist} songs`,`${artist} ${title||''} similar songs`.trim()]:[`${title} songs`],results=await Promise.allSettled(queries.map(searchYoutube)),seen=new Set(Object.values(music.profile.tracks).map(x=>mt(x).id)),added=[];\n    for(const batch of results){if(batch.status!=='fulfilled')continue;for(const t of batch.value||[]){if(!isEligibleMusic(t))continue;const x=mt(t),id=x.id;if(id===st.id||seen.has(id))continue;x.youtubeId=x.youtubeId||t.youtubeId||'';x.artwork=x.artwork||t.artwork||'';x.source=x.source||t.source||'YouTube';x.title=x.title||t.title||'';x.artist=x.artist||t.artist||'';seen.add(id);added.push(x)}}\n    if(added.length){music.related=[...added,...music.related.filter(x=>!seen.has(mt(x).id))].slice(0,300);save(LS.music,music.profile);music.queue=Object.values(music.profile.tracks).filter(isEligibleMusic);save(LS.queue,music.queue);if(document.querySelector('.music-shell')?.classList.contains('music-maximized'))renderMusicMaxHome()}\n  }catch(e){console.warn('Podobné skladby sa nepodarilo doplniť:',e?.message||e)}finally{music.relatedBusy=false}\n}/* MUSIC_RELATED_DISCOVERY_V100 */"
+          assert old in s, 'searchYoutube anchor missing'
+          s=s.replace(old,new,1)
+
+          old="  const liked=[...all].filter(x=>x.liked).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,12);\n  const recent=[...all].filter(x=>x.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed||0)-Date.parse(a.lastPlayed||0)).slice(0,12);\n  const fallback=[...all].sort((a,b)=>(b.score||0)-(a.score||0));\n  const fav=liked.length?liked:fallback.slice(0,9);\n  const rec=recent.length?recent:fallback.slice(0,9);\n  const section=(title,items,kind)=>items.length?`<section class=\"music-home-section music-home-${kind}\"><header><h3>${esc(title)}</h3><span>${items.length}</span></header><div class=\"${kind==='quick'?'music-home-covers':'music-home-rows'}\">${items.map(kind==='quick'?musicHomeLargeCard:musicHomeListCard).join('')}</div></section>`:'';\n  home.innerHTML=`${section('Rýchly výber',quick,'quick')}${section('Obľúbené',fav,'favorites')}${section('Naposledy prehrané',rec,'recent')}`;"
+          new="  const liked=[...all].filter(x=>x.liked).sort((a,b)=>(b.score||0)-(a.score||0));\n  const recent=[...all].filter(x=>x.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed||0)-Date.parse(a.lastPlayed||0)).slice(0,200);\n  const fallback=[...all].sort((a,b)=>((b.score||0)+(ma(b.artist).score||0)+(b.liked?5:0))-((a.score||0)+(ma(a.artist).score||0)+(a.liked?5:0)));\n  const related=(music.related||[]).filter(isEligibleMusic).slice(0,200);\n  const relatedIds=new Set(related.map(x=>mt(x).id)),likedIds=new Set(liked.map(x=>mt(x).id));\n  const recommended=fallback.filter(x=>!likedIds.has(mt(x).id)&&!relatedIds.has(mt(x).id)).slice(0,200);\n  const fav=liked.length?liked:fallback.slice(0,30);\n  const rec=recent.length?recent:fallback.slice(0,30);\n  const section=(title,items,kind)=>items.length?`<section class=\"music-home-section music-home-${kind}\"><header><h3>${esc(title)}</h3><span>${items.length}</span></header><div class=\"music-home-rail ${kind==='quick'?'music-home-covers':'music-home-rows'}\">${items.map(kind==='quick'?musicHomeLargeCard:musicHomeListCard).join('')}</div></section>`:'';\n  home.innerHTML=`${section('Rýchly výber',quick,'quick')}${section('Podobné k prehrávanej skladbe',related,'related')}${section('Odporúčané pre teba',recommended,'recommended')}${section('Obľúbené',fav,'favorites')}${section('Naposledy prehrané',rec,'recent')}`;/* MUSIC_MAX_RAILS_V100 */"
+          assert old in s, 'max home anchor missing'
+          s=s.replace(old,new,1)
+
+          p.write_text(s)
+          gz=gzip.compress(s.encode(),compresslevel=9,mtime=0)
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gz).decode())
+
+          c=Path('tesla-waze-preview/app.css')
+          css=c.read_text()
+          css += "\n/* MUSIC_HORIZONTAL_RAILS_V100 */\n.music-shell.music-maximized .music-home-rail{display:grid!important;grid-auto-flow:column!important;grid-template-columns:none!important;grid-auto-columns:minmax(240px,28vw)!important;gap:12px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:4px 2px 12px!important;overscroll-behavior-inline:contain;scroll-snap-type:x proximity;touch-action:pan-x;-webkit-overflow-scrolling:touch;scrollbar-width:thin}\n.music-shell.music-maximized .music-home-rail.music-home-covers{grid-auto-columns:minmax(150px,180px)!important}\n.music-shell.music-maximized .music-home-rail>*{scroll-snap-align:start}\n.music-shell.music-maximized .music-home-rail .music-home-row{width:100%;min-width:0}\n@media(max-width:900px){.music-shell.music-maximized .music-home-rail{grid-auto-columns:minmax(210px,78vw)!important}.music-shell.music-maximized .music-home-rail.music-home-covers{grid-auto-columns:minmax(145px,46vw)!important}}\n"
+          c.write_text(css)
+          gz=gzip.compress(css.encode(),compresslevel=9,mtime=0)
+          Path('tesla-waze-preview/app.css.gz.b64').write_text(base64.b64encode(gz).decode())
+          PY
+      - name: Verify syntax and runtime assets
+        run: |
+          node --check tesla-waze-preview/app.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          for n in ['app.js','app.css']:
+            raw=Path('tesla-waze-preview/'+n).read_bytes()
+            packed=base64.b64decode(Path('tesla-waze-preview/'+n+'.gz.b64').read_text())
+            assert gzip.decompress(packed)==raw,n+' gzip mismatch'
+          print('runtime assets verified')
+          PY
+      - name: Commit V100 runtime
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64
+          git commit -m 'music: endless discovery and horizontal rails V100 [skip ci]'
+          git push origin HEAD:tesla-waze-v100-work
