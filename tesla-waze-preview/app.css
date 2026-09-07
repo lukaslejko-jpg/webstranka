@@ -1046,3 +1046,71 @@ body:not(.tesla-navigating) #alertBox{
   .music-shell:not(.music-maximized) .music-compact-actions{grid-template-rows:repeat(3,42px)!important;gap:6px!important}
   .music-shell:not(.music-maximized) .music-compact-actions .btn{height:42px!important;min-height:42px!important;font-size:12px!important}
 }
+
+
+/* MUSIC_COMPACT_HEADER_V76 */
+.music-shell:not(.music-maximized) .music-compact-head{
+  padding:10px 12px!important;
+  gap:10px!important;
+}
+.music-shell:not(.music-maximized) .music-compact-top{
+  display:grid!important;
+  grid-template-columns:minmax(132px,.95fr) minmax(0,1.45fr)!important;
+  gap:10px!important;
+  align-items:center!important;
+  width:100%!important;
+}
+.music-shell:not(.music-maximized) .music-compact-brand{
+  min-width:0!important;
+  overflow:visible!important;
+}
+.music-shell:not(.music-maximized) .music-compact-brand b{
+  font-size:18px!important;
+  line-height:1.05!important;
+  white-space:normal!important;
+}
+.music-shell:not(.music-maximized) .music-compact-brand small{
+  font-size:9px!important;
+  line-height:1.1!important;
+  white-space:normal!important;
+}
+.music-shell:not(.music-maximized) .music-compact-top #musicCompactSync{
+  width:100%!important;
+  min-width:0!important;
+  height:46px!important;
+  min-height:46px!important;
+  padding:0 10px!important;
+  font-size:12px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.music-shell:not(.music-maximized) .music-compact-actions{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  grid-template-rows:46px!important;
+  gap:8px!important;
+  width:100%!important;
+}
+.music-shell:not(.music-maximized) .music-compact-actions .btn{
+  width:100%!important;
+  min-width:0!important;
+  height:46px!important;
+  min-height:46px!important;
+  padding:0 6px!important;
+  font-size:12px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.music-shell:not(.music-maximized) #musicCompactBack{font-size:11px!important}
+@media(max-width:390px){
+  .music-shell:not(.music-maximized) .music-compact-top{
+    grid-template-columns:minmax(118px,.9fr) minmax(0,1.5fr)!important;
+    gap:8px!important;
+  }
+  .music-shell:not(.music-maximized) .music-compact-top #musicCompactSync{font-size:11px!important;padding:0 7px!important}
+  .music-shell:not(.music-maximized) .music-compact-actions{gap:6px!important}
+  .music-shell:not(.music-maximized) .music-compact-actions .btn{font-size:11px!important;padding:0 4px!important}
+  .music-shell:not(.music-maximized) #musicCompactBack{font-size:10px!important}
+}
