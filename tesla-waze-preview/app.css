@@ -1175,3 +1175,8 @@ body.tesla-navigating .tesla-trip-route{width:100%;padding:0 16px 8px;color:#dce
 .music-shell.music-maximized .music-home-rail>*{scroll-snap-align:start}
 .music-shell.music-maximized .music-home-rail .music-home-row{width:100%;min-width:0}
 @media(max-width:900px){.music-shell.music-maximized .music-home-rail{grid-auto-columns:minmax(210px,78vw)!important}.music-shell.music-maximized .music-home-rail.music-home-covers{grid-auto-columns:minmax(145px,46vw)!important}}
+
+
+/* MUSIC_MAX_HEADER_VIDEO_LAYER_V101 */
+.music-shell.music-maximized .music-head{position:relative!important;z-index:7010!important}
+.music-shell.music-maximized #musicHeaderSearch{position:relative!important;z-index:7012!important}
