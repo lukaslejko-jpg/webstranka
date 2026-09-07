@@ -17,3 +17,12 @@
   .music-shell.music-maximized.music-video-open .music-player .yt-player{left:8px!important;top:112px!important;width:calc(100vw - 16px)!important;max-height:calc(100dvh - 190px)!important}
   .music-shell.music-maximized .music-controls{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
 }
+
+
+/* MUSIC_MOBILE_SEARCH_V103 */
+@media(max-width:900px){
+  .music-shell.music-maximized #musicHeaderSearch{display:none!important}
+  .music-shell.music-maximized #musicMobileMaxSearch{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:6px!important;width:100%!important;order:3!important}
+  .music-shell.music-maximized #musicMobileMaxSearch input{width:100%!important;min-width:0!important;height:44px!important;border:1px solid #334556!important;border-radius:10px!important;background:#0b141d!important;color:#fff!important;padding:0 11px!important;font-size:14px!important}
+  .music-shell.music-maximized #musicMobileMaxSearch .btn{height:44px!important;min-height:44px!important;min-width:84px!important;padding:0 12px!important}
+}
