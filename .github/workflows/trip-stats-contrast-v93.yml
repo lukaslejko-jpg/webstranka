@@ -1,0 +1,46 @@
+name: Trip stats contrast V93
+on:
+  push:
+    branches: [tesla-waze-v93-work]
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch CSS only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('tesla-waze-preview/app.css')
+          s=p.read_text()
+          marker='/* TESLA_TRIP_STATS_CONTRAST_V93 */'
+          if marker not in s:
+              s += '\n'+marker+'\nbody.tesla-navigating .tesla-trip-stats span{color:#f4f7f8!important;opacity:1!important;font-weight:800!important;text-shadow:0 1px 2px rgba(0,0,0,.55)!important}\n'
+              p.write_text(s)
+          PY
+      - name: Rebuild CSS runtime gzip
+        run: |
+          python - <<'PY'
+          import gzip,base64,pathlib
+          p=pathlib.Path('tesla-waze-preview/app.css')
+          out=base64.b64encode(gzip.compress(p.read_bytes(),mtime=0)).decode()
+          pathlib.Path('tesla-waze-preview/app.css.gz.b64').write_text(out)
+          PY
+      - name: Verify scope
+        run: |
+          grep -q 'TESLA_TRIP_STATS_CONTRAST_V93' tesla-waze-preview/app.css
+          python - <<'PY'
+          import gzip,base64,pathlib
+          css=pathlib.Path('tesla-waze-preview/app.css').read_bytes()
+          b64=pathlib.Path('tesla-waze-preview/app.css.gz.b64').read_text().strip()
+          assert gzip.decompress(base64.b64decode(b64))==css
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name lukaslejko-jpg
+          git config user.email lukaslejko@gmail.com
+          git add tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64
+          git diff --cached --quiet || git commit -m 'ui: improve trip stats contrast V93'
+          git push
