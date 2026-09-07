@@ -1,0 +1,40 @@
+name: Smart Music V80 restore minimized and max video
+on:
+  push:
+    branches: [tesla-waze-v80-work]
+    paths:
+      - 'tesla-waze-preview/music-v80-restore-minimized-max-video-patch.py'
+      - '.github/workflows/music-v80-restore-minimized-max-video.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v80-work
+      - name: Apply V80 patch
+        run: python tesla-waze-preview/music-v80-restore-minimized-max-video-patch.py
+      - name: Check JS syntax
+        run: node --check tesla-waze-preview/app.js
+      - name: Check V80 invariants
+        run: |
+          grep -q 'MUSIC_V80_RESTORE_MINIMIZED_MAX_VIDEO' tesla-waze-preview/app.js
+          grep -q 'MUSIC_V80_MAX_VIDEO_ONLY' tesla-waze-preview/app.css
+          ! grep -q "isMax?'Pôvodný rozmer':'Maximalizovať'" tesla-waze-preview/app.js
+          grep -q "s.textContent=isMax?'Video':'Maximalizovať'" tesla-waze-preview/app.js
+          grep -q "music-video-open" tesla-waze-preview/app.js
+          grep -q "music-video-open" tesla-waze-preview/app.css
+      - name: Rebuild runtime gzip assets
+        run: |
+          python -c "from pathlib import Path;import gzip,base64;[(Path(str(p)+'.gz.b64').write_text(base64.b64encode(gzip.compress(p.read_bytes(),mtime=0)).decode(),encoding='ascii')) for p in [Path('tesla-waze-preview/app.js'),Path('tesla-waze-preview/app.css')]]"
+          python -c "from pathlib import Path;import gzip,base64;[(lambda p: (_ for _ in ()).throw(AssertionError(str(p))) if gzip.decompress(base64.b64decode(Path(str(p)+'.gz.b64').read_text()))!=p.read_bytes() else None)(p) for p in [Path('tesla-waze-preview/app.js'),Path('tesla-waze-preview/app.css')]]"
+      - name: Commit V80 runtime
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
+          git diff --cached --quiet && exit 0
+          git commit -m 'music: restore minimized player and max-only video V80'
+          git push origin HEAD:tesla-waze-v80-work
