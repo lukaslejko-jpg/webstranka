@@ -1,0 +1,47 @@
+name: V94 UI compositor fix
+on:
+  push:
+    branches: [tesla-waze-v94-work]
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'apply V94') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v94-work
+      - name: Apply narrow CSS patch
+        shell: python
+        run: |
+          from pathlib import Path
+          import gzip, base64
+          p=Path('tesla-waze-preview/app.css')
+          s=p.read_text()
+          marker='/* V94_TRIP_CONTRAST_AND_MEDIA_ISOLATION */'
+          if marker not in s:
+              s += '''\n\n/* V94_TRIP_CONTRAST_AND_MEDIA_ISOLATION */\nbody.tesla-navigating .tesla-trip-stats span{color:#fff!important;opacity:1!important;font-weight:850!important;text-shadow:0 1px 3px rgba(0,0,0,.9)!important}\n#map,.mapwrap{isolation:isolate;backface-visibility:hidden;-webkit-backface-visibility:hidden}\n#ytPlayerHost,.yt-player,.yt-player iframe{contain:paint;isolation:isolate;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:translateZ(0)}\n'''
+              p.write_text(s)
+          raw=p.read_bytes()
+          gz=gzip.compress(raw, compresslevel=9, mtime=0)
+          Path('tesla-waze-preview/app.css.gz.b64').write_text(base64.b64encode(gz).decode())
+      - name: Verify scope
+        run: |
+          grep -q 'V94_TRIP_CONTRAST_AND_MEDIA_ISOLATION' tesla-waze-preview/app.css
+          python - <<'PY'
+          import gzip,base64,pathlib
+          css=pathlib.Path('tesla-waze-preview/app.css').read_bytes()
+          enc=pathlib.Path('tesla-waze-preview/app.css.gz.b64').read_text().strip()
+          assert gzip.decompress(base64.b64decode(enc))==css
+          PY
+          git diff --name-only | grep -qx 'tesla-waze-preview/app.css'
+          git diff --name-only | grep -qx 'tesla-waze-preview/app.css.gz.b64'
+          test "$(git diff --name-only | wc -l)" -eq 2
+      - name: Commit patch
+        run: |
+          git config user.name lukaslejko-jpg
+          git config user.email lukaslejko@gmail.com
+          git add tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64
+          git commit -m 'ui: apply V94 contrast and media isolation' || exit 0
+          git push origin HEAD:tesla-waze-v94-work
