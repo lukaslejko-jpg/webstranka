@@ -1,0 +1,42 @@
+name: Map render stability V92
+on:
+  push:
+    branches: [tesla-waze-v92-work]
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch only map bearing redraw cadence
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text()
+          old="headingDelta(h,state.lastAppliedHeading)>=12)"
+          new="headingDelta(h,state.lastAppliedHeading)>=25)"
+          assert old in s
+          s=s.replace(old,new,1)
+          old2="if(headingChanged){\n    if(typeof state.map.setHeading==='function')"
+          new2="if(headingChanged&&now-(state.lastBearingAt||0)>=2500){\n    if(typeof state.map.setHeading==='function')"
+          assert old2 in s
+          s=s.replace(old2,new2,1)
+          s += "\n/* MAP_BEARING_STABILITY_V92 */\n"
+          p.write_text(s)
+          PY
+          node --check tesla-waze-preview/app.js
+          gzip -n -9 -c tesla-waze-preview/app.js | base64 -w0 > tesla-waze-preview/app.js.gz.b64
+          printf '\n' >> tesla-waze-preview/app.js.gz.b64
+          python3 - <<'PY'
+          import base64,gzip,pathlib
+          js=pathlib.Path('tesla-waze-preview/app.js').read_bytes()
+          packed=base64.b64decode(pathlib.Path('tesla-waze-preview/app.js.gz.b64').read_text())
+          assert gzip.decompress(packed)==js
+          PY
+          git config user.name lukaslejko-jpg
+          git config user.email lukaslejko@gmail.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m 'map: reduce bearing tile redraws V92' || true
+          git push
