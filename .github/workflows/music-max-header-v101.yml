@@ -1,0 +1,72 @@
+name: Music max header V101
+on:
+  push:
+    branches: [tesla-waze-v101-work]
+    paths: ['.github/workflows/music-max-header-v101.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v101-work
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch V101
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip, base64
+          js=Path('tesla-waze-preview/app.js')
+          css=Path('tesla-waze-preview/app.css')
+          s=js.read_text()
+          old="if(s){s.textContent=isMax?'Video':'Maximalizovať';s.classList.toggle('music-video-btn',isMax)}"
+          new="if(s){s.textContent=isMax?(shell.classList.contains('music-video-open')?'Skryť video':'Video'):'Maximalizovať';s.classList.toggle('music-video-btn',isMax)}"
+          assert old in s, 'applyMusicWindow video label target missing'
+          s=s.replace(old,new,1)
+          old="size.onclick=()=>{const cfg=musicWindowState();if(!cfg.maximized){saveMusicWindow({maximized:true,minimized:false});return}const sh=document.querySelector('.music-shell');if(!sh||!currentYoutubeId())return;sh.classList.toggle('music-video-open')}"
+          new="size.onclick=()=>{const cfg=musicWindowState();if(!cfg.maximized){saveMusicWindow({maximized:true,minimized:false});return}const sh=document.querySelector('.music-shell');if(!sh||!currentYoutubeId())return;const open=sh.classList.toggle('music-video-open');size.textContent=open?'Skryť video':'Video';ensureMaxMusicHeaderSearch()}"
+          assert old in s, 'video toggle target missing'
+          s=s.replace(old,new,1)
+          old="function renderPlayer(){\n  const r=$('musicPlayer');"
+          new="function renderPlayer(){\n  const r=$('musicPlayer');\n  if(document.querySelector('.music-shell')?.classList.contains('music-maximized'))setTimeout(()=>ensureMaxMusicHeaderSearch(),0);/* MUSIC_MAX_SEARCH_PERSIST_V101 */"
+          assert old in s, 'renderPlayer target missing'
+          s=s.replace(old,new,1)
+          js.write_text(s)
+          c=css.read_text()
+          marker='/* MUSIC_MAX_HEADER_VIDEO_LAYER_V101 */'
+          assert marker not in c, 'V101 CSS already present'
+          c += "\n\n/* MUSIC_MAX_HEADER_VIDEO_LAYER_V101 */\n.music-shell.music-maximized .music-head{position:relative!important;z-index:7010!important}\n.music-shell.music-maximized #musicHeaderSearch{position:relative!important;z-index:7012!important}\n"
+          css.write_text(c)
+          for name in ('app.js','app.css'):
+              raw=Path('tesla-waze-preview/'+name).read_bytes()
+              enc=base64.b64encode(gzip.compress(raw,mtime=0)).decode()
+              Path('tesla-waze-preview/'+name+'.gz.b64').write_text(enc)
+          PY
+      - name: Verify syntax and scope
+        run: |
+          node --check tesla-waze-preview/app.js
+          grep -q "MUSIC_MAX_SEARCH_PERSIST_V101" tesla-waze-preview/app.js
+          grep -q "MUSIC_MAX_HEADER_VIDEO_LAYER_V101" tesla-waze-preview/app.css
+          grep -q "Skryť video" tesla-waze-preview/app.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          for n in ('app.js','app.css'):
+              raw=Path('tesla-waze-preview/'+n).read_bytes()
+              packed=Path('tesla-waze-preview/'+n+'.gz.b64').read_text().strip()
+              assert gzip.decompress(base64.b64decode(packed))==raw,n
+          PY
+          git diff --name-only | sort > /tmp/files
+          printf '%s\n' tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64 tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64 | sort > /tmp/expected
+          diff -u /tmp/expected /tmp/files
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64
+          git commit -m 'music: persist max search and add video close state V101 [skip ci]'
+          git push origin HEAD:tesla-waze-v101-work
