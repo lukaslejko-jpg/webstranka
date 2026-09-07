@@ -119,6 +119,14 @@ function setMapType(type,persist=true){
 
 async function initMap(){const L=window.L;state.L=L;state.map=L.map('map',{zoomControl:true,attributionControl:true,rotate:true,bearing:0,rotateControl:false,dragRotate:false,touchRotate:false,shiftKeyRotate:false,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false}).setView([48.9984,21.2393],12);const common={maxZoom:20,keepBuffer:3,updateWhenIdle:false,updateWhenZooming:false},imagery=()=>L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{...common,attribution:'Esri, Maxar, Earthstar Geographics'}),labels=()=>L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{...common,attribution:'Esri'});state.baseLayers={roadmap:L.tileLayer('https://www.waze.com/row-tiles/live/base/{z}/{x}/{y}/tile.png',{...common,attribution:'Waze'}),satellite:imagery(),hybrid:L.layerGroup([imagery(),labels()])};setMapType(state.mapType,false);startGPS();setInterval(loadAlerts,30000);setTimeout(loadAlerts,2200)}
 function carIcon(){return state.L.divIcon({className:'car-wrap',html:'<div class="car-arrow">▲</div>',iconSize:[40,40],iconAnchor:[20,20]})}
+function updateFreeDriveHeading(p,moved,speed){
+  if(!state.map||state.navigating||!p)return;
+  const h=Number.isFinite(state.heading)?state.heading:(Number.isFinite(state.gpsHeading)?state.gpsHeading:null),moving=(Number(speed)||0)>=1.5||moved>=4;
+  if(!moving||!Number.isFinite(h))return;
+  const now=Date.now(),last=Number.isFinite(state.freeDriveHeading)?state.freeDriveHeading:null,changed=last==null||headingDelta(h,last)>=12;
+  if(changed&&now-(state.freeDriveBearingAt||0)>=1200){if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}
+  if(!state.freeDriveCenter||dist(state.freeDriveCenter,p)>=10){state.map.panTo?.(p,{animate:false});state.freeDriveCenter={...p}}
+}/* FREE_DRIVE_HEADING_UP_V97 */
 function startGPS(){
   if(!navigator.geolocation){$('gpsNotice').querySelector('span').textContent='GPS nie je dostupné.';return}
   let lastTs=Date.now(),lastRestart=0,watch;
@@ -133,7 +141,7 @@ function startGPS(){
     $('speed').textContent=`${sp==null?'—':Math.max(0,Math.round(sp*3.6))} km/h`;
     $('gpsNotice').querySelector('span').textContent=`GPS aktívne · presnosť približne ${Math.round(g.coords.accuracy)} m`;
     if(!state.car){state.car=state.L.marker(p,{icon:carIcon(),zIndexOffset:1000,rotation:0,rotateWithView:false}).addTo(state.map);state.map.setView(p,16,{animate:false})}
-    else if(!state.navigating)state.car.setLatLng(p);
+    else if(!state.navigating){state.car.setLatLng(p);updateFreeDriveHeading(p,moved,sp)}
     if(state.navigating)updateNavigation();else if(state.dest&&!state.routes.length&&!state.routeLoading){const auto=!!state.pendingAutoRoute;state.pendingAutoRoute=false;calculateRoute(auto||true)}
   };
   const restart=()=>{if(watch)navigator.geolocation.clearWatch(watch);watch=navigator.geolocation.watchPosition(onPosition,e=>$('gpsNotice').querySelector('span').textContent=e.code===1?'Poloha bola zamietnutá.':'GPS momentálne nie je dostupné.',{enableHighAccuracy:true,timeout:12000,maximumAge:0})};
