@@ -633,7 +633,7 @@ function ensureMusicCompactHeader(){
     shell.insertBefore(head,shell.firstChild);
     $('musicCompactSync').onclick=()=>syncYoutube();
     $('musicCompactMax').onclick=()=>saveMusicWindow({maximized:true,minimized:false});
-    $('musicCompactMin').onclick=()=>{saveMusicWindow({minimized:false,maximized:false});updateMiniSeek()};
+    $('musicCompactMin').onclick=()=>{const cfg=musicWindowState();const h=Math.max(360,Math.min(window.innerHeight-20,cfg.miniHeight||520));saveMusicWindow({minimized:false,maximized:false,height:h});$('musicMaxHome')?.remove();renderMusicList();renderPlayer();updateMiniSeek()};
     $('musicCompactBack').onclick=()=>setMusicWindowOpen(false);
   }
   syncMusicCompactHeader();
@@ -662,7 +662,8 @@ function ensureMusicWindowControls(){
   const left=document.createElement('div');left.className='music-resize music-resize-left';left.setAttribute('aria-hidden','true');shell.appendChild(left);
   const top=document.createElement('div');top.className='music-resize music-resize-top';top.setAttribute('aria-hidden','true');shell.appendChild(top);
   const corner=document.createElement('div');corner.className='music-resize music-resize-corner';corner.setAttribute('aria-label','Zmeniť veľkosť hudobného okna');shell.appendChild(corner);
-  min.onclick=()=>{saveMusicWindow({minimized:false,maximized:false});updateMiniSeek()};/* MUSIC_LAYOUT_NO_RESTART_V5 */
+  min.onclick=()=>{const cfg=musicWindowState();const h=Math.max(360,Math.min(window.innerHeight-20,cfg.miniHeight||520));saveMusicWindow({minimized:false,maximized:false,height:h});$('musicMaxHome')?.remove();renderMusicList();renderPlayer();updateMiniSeek()};/* MUSIC_LAYOUT_NO_RESTART_V5 */
+/* MUSIC_DIRECT_MINIMIZE_V78 */
   size.onclick=()=>{const cfg=musicWindowState();saveMusicWindow({maximized:!cfg.maximized})};
   syncMusicMinimizedHeader();
   const bindResize=(node,mode)=>node.addEventListener('pointerdown',e=>{e.preventDefault();node.setPointerCapture?.(e.pointerId);const sx=e.clientX,sy=e.clientY,sw=shell.getBoundingClientRect().width,sh=shell.getBoundingClientRect().height;const move=ev=>{if(mode==='w'||mode==='both'){const w=Math.max(340,Math.min(Math.min(window.innerWidth-20,760),sw+(sx-ev.clientX)));shell.style.width=w+'px'}if(mode==='h'||mode==='both'){const h=Math.max(360,Math.min(window.innerHeight-20,sh+(sy-ev.clientY)));shell.style.height=h+'px'}};const up=ev=>{node.releasePointerCapture?.(ev.pointerId);node.removeEventListener('pointermove',move);node.removeEventListener('pointerup',up);node.removeEventListener('pointercancel',up);(()=>{const rect=shell.getBoundingClientRect(),mini=musicWindowState().minimized;saveMusicWindow(mini?{width:Math.round(rect.width),miniHeight:Math.round(rect.height),minimized:true}:{width:Math.round(rect.width),height:Math.round(rect.height),minimized:false})})()};node.addEventListener('pointermove',move);node.addEventListener('pointerup',up);node.addEventListener('pointercancel',up)});
