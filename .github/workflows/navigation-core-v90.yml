@@ -18,15 +18,26 @@ jobs:
           fetch-depth: 0
       - name: Apply focused navigation patch
         run: python3 tesla-waze-preview/navigation-core-v90-patch.py
-      - name: Verify JS and scope markers
+      - name: Verify JS and exact V90 invariants
         run: |
           node --check tesla-waze-preview/app.js
-          grep -q 'NAV_CORE_V90_IMMEDIATE_REROUTE' tesla-waze-preview/app.js
-          grep -q 'Math.max(0,start);i<Math.min(coords.length-1,start+350)' tesla-waze-preview/app.js
-          grep -q 'Math.max(35,(Number(accuracy)||0)*1.5)' tesla-waze-preview/app.js
-          grep -q 'headingDelta(h,state.lastAppliedHeading)>=12' tesla-waze-preview/app.js
-          grep -q 'state.offRouteHits>=1' tesla-waze-preview/app.js
-          grep -q 'Date.now()-state.lastReroute>1200' tesla-waze-preview/app.js
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('tesla-waze-preview/app.js').read_text(encoding='utf-8')
+          checks=[
+            'NAV_CORE_V90_IMMEDIATE_REROUTE',
+            'for(let i=Math.max(0,start);i<Math.min(coords.length-1,start+350);i++){',
+            'function confirmedOffRoute(distanceMeters,accuracy){return distanceMeters>Math.max(35,(Number(accuracy)||0)*1.5)}',
+            'headingDelta(h,state.lastAppliedHeading)>=12',
+            'state.offRouteHits>=1&&!state.routeLoading',
+            'Date.now()-state.lastReroute>1200',
+            "state.trafficLines=[];state.trafficPaintSig=''"
+          ]
+          missing=[x for x in checks if x not in s]
+          if missing:
+            raise SystemExit('missing V90 invariants: '+repr(missing))
+          print('V90 invariants OK')
+          PY
       - name: Rebuild exact JS runtime asset
         run: |
           python3 - <<'PY'
