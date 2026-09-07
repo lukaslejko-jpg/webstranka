@@ -1,0 +1,45 @@
+name: Smart Music V77 state fix
+
+on:
+  push:
+    branches: [tesla-waze-v77-work2]
+    paths:
+      - 'tesla-waze-preview/music-v77-state-fix.py'
+      - '.github/workflows/music-v77-state-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply V77 patch
+        run: python tesla-waze-preview/music-v77-state-fix.py
+      - name: Check JS syntax
+        run: node --check tesla-waze-preview/app.js
+      - name: Check V77 invariants
+        run: |
+          grep -q 'MUSIC_STATE_V77' tesla-waze-preview/app.js
+          ! grep -q "minimized:!cfg.minimized" tesla-waze-preview/app.js
+          ! grep -q "minimized:!musicWindowState().minimized" tesla-waze-preview/app.js
+          ! grep -q "classList.toggle('music-minimized'" tesla-waze-preview/app.js
+          grep -q "musicCompactMin').onclick=()=>{saveMusicWindow({minimized:false,maximized:false})" tesla-waze-preview/app.js
+      - name: Rebuild compressed JS
+        run: |
+          python - <<'PY'
+          import gzip,base64,pathlib
+          p=pathlib.Path('tesla-waze-preview/app.js')
+          out=base64.b64encode(gzip.compress(p.read_bytes(),mtime=0)).decode('ascii')
+          pathlib.Path('tesla-waze-preview/app.js.gz.b64').write_text(out,encoding='ascii')
+          assert gzip.decompress(base64.b64decode(out))==p.read_bytes()
+          PY
+      - name: Commit verified runtime
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git diff --cached --quiet && exit 1 || true
+          git commit -m 'music: remove duplicate minimized state V77'
+          git push
