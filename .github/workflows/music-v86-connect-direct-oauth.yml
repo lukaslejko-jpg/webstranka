@@ -1,0 +1,48 @@
+name: Smart Music V86 direct OAuth connect
+on:
+  push:
+    branches: [tesla-waze-v86-work]
+    paths:
+      - 'tesla-waze-preview/music-v86-connect-direct-oauth-patch.py'
+      - '.github/workflows/music-v86-connect-direct-oauth.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v86-work
+      - name: Apply V86 patch
+        run: python tesla-waze-preview/music-v86-connect-direct-oauth-patch.py
+      - name: Syntax check
+        run: node --check tesla-waze-preview/app.js
+      - name: Verify connect-only invariants
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('tesla-waze-preview/app.js').read_text()
+          assert s.count('MUSIC_CONNECT_BUTTON_V86')==1
+          assert "window.open(u,'tesla-youtube-auth'" in s
+          assert "PROD_ORIGIN+'/api/music/google/start'" in s
+          assert "async function syncYoutube" in s
+          assert "MUSIC_PUBLIC_YOUTUBE_SEARCH_V84" in s
+          PY
+      - name: Rebuild JS runtime payload
+        run: |
+          python - <<'PY'
+          import gzip,base64,pathlib
+          p=pathlib.Path('tesla-waze-preview/app.js')
+          raw=p.read_bytes()
+          out=base64.b64encode(gzip.compress(raw,mtime=0)).decode()
+          pathlib.Path('tesla-waze-preview/app.js.gz.b64').write_text(out,encoding='ascii')
+          assert gzip.decompress(base64.b64decode(out))==raw
+          PY
+      - name: Commit V86
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m 'music: direct OAuth connect V86'
+          git push origin HEAD:tesla-waze-v86-work
