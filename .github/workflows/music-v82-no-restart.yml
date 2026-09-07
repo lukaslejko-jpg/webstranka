@@ -20,11 +20,17 @@ jobs:
         run: node --check tesla-waze-preview/app.js
       - name: Verify V82 invariants
         run: |
-          grep -q 'MUSIC_NO_RESTART_ON_MINIMIZE_V82' tesla-waze-preview/app.js
-          test "$(grep -o "renderMusicList();renderPlayer();updateMiniSeek()" tesla-waze-preview/app.js | wc -l)" -eq 0
-          test "$(grep -o "saveMusicWindow({minimized:false,maximized:false,height:h});$('musicMaxHome')?.remove();updateMiniSeek()" tesla-waze-preview/app.js | wc -l)" -eq 2
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('tesla-waze-preview/app.js').read_text(encoding='utf-8')
+          assert 'MUSIC_NO_RESTART_ON_MINIMIZE_V82' in s
+          assert 'renderMusicList();renderPlayer();updateMiniSeek()' not in s
+          expected="saveMusicWindow({minimized:false,maximized:false,height:h});$('musicMaxHome')?.remove();updateMiniSeek()"
+          assert s.count(expected)==2, s.count(expected)
+          PY
       - name: Rebuild JS runtime payload
-        run: python - <<'PY'
+        run: |
+          python - <<'PY'
           import gzip,base64,pathlib
           p=pathlib.Path('tesla-waze-preview/app.js')
           raw=p.read_bytes()
