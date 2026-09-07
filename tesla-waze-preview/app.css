@@ -1158,3 +1158,9 @@ body:not(.tesla-navigating) #alertBox{
 
 /* TESLA_TRIP_STATS_CONTRAST_V93 */
 body.tesla-navigating .tesla-trip-stats span{color:#f4f7f8!important;opacity:1!important;font-weight:800!important;text-shadow:0 1px 2px rgba(0,0,0,.55)!important}
+
+
+/* V94_TRIP_CONTRAST_AND_MEDIA_ISOLATION */
+body.tesla-navigating .tesla-trip-stats span{color:#fff!important;opacity:1!important;font-weight:850!important;text-shadow:0 1px 3px rgba(0,0,0,.9)!important}
+#map,.mapwrap{isolation:isolate;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+#ytPlayerHost,.yt-player,.yt-player iframe{contain:paint;isolation:isolate;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:translateZ(0)}
