@@ -1,0 +1,68 @@
+name: Apply Smart Music compact V76
+
+on:
+  push:
+    branches:
+      - tesla-waze-v76-work2
+    paths:
+      - 'tesla-waze-preview/.v76-trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v76-work2
+          fetch-depth: 0
+
+      - name: Apply V76
+        run: python3 tesla-waze-preview/music-compact-header-v76-patch.py
+
+      - name: Verify JS syntax
+        run: node --check tesla-waze-preview/app.js
+
+      - name: Verify V76 invariants
+        run: |
+          set -euo pipefail
+          grep -q 'MUSIC_COMPACT_HEADER_V76' tesla-waze-preview/app.js
+          grep -q 'MUSIC_COMPACT_HEADER_V76' tesla-waze-preview/app.css
+          grep -q "if(min)min.textContent='Minimalizovať'" tesla-waze-preview/app.js
+          grep -q 'grid-template-columns:repeat(3,minmax(0,1fr))!important' tesla-waze-preview/app.css
+          grep -q 'grid-template-rows:46px!important' tesla-waze-preview/app.css
+          grep -q 'grid-template-columns:minmax(132px,.95fr) minmax(0,1.45fr)!important' tesla-waze-preview/app.css
+
+      - name: Rebuild gzip assets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          for name in ['app.js','app.css']:
+              raw=Path('tesla-waze-preview/'+name).read_bytes()
+              enc=base64.b64encode(gzip.compress(raw,mtime=0)).decode()
+              Path('tesla-waze-preview/'+name+'.gz.b64').write_text(enc)
+          PY
+
+      - name: Verify gzip exact
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          for name in ['app.js','app.css']:
+              raw=Path('tesla-waze-preview/'+name).read_bytes()
+              got=gzip.decompress(base64.b64decode(Path('tesla-waze-preview/'+name+'.gz.b64').read_text().strip()))
+              assert raw==got, name
+          print('gzip exact')
+          PY
+
+      - name: Commit runtime V76
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
+          git commit -m 'music: fix compact Smart Music layout V76'
+          git push origin HEAD:tesla-waze-v76-work2
