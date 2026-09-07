@@ -1164,3 +1164,7 @@ body.tesla-navigating .tesla-trip-stats span{color:#f4f7f8!important;opacity:1!i
 body.tesla-navigating .tesla-trip-stats span{color:#fff!important;opacity:1!important;font-weight:850!important;text-shadow:0 1px 3px rgba(0,0,0,.9)!important}
 #map,.mapwrap{isolation:isolate;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 #ytPlayerHost,.yt-player,.yt-player iframe{contain:paint;isolation:isolate;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:translateZ(0)}
+
+
+/* NAV_TRIP_ROUTE_LINE_V96 */
+body.tesla-navigating .tesla-trip-route{width:100%;padding:0 16px 8px;color:#dce8ec;font-size:12px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
