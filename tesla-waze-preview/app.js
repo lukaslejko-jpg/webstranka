@@ -171,9 +171,11 @@ function applyHeadingUp(markerPosition,zoom,headingOverride=null){
   const moved=state.lastCameraCenter?dist(state.lastCameraCenter,center):Infinity,headingChanged=Number.isFinite(h)&&(!Number.isFinite(state.lastAppliedHeading)||headingDelta(h,state.lastAppliedHeading)>=25),zoomChanged=!Number.isFinite(state.lastCameraZoom)||Math.abs(Number(zoom)-Number(state.lastCameraZoom))>=.35;
   if(moved<10&&!headingChanged&&!zoomChanged)return;
   state.lastCameraAt=now;
-  if(headingChanged&&now-(state.lastBearingAt||0)>=2500){
-    if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});
-    else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);
+  if(headingChanged&&now-(state.lastBearingAt||0)>=1200){
+    // Leaflet Rotate expects the camera bearing itself. Positive route heading makes
+    // the driven road point straight to the top of the Tesla display.
+    if(typeof state.map.setBearing==='function')state.map.setBearing(h);
+    else if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:0,deadzone:0});
     state.lastAppliedHeading=h;state.lastBearingAt=now;
   }
   if(zoomChanged&&moved>=10)state.map.setView(center,zoom,{animate:false});
@@ -182,7 +184,7 @@ function applyHeadingUp(markerPosition,zoom,headingOverride=null){
   else if(moved>=10)state.map.setView(center,zoom,{animate:false});
   state.lastCameraCenter={lat:center.lat,lng:center.lng};state.lastCameraZoom=Number(zoom);
 }/* TMY_EXACT_NAV_V21 */
-function stopHeadingUp(reset=true){if(typeof state.map?.setHeading==='function')state.map.setHeading(null);if(typeof state.map?.stopHeadingUp==='function')state.map.stopHeadingUp();if(reset&&typeof state.map?.setBearing==='function')state.map.setBearing(0);state.lastAppliedHeading=null;state.lastCameraCenter=null;state.lastCameraZoom=null;state.lastCameraAt=0;state.lastBearingAt=0}
+function stopHeadingUp(reset=true){if(typeof state.map?.setHeading==='function')state.map.setHeading(null);if(typeof state.map?.stopHeadingUp==='function')state.map.stopHeadingUp();if(typeof state.map?.setBearing==='function')state.map.setBearing(0);state.lastAppliedHeading=null;state.lastCameraCenter=null;state.lastCameraZoom=null;state.lastCameraAt=0;state.lastBearingAt=0}
 
 let searchTimer=null,searchSeq=0;async function searchPlaces(force=false){const q=$('searchInput').value.trim();if(q.length<(force?2:3)){$('searchResults').innerHTML='';$('searchStatus').textContent='';return}const seq=++searchSeq;$('searchStatus').textContent='Vyhľadávam…';try{const u=new URLSearchParams({q});if(state.pos){u.set('lat',state.pos.lat);u.set('lng',state.pos.lng)}const r=await fetch('/api/search?'+u,{cache:'no-store'}),d=await r.json();if(seq!==searchSeq)return;renderSearch(d.results||[])}catch{$('searchStatus').textContent='Vyhľadávanie zlyhalo.'}}
 function renderSearch(a){$('searchStatus').textContent='';$('searchResults').innerHTML=a.slice(0,6).map((x,i)=>`<button class="result" data-sr="${i}"><b>${esc(x.name)}</b><small>${esc(x.address)}</small></button>`).join('');document.querySelectorAll('[data-sr]').forEach(b=>b.onclick=()=>selectDestination(a[+b.dataset.sr]))}
@@ -861,10 +863,10 @@ function refreshPersistentYoutubeUi(){
   const s=mt(music.current),now=r.querySelector('.music-now');
   if(now){const img=now.querySelector('.music-art'),title=now.querySelector('.music-title'),sub=now.querySelector('.music-sub');if(img)img.src=music.current.artwork||s.artwork||'';if(title)title.textContent=music.current.title||s.title||'Bez názvu';if(sub)sub.textContent=`${music.current.artist||s.artist||''} · ${music.current.source||s.source||''}`}
   const like=r.querySelector('[data-ma=like]');if(like)like.classList.toggle('primary',!!s.liked);
-  const q=ensureMusicQueue(),box=r.querySelector('.music-mini-queue');if(box)wireMiniQueue(box,q,s.id);
+  const q=ensureMusicQueue(),box=r.querySelector('.music-mini-queue');if(box){box.querySelectorAll('[data-mini-play]').forEach(b=>b.classList.toggle('active',b.dataset.miniPlay===s.id));}
   updateMiniSeek();syncMediaSession();installTeslaMediaSession();renderMusicStatus();
 }
-const TW_MUSIC_ENGINE_URL='https://raw.githack.com/lukaslejko-jpg/webstranka/tesla-waze-emergency-direct/tesla-waze-preview/music-isolated-engine-v110.html?v=110';
+const TW_MUSIC_ENGINE_URL='https://raw.githack.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/music-isolated-engine-v111.html?v=111';
 let twMusicEngineFrame=null,twMusicEngineReady=false,twMusicEngineState={state:-1,now:0,duration:0};
 let twMusicEngineWaiters=[];
 function ensureTwMusicEngine(){
@@ -873,7 +875,7 @@ function ensureTwMusicEngine(){
   f.id='twMusicEngine';f.title='Smart Music isolated engine';f.src=TW_MUSIC_ENGINE_URL;
   f.setAttribute('allow','autoplay; encrypted-media; picture-in-picture');
   f.setAttribute('aria-hidden','true');
-  f.style.cssText='position:fixed;left:-1200px;top:-1200px;width:320px;height:180px;border:0;opacity:.001;pointer-events:none;z-index:-1;background:#000;contain:strict;isolation:isolate;';
+  f.style.cssText='position:absolute;left:0;top:0;width:2px;height:2px;border:0;pointer-events:none;z-index:-1;background:#000;overflow:hidden;clip-path:inset(50%);contain:strict;isolation:isolate;';
   document.body.appendChild(f);twMusicEngineFrame=f;twMusicEngineReady=false;twMusicEngineState={state:-1,now:0,duration:0};
   return f;
 }
@@ -889,7 +891,7 @@ window.addEventListener('message',e=>{
     twMusicEngineReady=true;const q=twMusicEngineWaiters.splice(0);q.forEach(fn=>{try{fn()}catch{}});return;
   }
   if(d.type==='time'){
-    twMusicEngineState.now=Number(d.now)||0;twMusicEngineState.duration=Number(d.duration)||0;twMusicEngineState.state=Number.isFinite(Number(d.state))?Number(d.state):-1;updateMiniSeek();return;
+    twMusicEngineState.now=Number(d.now)||0;twMusicEngineState.duration=Number(d.duration)||0;twMusicEngineState.state=Number.isFinite(Number(d.state))?Number(d.state):-1;if(document.visibilityState==='visible')updateMiniSeek();return;
   }
   if(d.type==='state'){
     const st=Number(d.state);twMusicEngineState.state=st;
@@ -1109,3 +1111,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MUSIC_DRIVING_V109 */
 
 /* MUSIC_ISOLATED_ENGINE_V110 */
+
+/* MAP_MUSIC_ISOLATION_V111 */

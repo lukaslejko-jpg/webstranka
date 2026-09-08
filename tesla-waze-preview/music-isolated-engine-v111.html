@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#player{margin:0;width:100%;height:100%;overflow:hidden;background:#000}iframe{width:100%!important;height:100%!important;border:0!important}</style></head><body><div id="player"></div><script>
+(()=>{
+'use strict';
+const parentWin=window.parent;let player=null,currentId='',ready=false,lastTick=0;
+const send=(type,data={})=>{try{parentWin.postMessage({source:'tw-music-engine-v110',type,...data},'*')}catch{}};
+window.onYouTubeIframeAPIReady=()=>{player=new YT.Player('player',{host:'https://www.youtube-nocookie.com',playerVars:{autoplay:1,playsinline:1,rel:0,controls:1,modestbranding:1},events:{onReady:()=>{ready=true;send('ready');if(currentId){try{player.loadVideoById({videoId:currentId,startSeconds:0})}catch{}}},onStateChange:e=>send('state',{state:Number(e.data)}),onError:e=>send('error',{code:Number(e.data)||0})}});};
+const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s);
+function call(cmd,d){if(cmd==='load'){currentId=String(d.videoId||'');if(ready&&currentId)player.loadVideoById({videoId:currentId,startSeconds:Number(d.startSeconds)||0});return}if(!ready||!player)return;try{if(cmd==='play')player.playVideo();else if(cmd==='pause')player.pauseVideo();else if(cmd==='seek')player.seekTo(Number(d.seconds)||0,true);else if(cmd==='stop')player.stopVideo()}catch{}}
+window.addEventListener('message',e=>{const d=e.data;if(!d||d.source!=='tw-music-main-v110')return;call(d.cmd,d)});
+setInterval(()=>{if(!ready||!player)return;try{const now=Number(player.getCurrentTime?.()||0),duration=Number(player.getDuration?.()||0),state=Number(player.getPlayerState?.()??-1);if(Date.now()-lastTick>1450){lastTick=Date.now();send('time',{now,duration,state})}}catch{}},750);
+send('boot');
+})();
+</script></body></html>
