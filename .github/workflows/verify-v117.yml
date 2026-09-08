@@ -1,0 +1,40 @@
+name: Verify music isolation V117
+on:
+  push:
+    branches: [tesla-waze-v117-work]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify runtime isolation
+        run: |
+          node --check tesla-waze-preview/app.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64,gzip,re,subprocess
+          app=Path('tesla-waze-preview/app.js').read_bytes()
+          packed=gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.js.gz.b64').read_text()))
+          assert app==packed
+          h=Path('tesla-waze-preview/music-isolated-engine-v117.html').read_text()
+          m=re.search(r'<script>([\s\S]*)</script>',h)
+          assert m
+          Path('/tmp/engine-v117.js').write_text(m.group(1))
+          assert "setActionHandler('nexttrack'" in h
+          assert "setActionHandler('previoustrack'" in h
+          assert "source:'tw-music-engine-v110'" in h
+          live=Path('tesla-waze-preview/live3.html').read_text()
+          assert 'media-session-v112.js' not in live
+          s=app.decode()
+          assert 'music-isolated-engine-v117.html?v=117' in s
+          PY
+          node --check /tmp/engine-v117.js
+          git diff --name-only 1bd45df53e75a2303220b5a2c07d02d97aefdea5 HEAD | grep '^tesla-waze-preview/' | sort > /tmp/runtime.txt
+          printf '%s\n' \
+            tesla-waze-preview/app.js \
+            tesla-waze-preview/app.js.gz.b64 \
+            tesla-waze-preview/live3.html \
+            tesla-waze-preview/music-isolated-engine-v117.html | sort > /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/runtime.txt
