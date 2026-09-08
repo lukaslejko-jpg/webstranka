@@ -1,0 +1,55 @@
+name: Navigation heading unification V116
+on:
+  push:
+    branches: [tesla-waze-v116-work]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch heading-up through one camera function
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text()
+          anchor="function updateFreeDriveHeading(p,moved,speed){"
+          helper="function setHeadingUpBearing(h){\n  if(!state.map||!Number.isFinite(h))return;\n  if(typeof state.map.setBearing==='function')state.map.setBearing(h);\n  else if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:0,deadzone:0});\n}/* MAP_HEADING_SINGLE_PATH_V116 */\n"
+          assert anchor in s and helper not in s
+          s=s.replace(anchor,helper+anchor,1)
+          old="if(changed&&now-(state.freeDriveBearingAt||0)>=1200){if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}"
+          new="if(changed&&now-(state.freeDriveBearingAt||0)>=1200){setHeadingUpBearing(h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}"
+          assert old in s
+          s=s.replace(old,new,1)
+          old2="if(typeof state.map.setBearing==='function')state.map.setBearing(h);\n    else if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:0,deadzone:0});"
+          new2="setHeadingUpBearing(h);"
+          assert old2 in s
+          s=s.replace(old2,new2,1)
+          p.write_text(s)
+          PY
+          node --check tesla-waze-preview/app.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          out=gzip.compress(p.read_bytes(),mtime=0)
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(out).decode())
+          PY
+          python3 - <<'PY'
+          import gzip,base64
+          from pathlib import Path
+          raw=Path('tesla-waze-preview/app.js').read_bytes()
+          dec=gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.js.gz.b64').read_text()))
+          assert raw==dec
+          PY
+          git diff --check
+          git diff --name-only HEAD -- tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m "nav: unify heading-up camera path V116"
+          git push
