@@ -1,0 +1,73 @@
+name: Apply Tesla map/music isolation v111
+
+on:
+  push:
+    branches:
+      - tesla-waze-emergency-direct
+    paths:
+      - '.github/workflows/apply-map-music-v111.yml'
+      - 'tesla-waze-preview/map-music-isolation-v111.patch.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout emergency branch
+        uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-emergency-direct
+          fetch-depth: 0
+
+      - name: Preserve patch and switch to production
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tesla-waze-preview/map-music-isolation-v111.patch.py /tmp/v111.py
+          git fetch origin tesla-waze-preview-v1
+          git checkout -B tesla-waze-preview-v1 origin/tesla-waze-preview-v1
+          cp /tmp/v111.py tesla-waze-preview/map-music-isolation-v111.patch.py
+
+      - name: Apply v111
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/map-music-isolation-v111.patch.py
+
+      - name: Verify source and runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tesla-waze-preview/app.js
+          grep -q 'MAP_MUSIC_ISOLATION_V111' tesla-waze-preview/app.js
+          grep -q 'MAP_MUSIC_ISOLATION_UI_V111' tesla-waze-preview/app.css
+          grep -q "setBearing(h)" tesla-waze-preview/app.js
+          ! grep -q "setBearing(-h)" tesla-waze-preview/app.js
+          grep -q "setBearing(0)" tesla-waze-preview/app.js
+          grep -q "width:2px;height:2px" tesla-waze-preview/app.js
+          ! grep -q "left:-1200px" tesla-waze-preview/app.js
+          ! grep -q "opacity:.001" tesla-waze-preview/app.js
+          test -s tesla-waze-preview/music-isolated-engine-v111.html
+          cd tesla-waze-preview
+          gzip -n -c app.js | base64 -w 0 > app.js.gz.b64
+          gzip -n -c app.css | base64 -w 0 > app.css.gz.b64
+          python3 - <<'PY'
+          import base64,gzip
+          from pathlib import Path
+          for n in ('app.js','app.css'):
+              dec=gzip.decompress(base64.b64decode(Path(n+'.gz.b64').read_bytes()))
+              assert dec==Path(n).read_bytes(), n
+          print('runtime-ok')
+          PY
+
+      - name: Commit production v111
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64 tesla-waze-preview/music-isolated-engine-v111.html
+          git commit -m 'fix: heading-up + zero-flicker isolated music v111 [skip ci]'
+          git push origin HEAD:tesla-waze-preview-v1
