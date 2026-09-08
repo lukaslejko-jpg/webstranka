@@ -1,0 +1,67 @@
+name: Apply Tesla Smart Music isolation v110
+
+on:
+  push:
+    branches:
+      - tesla-waze-emergency-direct
+    paths:
+      - '.github/workflows/apply-music-isolation-v110.yml'
+      - 'tesla-waze-preview/music-isolation-v110.patch.py'
+      - 'tesla-waze-preview/music-isolated-engine-v110.html'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout emergency branch
+        uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-emergency-direct
+          fetch-depth: 0
+
+      - name: Preserve v110 files and switch to production
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tesla-waze-preview/music-isolation-v110.patch.py /tmp/music-isolation-v110.patch.py
+          cp tesla-waze-preview/music-isolated-engine-v110.html /tmp/music-isolated-engine-v110.html
+          git fetch origin tesla-waze-preview-v1
+          git checkout -B tesla-waze-preview-v1 origin/tesla-waze-preview-v1
+          cp /tmp/music-isolated-engine-v110.html tesla-waze-preview/music-isolated-engine-v110.html
+          python3 /tmp/music-isolation-v110.patch.py
+
+      - name: Verify isolated architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tesla-waze-preview/app.js
+          grep -q 'MUSIC_ISOLATED_ENGINE_V110' tesla-waze-preview/app.js
+          grep -q 'MUSIC_ISOLATED_ENGINE_UI_V110' tesla-waze-preview/app.css
+          grep -q 'tw-music-engine-v110' tesla-waze-preview/app.js
+          grep -q "setActionHandler(name,fn)" tesla-waze-preview/app.js
+          ! grep -q "new YT.Player('ytPlayerHost'" tesla-waze-preview/app.js
+          ! grep -q "music.autoNext=true;music.shuffle=true" tesla-waze-preview/app.js
+          grep -q 'tw-music-engine-v110' tesla-waze-preview/music-isolated-engine-v110.html
+          cd tesla-waze-preview
+          gzip -n -c app.js | base64 -w 0 > app.js.gz.b64
+          gzip -n -c app.css | base64 -w 0 > app.css.gz.b64
+          python3 - <<'PY'
+          import base64,gzip
+          from pathlib import Path
+          for n in ('app.js','app.css'):
+              assert gzip.decompress(base64.b64decode(Path(n+'.gz.b64').read_bytes())) == Path(n).read_bytes()
+          print('v110-runtime-ok')
+          PY
+
+      - name: Commit isolated engine to production
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64 tesla-waze-preview/music-isolated-engine-v110.html
+          git commit -m 'music: isolate playback engine from map v110 [skip ci]'
+          git push origin HEAD:tesla-waze-preview-v1
