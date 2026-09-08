@@ -7,6 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Verify service worker syntax and V115 patch scope
         run: |
           node --check tesla-waze-preview/offline-sw-v98.js
