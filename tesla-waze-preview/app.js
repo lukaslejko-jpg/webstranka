@@ -2,10 +2,11 @@
 'use strict';
 /* OFFLINE_TILE_CACHE_V98 */
 const V98_BRANCH_PATH='/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/';
-if(location.hostname==='raw.githack.com'&&!location.pathname.startsWith(V98_BRANCH_PATH)){
-  location.replace('https://raw.githack.com'+V98_BRANCH_PATH+'live3.html'+location.search+location.hash);
-  return;
-}
+/* RAWGITHACK_PINNED_STAY_V108 */
+// The Vercel shell already loads a pinned, known-good live3.html. Do not redirect
+// that iframe to a mutable raw.githack branch URL: Tesla Chromium can strand the
+// frame on a grey error page when that navigation fails. Runtime assets still
+// come from the production branch through live3.html.
 if('serviceWorker' in navigator&&location.hostname==='raw.githack.com'){
   const sendNetworkState=()=>{try{navigator.serviceWorker.controller?.postMessage({type:'TESLA_NETWORK_STATE',online:navigator.onLine!==false})}catch{}};
   navigator.serviceWorker.register('./offline-sw-v98.js',{scope:'./'}).then(()=>navigator.serviceWorker.ready).then(()=>sendNetworkState()).catch(e=>console.warn('Offline tile cache unavailable:',e?.message||e));
