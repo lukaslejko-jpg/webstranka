@@ -42,8 +42,8 @@ jobs:
           node --check tesla-waze-preview/app.js
           grep -q 'MUSIC_DRIVING_V109' tesla-waze-preview/app.js
           grep -q 'MUSIC_DRIVING_UI_V109' tesla-waze-preview/app.css
-          grep -q "setActionHandler('nexttrack'" tesla-waze-preview/app.js
-          grep -q "setActionHandler('previoustrack'" tesla-waze-preview/app.js
+          grep -q "bind('nexttrack'" tesla-waze-preview/app.js
+          grep -q "bind('previoustrack'" tesla-waze-preview/app.js
           ! grep -q "music.autoNext=true;music.shuffle=true" tesla-waze-preview/app.js
           cd tesla-waze-preview
           gzip -n -c app.js | base64 -w 0 > app.js.gz.b64
