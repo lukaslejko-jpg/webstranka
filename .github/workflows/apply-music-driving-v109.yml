@@ -21,10 +21,11 @@ jobs:
           ref: tesla-waze-emergency-direct
           fetch-depth: 0
 
-      - name: Switch to production branch
+      - name: Preserve patch and switch to production branch
         shell: bash
         run: |
           set -euo pipefail
+          cp tesla-waze-preview/music-driving-v109.patch.py /tmp/music-driving-v109.patch.py
           git fetch origin tesla-waze-preview-v1
           git checkout -B tesla-waze-preview-v1 origin/tesla-waze-preview-v1
 
@@ -32,7 +33,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 tesla-waze-preview/music-driving-v109.patch.py
+          python3 /tmp/music-driving-v109.patch.py
 
       - name: Verify JS and runtime assets
         shell: bash
