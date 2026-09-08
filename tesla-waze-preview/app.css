@@ -1180,3 +1180,44 @@ body.tesla-navigating .tesla-trip-route{width:100%;padding:0 16px 8px;color:#dce
 /* MUSIC_MAX_HEADER_VIDEO_LAYER_V101 */
 .music-shell.music-maximized .music-head{position:relative!important;z-index:7010!important}
 .music-shell.music-maximized #musicHeaderSearch{position:relative!important;z-index:7012!important}
+
+
+/* MUSIC_DRIVING_UI_V109 */
+@media (min-width:901px){
+  .music-shell.music-maximized>.music-body{
+    overflow-y:auto!important;
+    min-height:0!important;
+    padding-bottom:185px!important;
+    scroll-padding-bottom:185px!important;
+    overscroll-behavior-y:contain!important;
+  }
+  .music-shell.music-maximized #musicMaxHome{padding-bottom:185px!important}
+  .music-shell.music-maximized .music-home-section:last-child{margin-bottom:130px!important}
+
+  /* Keep horizontal rails but make all non-quick rows almost 2x larger. */
+  .music-shell.music-maximized .music-home-rail:not(.music-home-covers){
+    grid-auto-columns:minmax(430px,42vw)!important;
+    gap:16px!important;
+  }
+  .music-shell.music-maximized .music-home-row{
+    grid-template-columns:92px minmax(0,1fr) 54px!important;
+    min-height:108px!important;
+    gap:14px!important;
+    padding:8px 6px!important;
+  }
+  .music-shell.music-maximized .music-home-row img,
+  .music-shell.music-maximized .music-home-row-empty{
+    width:92px!important;height:92px!important;min-width:92px!important;min-height:92px!important;border-radius:12px!important;
+  }
+  .music-shell.music-maximized .music-home-row b{font-size:19px!important;line-height:1.15!important}
+  .music-shell.music-maximized .music-home-row small{font-size:14px!important;line-height:1.15!important;margin-top:6px!important}
+  .music-shell.music-maximized .music-home-row>i{font-size:30px!important;display:flex!important;align-items:center!important;justify-content:center!important}
+
+  .music-shell.music-maximized>.music-player{min-height:118px!important;height:118px!important;max-height:118px!important;padding:10px 14px!important}
+  .music-shell.music-maximized .music-controls-6{grid-template-columns:1.06fr 1.28fr 1.06fr .78fr .78fr .88fr!important;gap:10px!important}
+  .music-shell.music-maximized .music-controls-6 [data-ma="prev"],
+  .music-shell.music-maximized .music-controls-6 [data-ma="toggle"],
+  .music-shell.music-maximized .music-controls-6 [data-ma="next"]{
+    min-height:74px!important;height:74px!important;font-size:20px!important;font-weight:900!important;border-radius:14px!important;
+  }
+}

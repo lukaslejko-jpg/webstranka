@@ -716,7 +716,7 @@ function syncMusicFab(){const f=$('musicFab'),m=$('musicModal');if(!f||!m)return
 function setMusicWindowOpen(on){const m=$('musicModal');if(!m)return;m.classList.toggle('hidden',!on);syncMusicFab()}
 function openMusicWindow(){ensureMusicWindowControls();setMusicWindowOpen(true);applyMusicWindow();if($('musicSearch'))$('musicSearch').placeholder='Video, rozprávka, skladba alebo interpret';renderMusicStatus();renderMusicList();const r=$('musicPlayer');const live=!!(music.current&&r&&r.children.length&&(music.audio||music.ytPlayer));if(live){refreshCurrentMusicUi();if(music.wantsPlayback&&!music.userPaused){stopMusicKeepalive();setMusicPlaying(true)}}else renderPlayer()}
 
-const music={profile:load(LS.music,{tracks:{},artists:{},events:[],youtube:{connected:false,email:'lukaslejko@gmail.com'}}),queue:load(LS.queue,[]),current:null,audio:null,ytPlayer:null,tab:'forYou',started:0,shuffle:load('teslaWaze:musicShuffle:v1',false),autoNext:load('teslaWaze:musicAutoNext:v1',true),userPaused:false,wantsPlayback:false,resumeTimer:null,anonymousYoutube:false,fallbackAttempts:0,fallbackTimer:null,shuffleRecent:[],shuffleBack:[],playingSince:0,manualNavPending:0,manualNavTimer:null,related:[],relatedBusy:false,relatedSeeds:[]};/* MUSIC_DISCOVERY_STATE_V100 */
+const music={profile:load(LS.music,{tracks:{},artists:{},events:[],youtube:{connected:false,email:'lukaslejko@gmail.com'}}),queue:load(LS.queue,[]),current:null,audio:null,ytPlayer:null,tab:'forYou',started:0,shuffle:load('teslaWaze:musicShuffle:v1',false),autoNext:load('teslaWaze:musicAutoNext:v1',true),userPaused:false,wantsPlayback:false,resumeTimer:null,anonymousYoutube:false,fallbackAttempts:0,fallbackTimer:null,shuffleRecent:[],shuffleBack:[],playingSince:0,manualNavPending:0,manualNavTimer:null,navLockUntil:0,suppressEndedUntil:0,related:[],relatedBusy:false,relatedSeeds:[]};/* MUSIC_DISCOVERY_STATE_V100 */
 function mt(t){const id=t.id||`${norm(t.artist)}::${norm(t.title)}`;return music.profile.tracks[id]||(music.profile.tracks[id]={id,title:t.title||'',artist:t.artist||'',score:0,plays:0,completed:0,skips:0,liked:false,disliked:false,lastPlayed:null,source:t.source||'',streamUrl:t.streamUrl||'',artwork:t.artwork||'',youtubeId:t.youtubeId||''})}
 function ma(n){const k=norm(n)||'unknown';return music.profile.artists[k]||(music.profile.artists[k]={name:n||'',score:0,plays:0})}
 function mev(type,t){const s=mt(t),a=ma(t.artist),d={like:5,dislike:-6,complete:3,play:.4,skip:-1.5,replay:2}[type]||0;s.score+=d;a.score+=d*.7;if(type==='play'){s.plays++;a.plays++;s.lastPlayed=new Date().toISOString()}if(type==='complete')s.completed++;if(type==='skip')s.skips++;if(type==='like'){s.liked=true;s.disliked=false}music.profile.events.push({type,id:s.id,at:new Date().toISOString()});music.profile.events=music.profile.events.slice(-500);save(LS.music,music.profile);renderMusicStatus()}
@@ -728,6 +728,16 @@ function isEligibleMusic(t){if(!t||t.invalidMedia||t.disliked)return false;if(lo
 function invalidateCurrentMedia(reason,duration=0){if(!music.current)return false;const st=mt(music.current);if(st.invalidMedia)return false;st.invalidMedia=true;st.invalidReason=reason||'invalid';if(duration>0)st.durationSeconds=Math.round(duration);save(LS.music,music.profile);music.queue=(music.queue||[]).filter(x=>mt(x).id!==st.id&&isEligibleMusic(x));save(LS.queue,music.queue);renderMusicStatus();renderMusicList();return true}
 function sanitizeMusicProfile(){let changed=false;for(const t of Object.values(music.profile.tracks||{})){if(!t.invalidMedia&&(looksLikeNonSong(t)||(declaredMusicDuration(t)>0&&declaredMusicDuration(t)<MUSIC_MIN_SECONDS))){t.invalidMedia=true;t.invalidReason=looksLikeNonSong(t)?'non-song':'short';changed=true}}if(changed)save(LS.music,music.profile);music.queue=(music.queue||[]).filter(isEligibleMusic);save(LS.queue,music.queue)}
 sanitizeMusicProfile();
+function installTeslaMediaSession(){
+  if(!('mediaSession' in navigator))return;
+  const bind=(name,fn)=>{try{navigator.mediaSession.setActionHandler(name,fn)}catch{}};
+  bind('play',()=>{music.userPaused=false;music.wantsPlayback=true;setMusicPlaying(true);if(music.audio){music.audio.play().catch(()=>{})}else try{music.ytPlayer?.playVideo?.()}catch{}});
+  bind('pause',()=>{music.userPaused=true;music.wantsPlayback=false;setMusicPlaying(false);if(music.audio)music.audio.pause();else try{music.ytPlayer?.pauseVideo?.()}catch{}});
+  bind('nexttrack',()=>mnext('manual'));
+  bind('previoustrack',()=>mprev('manual'));
+  bind('stop',()=>{music.userPaused=true;music.wantsPlayback=false;setMusicPlaying(false);if(music.audio)music.audio.pause();else try{music.ytPlayer?.pauseVideo?.()}catch{}});
+}
+installTeslaMediaSession();
 function musicItems(){let a=Object.values(music.profile.tracks).filter(isEligibleMusic);if(music.tab==='likes')a=a.filter(x=>x.liked);if(music.tab==='recent')a=a.filter(x=>x.lastPlayed).sort((x,y)=>Date.parse(y.lastPlayed)-Date.parse(x.lastPlayed));else a.sort((x,y)=>(y.score+(isYoutubePreference(y)?3:0))-(x.score+(isYoutubePreference(x)?3:0)));return a}
 function renderMusicStatus(){const n=Object.values(music.profile.tracks).filter(isEligibleMusic).length,y=music.profile.youtube;$('musicStatus').textContent=`${n} naučených skladieb`;$('musicAccount').textContent=y.connected?`${y.email||''} · synchronizované`:'YouTube nepripojený';$('musicMiniStatus').textContent=$('musicAccount').textContent;syncMusicCompactHeader()}/* MUSIC_ACCOUNT_LINE_V88 */
 function canPlayInApp(t){return !!(t?.streamUrl||t?.youtubeId||String(t?.id||'').startsWith('youtube:'))}
@@ -838,7 +848,7 @@ function seekMusic(seconds){try{if(music.audio){music.audio.currentTime=Math.max
 function scheduleMusicResume(){if(music.userPaused||!music.wantsPlayback||!state.navigating)return;if(music.resumeTimer)clearTimeout(music.resumeTimer);music.resumeTimer=setTimeout(()=>{music.resumeTimer=null;if(music.userPaused||!music.wantsPlayback||!state.navigating)return;if(music.audio){if(music.audio.paused)music.audio.play().catch(()=>{});return}try{const st=music.ytPlayer?.getPlayerState?.();if(st!==YT.PlayerState.PLAYING&&st!==YT.PlayerState.BUFFERING)music.ytPlayer?.playVideo?.()}catch{}},420)}
 /* MUSIC_NAV_RESUME_WATCHDOG_REMOVED_V91 */
 function syncMediaSession(){updateMiniSeek()}
-function wireAudio(){if(!music.audio)return;music.audio.onloadedmetadata=()=>{const d=Number(music.audio?.duration||0);if((Number.isFinite(d)&&d>0&&d<MUSIC_MIN_SECONDS)||(!Number.isFinite(d)&&d!==0)){if(invalidateCurrentMedia('short-or-invalid-audio',d)){try{music.audio.pause()}catch{};setTimeout(()=>mnext('auto'),0);return}}if(music.current&&d>0){mt(music.current).durationSeconds=Math.round(d);save(LS.music,music.profile)}};music.audio.onended=()=>{if(music.current)mev('complete',music.current);if(music.autoNext&&!music.userPaused){music.wantsPlayback=true;setMusicPlaying(true);mnext('auto')}else{music.wantsPlayback=false;setMusicPlaying(false)}};music.audio.onplay=()=>{music.userPaused=false;music.wantsPlayback=true;if(!music.playingSince)music.playingSince=Date.now();setMusicPlaying(true);if(music.manualNavPending){if(music.manualNavTimer)clearTimeout(music.manualNavTimer);music.manualNavTimer=setTimeout(()=>{music.manualNavTimer=null;drainManualMusicNav()},1500)}};music.audio.onpause=()=>{if(music.userPaused||!music.wantsPlayback)setMusicPlaying(false);else{setMusicPlaying(true);scheduleMusicResume()}};music.audio.ontimeupdate=()=>{updateMiniSeek()}}
+function wireAudio(){if(!music.audio)return;music.audio.onloadedmetadata=()=>{const d=Number(music.audio?.duration||0);if((Number.isFinite(d)&&d>0&&d<MUSIC_MIN_SECONDS)||(!Number.isFinite(d)&&d!==0)){if(invalidateCurrentMedia('short-or-invalid-audio',d)){try{music.audio.pause()}catch{};setTimeout(()=>mnext('auto'),0);return}}if(music.current&&d>0){mt(music.current).durationSeconds=Math.round(d);save(LS.music,music.profile)}};music.audio.onended=()=>{if(Date.now()<(music.suppressEndedUntil||0))return;if(music.current)mev('complete',music.current);if(music.autoNext&&!music.userPaused){music.wantsPlayback=true;setMusicPlaying(true);mnext('auto')}else{music.wantsPlayback=false;setMusicPlaying(false)}};music.audio.onplay=()=>{music.userPaused=false;music.wantsPlayback=true;if(!music.playingSince)music.playingSince=Date.now();setMusicPlaying(true);if(music.manualNavPending){if(music.manualNavTimer)clearTimeout(music.manualNavTimer);music.manualNavTimer=setTimeout(()=>{music.manualNavTimer=null;drainManualMusicNav()},1500)}};music.audio.onpause=()=>{if(music.userPaused||!music.wantsPlayback)setMusicPlaying(false);else{setMusicPlaying(true);scheduleMusicResume()}};music.audio.ontimeupdate=()=>{updateMiniSeek()}}
 function ensureMusicQueue(){
   const items=Object.values(music.profile.tracks).filter(isEligibleMusic).sort((x,y)=>(y.score+(isYoutubePreference(y)?3:0))-(x.score+(isYoutubePreference(x)?3:0)));
   const ids=items.map(x=>mt(x).id),qids=(music.queue||[]).map(x=>mt(x).id);
@@ -852,7 +862,7 @@ function refreshPersistentYoutubeUi(){
   if(now){const img=now.querySelector('.music-art'),title=now.querySelector('.music-title'),sub=now.querySelector('.music-sub');if(img)img.src=music.current.artwork||s.artwork||'';if(title)title.textContent=music.current.title||s.title||'Bez názvu';if(sub)sub.textContent=`${music.current.artist||s.artist||''} · ${music.current.source||s.source||''}`}
   const like=r.querySelector('[data-ma=like]');if(like)like.classList.toggle('primary',!!s.liked);
   const q=ensureMusicQueue(),box=r.querySelector('.music-mini-queue');if(box)wireMiniQueue(box,q,s.id);
-  updateMiniSeek();syncMediaSession();renderMusicStatus();renderMusicList();
+  updateMiniSeek();syncMediaSession();installTeslaMediaSession();renderMusicStatus();renderMusicList();
 }
 function mplay(t){
   const st=mt(t),yt=t.youtubeId||st.youtubeId||(String(t.id||'').startsWith('youtube:')?String(t.id).slice(8):'');
@@ -860,7 +870,7 @@ function mplay(t){
   if(music.current&&music.started&&Date.now()-music.started<15000)mev('skip',music.current);
   const replay=music.current&&mt(music.current).id===mt(t).id;
   const canReuseYoutube=!!(yt&&music.ytPlayer&&typeof music.ytPlayer.loadVideoById==='function');/* MUSIC_NEXT_REUSE_V99 */
-  music.current=t;music.userPaused=false;music.wantsPlayback=true;music.playingSince=0;music.autoNext=true;music.shuffle=true;save('teslaWaze:musicAutoNext:v1',true);save('teslaWaze:musicShuffle:v1',true);setMusicPlaying(true);syncMediaSession();music.started=Date.now();mev(replay?'replay':'play',t);expandRelatedQueue(t);/* MUSIC_ENDLESS_DISCOVERY_V100 */
+  music.current=t;music.userPaused=false;music.wantsPlayback=true;music.playingSince=0;setMusicPlaying(true);syncMediaSession();music.started=Date.now();mev(replay?'replay':'play',t);expandRelatedQueue(t);/* MUSIC_ENDLESS_DISCOVERY_V100 */
   if(canReuseYoutube){
     refreshPersistentYoutubeUi();
     try{music.ytPlayer.loadVideoById({videoId:yt,startSeconds:0})}catch{try{music.ytPlayer.loadVideoById(yt)}catch{renderPlayer()}}
@@ -869,24 +879,17 @@ function mplay(t){
   renderPlayer();
   if(music.audio)music.audio.play().catch(()=>{});
 }
-function scheduleManualMusicNav(dir){
-  music.manualNavPending+=dir;
-  if(music.manualNavTimer)return true;
-  const wait=music.playingSince?Math.max(0,1500-(Date.now()-music.playingSince)):1500;
-  music.manualNavTimer=setTimeout(()=>{music.manualNavTimer=null;drainManualMusicNav()},wait);
+function beginMusicNav(){
+  const now=Date.now();
+  if(music.navLockUntil&&now<music.navLockUntil)return false;
+  music.navLockUntil=now+700;
+  music.suppressEndedUntil=now+1400;
+  music.manualNavPending=0;
+  if(music.manualNavTimer){clearTimeout(music.manualNavTimer);music.manualNavTimer=null}
   return true;
 }
-function drainManualMusicNav(){
-  if(!music.manualNavPending)return;
-  if(!music.playingSince){scheduleManualMusicNav(0);return}
-  const age=Date.now()-music.playingSince;
-  if(age<1500){music.manualNavTimer=setTimeout(()=>{music.manualNavTimer=null;drainManualMusicNav()},1500-age);return}
-  const dir=music.manualNavPending>0?1:-1;
-  music.manualNavPending-=dir;
-  if(dir>0)mnext('guarded');else mprev('guarded');
-}
 function mnext(reason='manual'){
-  if(reason!=='auto'&&reason!=='guarded'&&(!music.playingSince||Date.now()-music.playingSince<1500))return scheduleManualMusicNav(1);
+  if(reason==='manual'&&!beginMusicNav())return false;
   /* MUSIC_MANUAL_NEXT_HOLD_V46 */
   music.userPaused=false;music.wantsPlayback=true;setMusicPlaying(true);
   const q=ensureMusicQueue();if(!q.length)return false;
@@ -909,7 +912,7 @@ function mnext(reason='manual'){
   return true;
 }
 function mprev(reason='manual'){
-  if(reason!=='guarded'&&(!music.playingSince||Date.now()-music.playingSince<1500))return scheduleManualMusicNav(-1);
+  if(reason==='manual'&&!beginMusicNav())return false;
   const q=ensureMusicQueue();if(!q.length)return false;
   let p=null;
   if(music.shuffle){
@@ -932,7 +935,7 @@ function currentYoutubeId(){const t=music.current;if(!t)return'';const s=mt(t);r
 function setYoutubeFallbackStatus(text,active=false){const el=document.querySelector('[data-free-status]');if(el){el.textContent=text;el.classList.toggle('active',active)}}
 async function switchYoutubeToFree(yt,manual=false){if(!yt)return;music.anonymousYoutube=true;music.fallbackAttempts=0;if(music.fallbackTimer){clearTimeout(music.fallbackTimer);music.fallbackTimer=null}setYoutubeFallbackStatus(manual?'Spúšťam bezplatné YouTube s reklamami…':'YouTube účet je blokovaný · prepínam na prehrávanie s reklamami…',true);try{music.ytPlayer?.destroy?.()}catch{}music.ytPlayer=null;const host=document.getElementById('ytPlayerHost');if(host){host.innerHTML=''}await setupYoutubePlayer(yt,true)}
 function noteYoutubeBlockedState(yt){if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback)return;music.fallbackAttempts=(music.fallbackAttempts||0)+1;if(music.fallbackAttempts>=3){music.fallbackAttempts=3;setYoutubeFallbackStatus('YouTube môže byť blokovaný · použi S reklamami',true)}}/* MUSIC_NONDESTRUCTIVE_FALLBACK_V99 */
-async function setupYoutubePlayer(yt,anonymous=music.anonymousYoutube){try{await loadYoutubeApi();const host=document.getElementById('ytPlayerHost');if(!host)return;music.anonymousYoutube=!!anonymous;try{music.ytPlayer?.destroy?.()}catch{}host.innerHTML='';setYoutubeFallbackStatus(anonymous?'Free YouTube · reklamy môžu byť zobrazené':'YouTube účet',anonymous);music.ytPlayer=new YT.Player('ytPlayerHost',{host:anonymous?'https://www.youtube-nocookie.com':'https://www.youtube.com',videoId:yt,playerVars:{autoplay:1,playsinline:1,rel:0,origin:location.origin},events:{onReady:e=>{syncMediaSession();try{e.target.playVideo()}catch{}},onStateChange:e=>{if(e.data===YT.PlayerState.PLAYING){music.fallbackAttempts=0;music.wantsPlayback=true;if(!music.playingSince)music.playingSince=Date.now();setMusicPlaying(true);setTimeout(()=>{try{const d=Number(e.target?.getDuration?.()||0);if(d>0&&d<MUSIC_MIN_SECONDS){if(invalidateCurrentMedia('short-youtube',d)){try{e.target.pauseVideo?.()}catch{};mnext('auto');return}}if(d>0&&music.current){const st=mt(music.current);st.durationSeconds=Math.round(d);save(LS.music,music.profile)}}catch{}},650);if(music.manualNavPending){if(music.manualNavTimer)clearTimeout(music.manualNavTimer);music.manualNavTimer=setTimeout(()=>{music.manualNavTimer=null;drainManualMusicNav()},1500)}}else if(e.data===YT.PlayerState.PAUSED){if(music.userPaused||!music.wantsPlayback)setMusicPlaying(false);else{setMusicPlaying(true);scheduleMusicResume();noteYoutubeBlockedState(yt)}}else if(e.data===YT.PlayerState.CUED||e.data===YT.PlayerState.UNSTARTED){if(music.userPaused||!music.wantsPlayback)setMusicPlaying(false);else setMusicPlaying(true)}/* MUSIC_YT_STARTUP_STABLE_V91 */else if(e.data===YT.PlayerState.ENDED){if(music.current)mev('complete',music.current);if(music.autoNext&&!music.userPaused){music.wantsPlayback=true;setMusicPlaying(true);mnext('auto')}else{music.wantsPlayback=false;setMusicPlaying(false)}}},onError:()=>{if(!anonymous&&music.wantsPlayback&&!music.userPaused)noteYoutubeBlockedState(yt)}}})}catch{const h=document.getElementById('ytPlayerHost');if(h){const base=anonymous?'https://www.youtube-nocookie.com':'https://www.youtube.com';h.innerHTML=`<iframe class="yt-player" src="${base}/embed/${encodeURIComponent(yt)}?autoplay=1&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;setYoutubeFallbackStatus(anonymous?'Free YouTube · reklamy môžu byť zobrazené':'YouTube účet',anonymous)}syncMediaSession()}}
+async function setupYoutubePlayer(yt,anonymous=music.anonymousYoutube){try{await loadYoutubeApi();const host=document.getElementById('ytPlayerHost');if(!host)return;music.anonymousYoutube=!!anonymous;try{music.ytPlayer?.destroy?.()}catch{}host.innerHTML='';setYoutubeFallbackStatus(anonymous?'Free YouTube · reklamy môžu byť zobrazené':'YouTube účet',anonymous);music.ytPlayer=new YT.Player('ytPlayerHost',{host:anonymous?'https://www.youtube-nocookie.com':'https://www.youtube.com',videoId:yt,playerVars:{autoplay:1,playsinline:1,rel:0,origin:location.origin},events:{onReady:e=>{syncMediaSession();try{e.target.playVideo()}catch{}},onStateChange:e=>{if(e.data===YT.PlayerState.PLAYING){music.fallbackAttempts=0;music.wantsPlayback=true;if(!music.playingSince)music.playingSince=Date.now();setMusicPlaying(true);setTimeout(()=>{try{const d=Number(e.target?.getDuration?.()||0);if(d>0&&d<MUSIC_MIN_SECONDS){if(invalidateCurrentMedia('short-youtube',d)){try{e.target.pauseVideo?.()}catch{};mnext('auto');return}}if(d>0&&music.current){const st=mt(music.current);st.durationSeconds=Math.round(d);save(LS.music,music.profile)}}catch{}},650);if(music.manualNavPending){if(music.manualNavTimer)clearTimeout(music.manualNavTimer);music.manualNavTimer=setTimeout(()=>{music.manualNavTimer=null;drainManualMusicNav()},1500)}}else if(e.data===YT.PlayerState.PAUSED){if(music.userPaused||!music.wantsPlayback)setMusicPlaying(false);else{setMusicPlaying(true);scheduleMusicResume();noteYoutubeBlockedState(yt)}}else if(e.data===YT.PlayerState.CUED||e.data===YT.PlayerState.UNSTARTED){if(music.userPaused||!music.wantsPlayback)setMusicPlaying(false);else setMusicPlaying(true)}/* MUSIC_YT_STARTUP_STABLE_V91 */else if(e.data===YT.PlayerState.ENDED){if(Date.now()<(music.suppressEndedUntil||0))return;if(music.current)mev('complete',music.current);if(music.autoNext&&!music.userPaused){music.wantsPlayback=true;setMusicPlaying(true);mnext('auto')}else{music.wantsPlayback=false;setMusicPlaying(false)}}},onError:()=>{if(!anonymous&&music.wantsPlayback&&!music.userPaused)noteYoutubeBlockedState(yt)}}})}catch{const h=document.getElementById('ytPlayerHost');if(h){const base=anonymous?'https://www.youtube-nocookie.com':'https://www.youtube.com';h.innerHTML=`<iframe class="yt-player" src="${base}/embed/${encodeURIComponent(yt)}?autoplay=1&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;setYoutubeFallbackStatus(anonymous?'Free YouTube · reklamy môžu byť zobrazené':'YouTube účet',anonymous)}syncMediaSession()}}
 setInterval(()=>{if(music.anonymousYoutube||music.userPaused||!music.wantsPlayback||!music.ytPlayer)return;try{const st=music.ytPlayer.getPlayerState?.();if(st!==YT.PlayerState.PLAYING&&st!==YT.PlayerState.BUFFERING)setYoutubeFallbackStatus('YouTube čaká · ak nehrá, použi S reklamami',true)}catch{}},2600);/* MUSIC_FREE_FALLBACK_NONDESTRUCTIVE_V99 */
 
 function startMusicKeepalive(){}
@@ -1052,3 +1055,5 @@ if(!openMobilePairing()){bind();if($('musicFab')){$('musicFab').textContent='♫
 /* MAP_BEARING_STABILITY_V92 */
 
 /* NAV_ROUTE_ALIGNED_CAMERA_TRAFFIC_TRIM_V95 */
+
+/* MUSIC_DRIVING_V109 */
