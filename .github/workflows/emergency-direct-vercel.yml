@@ -1,0 +1,104 @@
+name: Emergency direct Tesla Waze deploy
+
+on:
+  push:
+    branches:
+      - tesla-waze-emergency-direct
+    paths:
+      - '.github/workflows/emergency-direct-vercel.yml'
+      - 'tesla-waze-emergency-trigger.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout emergency branch
+        uses: actions/checkout@v4
+
+      - name: Verify production source assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s tesla-waze-preview/live3.html
+          test -s tesla-waze-preview/app.js.gz.b64
+          test -s tesla-waze-preview/app.css.gz.b64
+          node --check tesla-waze-preview/app.js
+
+      - name: Build self-contained Vercel bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf emergency-vercel
+          mkdir -p emergency-vercel/.vercel
+          cp tesla-waze-preview/live3.html emergency-vercel/live3.html
+          cp tesla-waze-preview/app.js.gz.b64 emergency-vercel/app.js.gz.b64
+          cp tesla-waze-preview/app.css.gz.b64 emergency-vercel/app.css.gz.b64
+          if [ -f tesla-waze-preview/mobile-v102.css ]; then cp tesla-waze-preview/mobile-v102.css emergency-vercel/mobile-v102.css; fi
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('emergency-vercel/live3.html')
+          s=p.read_text(encoding='utf-8')
+          old="const RAW='https://raw.githubusercontent.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/';"
+          if old not in s:
+              raise SystemExit('RAW anchor missing')
+          s=s.replace(old,"const RAW=location.origin+'/';",1)
+          s=s.replace("const PROD='https://tesla-waze.vercel.app';","const PROD=location.origin;",1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          cat > emergency-vercel/index.html <<'HTML'
+          <!doctype html>
+          <html lang="sk">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+            <meta name="theme-color" content="#0f1720">
+            <title>Tesla Waze</title>
+            <style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b1118}iframe{position:fixed;inset:0;width:100vw;height:100vh;border:0;background:#0b1118}</style>
+          </head>
+          <body>
+            <iframe id="tw" title="Tesla Waze" src="/live3.html" allow="geolocation *; microphone *; autoplay *; fullscreen *" allowfullscreen></iframe>
+            <script>
+              const frame=document.getElementById('tw');let last=null,watch=null;
+              function send(g){last={type:'tesla-gps',lat:g.coords.latitude,lng:g.coords.longitude,accuracy:g.coords.accuracy,speed:Number.isFinite(g.coords.speed)?g.coords.speed:null,heading:Number.isFinite(g.coords.heading)?g.coords.heading:null};try{frame.contentWindow.postMessage(last,'*')}catch{}}
+              function start(){if(!navigator.geolocation)return;try{if(watch!=null)navigator.geolocation.clearWatch(watch)}catch{}watch=navigator.geolocation.watchPosition(send,()=>{},{enableHighAccuracy:true,maximumAge:0,timeout:12000})}
+              frame.addEventListener('load',()=>{if(last)try{frame.contentWindow.postMessage(last,'*')}catch{}start()});
+              window.addEventListener('message',event=>{if(event.data&&event.data.type==='tesla-gps-request'){if(last)try{frame.contentWindow.postMessage(last,'*')}catch{}start()}});
+              start();
+            </script>
+          </body></html>
+          HTML
+          cat > emergency-vercel/vercel.json <<'JSON'
+          {"cleanUrls":false,"headers":[{"source":"/(.*)","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]}]}
+          JSON
+          cat > emergency-vercel/.vercel/project.json <<'JSON'
+          {"projectId":"prj_P6y4zgYs9VVXgv9Go6Z7q6Z2t3sE","orgId":"team_dev6vKKH2V0qxtGe0uy6GpT6"}
+          JSON
+
+      - name: Verify self-contained bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "const RAW=location.origin+'/'" emergency-vercel/live3.html
+          ! grep -q 'raw.githack.com' emergency-vercel/index.html
+          ! grep -q 'raw.githubusercontent.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/' emergency-vercel/live3.html
+          python3 - <<'PY'
+          import base64,gzip
+          from pathlib import Path
+          for n in ('app.js','app.css'):
+              raw=base64.b64decode(Path(f'emergency-vercel/{n}.gz.b64').read_bytes())
+              gzip.decompress(raw)
+          print('bundle-ok')
+          PY
+
+      - name: Deploy directly to existing production project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}" || { echo 'VERCEL_TOKEN secret missing'; exit 2; }
+          cd emergency-vercel
+          npx --yes vercel@59.3.0 deploy --prod --yes --token "$VERCEL_TOKEN"
