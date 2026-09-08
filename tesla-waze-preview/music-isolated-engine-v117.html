@@ -2,7 +2,7 @@
 (()=>{
 'use strict';
 const parentWin=window.parent;let player=null,currentId='',ready=false,lastTick=0,lastMeta='';
-const send=(type,data={})=>{try{parentWin.postMessage({source:'tw-music-engine-v117',type,...data},'*')}catch{}};
+const send=(type,data={})=>{try{parentWin.postMessage({source:'tw-music-engine-v110',type,...data},'*')}catch{}};
 const parentClick=action=>{try{parentWin.document.querySelector(`[data-ma="${action}"]`)?.click();return true}catch{return false}};
 function installMediaSession(){
   try{
