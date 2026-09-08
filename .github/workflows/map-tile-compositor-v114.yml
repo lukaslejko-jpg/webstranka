@@ -1,0 +1,62 @@
+name: Map tile compositor stabilization V114
+on:
+  push:
+    branches: [tesla-waze-v114-work]
+    paths: ['.github/workflows/map-tile-compositor-v114.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v114-work
+          fetch-depth: 0
+      - name: Patch only Leaflet tile compositor hint
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tesla-waze-preview/app.css')
+          s=p.read_text()
+          old='.leaflet-fade-anim .leaflet-tile,.leaflet-zoom-anim .leaflet-zoom-animated{transition:none!important}.leaflet-tile{will-change:transform;backface-visibility:hidden}'
+          new='.leaflet-fade-anim .leaflet-tile,.leaflet-zoom-anim .leaflet-zoom-animated{transition:none!important}'
+          n=s.count(old)
+          if n!=1: raise SystemExit(f'expected exactly 1 tile compositor rule, found {n}')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - name: Rebuild CSS runtime blob
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          src=Path('tesla-waze-preview/app.css').read_bytes()
+          gz=gzip.compress(src,compresslevel=9,mtime=0)
+          Path('tesla-waze-preview/app.css.gz.b64').write_text(base64.b64encode(gz).decode())
+          decoded=gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.css.gz.b64').read_text()))
+          if decoded!=src: raise SystemExit('gzip runtime mismatch')
+          PY
+      - name: Verify strict scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          files="$(git diff --name-only | sort)"
+          expected=$'tesla-waze-preview/app.css\ntesla-waze-preview/app.css.gz.b64'
+          test "$files" = "$expected" || { echo "Unexpected files:"; echo "$files"; exit 1; }
+          grep -q 'leaflet-fade-anim .leaflet-tile' tesla-waze-preview/app.css
+          ! grep -q '\.leaflet-tile{will-change:transform;backface-visibility:hidden}' tesla-waze-preview/app.css
+      - name: Commit V114 work patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.css tesla-waze-preview/app.css.gz.b64
+          git commit -m 'map: remove per-tile GPU promotion V114'
+          git push origin HEAD:tesla-waze-v114-work
