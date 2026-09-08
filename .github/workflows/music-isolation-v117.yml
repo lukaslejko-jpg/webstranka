@@ -1,0 +1,46 @@
+name: Music isolation V117
+on:
+  push:
+    branches: [tesla-waze-v117-work]
+permissions:
+  contents: write
+jobs:
+  isolate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply isolated music engine V117
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64,re
+          app=Path('tesla-waze-preview/app.js')
+          s=app.read_text()
+          old="const TW_MUSIC_ENGINE_URL='https://raw.githack.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/music-isolated-engine-v111.html?v=111';"
+          new="const TW_MUSIC_ENGINE_URL='https://raw.githack.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/music-isolated-engine-v117.html?v=117';/* MUSIC_HARD_ISOLATION_V117 */"
+          assert s.count(old)==1, s.count(old)
+          s=s.replace(old,new)
+          app.write_text(s)
+          raw=s.encode()
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(raw,compresslevel=9,mtime=0)).decode())
+          live=Path('tesla-waze-preview/live3.html')
+          h=live.read_text()
+          oldscript='<script src="./media-session-v112.js?v=112"></script>\n'
+          assert h.count(oldscript)==1, h.count(oldscript)
+          h=h.replace(oldscript,'<!-- Media Session now owned by isolated music engine V117 -->\n')
+          live.write_text(h)
+          PY
+          node --check tesla-waze-preview/app.js
+          python3 - <<'PY'
+          import gzip,base64
+          from pathlib import Path
+          raw=gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.js.gz.b64').read_text()))
+          assert raw==Path('tesla-waze-preview/app.js').read_bytes()
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/live3.html
+          git commit -m "music: move system media ownership to isolated engine V117"
+          git push
