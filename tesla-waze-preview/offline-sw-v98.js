@@ -46,10 +46,11 @@ async function pruneCache(cache){
   await Promise.all(remove.map(key=>cache.delete(key)));
 }
 
-function saveTile(cache,request,response,event){
+function saveTile(request,response,event){
   if(!response||!(response.ok||response.type==='opaque'))return;
   const task=(async()=>{
     try{
+      const cache=await caches.open(CACHE_NAME);
       await cache.put(request,response.clone());
       writesSincePrune++;
       if(writesSincePrune>=64){writesSincePrune=0;await pruneCache(cache)}
@@ -62,16 +63,24 @@ self.addEventListener('fetch',event=>{
   const request=event.request;
   if(!isTileRequest(request))return;
   event.respondWith((async()=>{
-    const cache=await caches.open(CACHE_NAME);
     if(offlineHint){
+      const cache=await caches.open(CACHE_NAME);
       const cached=await cache.match(request);
       if(cached)return cached;
+      try{
+        const response=await fetch(request);
+        saveTile(request,response,event);
+        return response;
+      }catch(error){
+        throw error;
+      }
     }
     try{
       const response=await fetch(request);
-      saveTile(cache,request,response,event);
+      saveTile(request,response,event);
       return response;
     }catch(error){
+      const cache=await caches.open(CACHE_NAME);
       const cached=await cache.match(request);
       if(cached)return cached;
       throw error;
