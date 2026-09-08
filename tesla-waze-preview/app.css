@@ -1221,3 +1221,12 @@ body.tesla-navigating .tesla-trip-route{width:100%;padding:0 16px 8px;color:#dce
     min-height:74px!important;height:74px!important;font-size:20px!important;font-weight:900!important;border-radius:14px!important;
   }
 }
+
+
+/* MUSIC_ISOLATED_ENGINE_UI_V110 */
+#ytPlayerHost.yt-player-isolated-placeholder{display:none!important;width:0!important;height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important}
+#twMusicEngine{contain:strict!important;isolation:isolate!important;backface-visibility:hidden!important;-webkit-backface-visibility:hidden!important}
+#twMusicEngine.music-engine-visible{position:fixed!important;left:20px!important;top:76px!important;width:calc(100vw - 40px)!important;height:auto!important;aspect-ratio:16/9!important;opacity:1!important;pointer-events:auto!important;z-index:7005!important;border:0!important;border-radius:14px!important;background:#000!important}
+@media(max-width:900px){#twMusicEngine.music-engine-visible{left:8px!important;top:64px!important;width:calc(100vw - 16px)!important}}
+/* Explicit compositor separation: music engine is its own browsing context; map is never transformed/reparented by music. */
+#map,.mapwrap{transform:none!important;filter:none!important;will-change:auto!important}
