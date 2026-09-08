@@ -1,0 +1,42 @@
+name: Media Session V112
+on:
+  push:
+    branches: [tesla-waze-v112-work]
+    paths: ['.github/workflows/media-session-v112.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v112-work
+          fetch-depth: 0
+      - name: Add isolated bridge loader
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('tesla-waze-preview/live3.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<script src="./media-session-v112.js?v=112"></script>'
+          assert marker not in s
+          assert '</body>' in s
+          s=s.replace('</body>',marker+'\n</body>',1)
+          p.write_text(s,encoding='utf-8')
+      - name: Verify scope and syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tesla-waze-preview/media-session-v112.js
+          grep -q 'media-session-v112.js?v=112' tesla-waze-preview/live3.html
+          git diff -- tesla-waze-preview/live3.html
+          test "$(git diff --name-only | wc -l)" -eq 1
+      - name: Commit loader
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/live3.html
+          git commit -m 'media: load isolated Media Session bridge V112 [skip ci]'
+          git push origin HEAD:tesla-waze-v112-work
