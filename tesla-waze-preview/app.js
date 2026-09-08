@@ -138,7 +138,7 @@ function updateFreeDriveHeading(p,moved,speed){
   const h=Number.isFinite(state.heading)?state.heading:(Number.isFinite(state.gpsHeading)?state.gpsHeading:null),moving=(Number(speed)||0)>=1.5||moved>=4;
   if(!moving||!Number.isFinite(h))return;
   const now=Date.now(),last=Number.isFinite(state.freeDriveHeading)?state.freeDriveHeading:null,changed=last==null||headingDelta(h,last)>=12;
-  if(changed&&now-(state.freeDriveBearingAt||0)>=1200){if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}
+  if(changed&&now-(state.freeDriveBearingAt||0)>=1200){if(typeof state.map.setBearing==='function')state.map.setBearing(h);else if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:0,deadzone:0});state.freeDriveHeading=h;state.freeDriveBearingAt=now}/* FREE_DRIVE_BEARING_MATCH_V113 */
   if(!state.freeDriveCenter||dist(state.freeDriveCenter,p)>=10){state.map.panTo?.(p,{animate:false});state.freeDriveCenter={...p}}
 }/* FREE_DRIVE_HEADING_UP_V97 */
 function startGPS(){
@@ -155,7 +155,7 @@ function startGPS(){
     $('speed').textContent=`${sp==null?'—':Math.max(0,Math.round(sp*3.6))} km/h`;
     $('gpsNotice').querySelector('span').textContent=`GPS aktívne · presnosť približne ${Math.round(g.coords.accuracy)} m`;
     if(!state.car){state.car=state.L.marker(p,{icon:carIcon(),zIndexOffset:1000,rotation:0,rotateWithView:false}).addTo(state.map);state.map.setView(p,16,{animate:false})}
-    else if(!state.navigating){state.car.setLatLng(p);updateFreeDriveHeading(p,moved,sp)}
+    else if(!state.navigating){state.car.setLatLng(p);state.car.setRotationAngle?.(0);updateFreeDriveHeading(p,moved,sp)}/* CAR_UP_LOCK_V113 */
     if(state.navigating)updateNavigation();else if(state.dest&&!state.routes.length&&!state.routeLoading){const auto=!!state.pendingAutoRoute;state.pendingAutoRoute=false;calculateRoute(auto||true)}
   };
   const restart=()=>{if(watch)navigator.geolocation.clearWatch(watch);watch=navigator.geolocation.watchPosition(onPosition,e=>$('gpsNotice').querySelector('span').textContent=e.code===1?'Poloha bola zamietnutá.':'GPS momentálne nie je dostupné.',{enableHighAccuracy:true,timeout:12000,maximumAge:0})};
