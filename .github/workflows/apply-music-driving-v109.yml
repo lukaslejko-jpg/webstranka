@@ -1,0 +1,67 @@
+name: Apply Tesla Smart Music driving v109
+
+on:
+  push:
+    branches:
+      - tesla-waze-emergency-direct
+    paths:
+      - '.github/workflows/apply-music-driving-v109.yml'
+      - 'tesla-waze-preview/music-driving-v109.patch.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout emergency branch
+        uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-emergency-direct
+          fetch-depth: 0
+
+      - name: Switch to production branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin tesla-waze-preview-v1
+          git checkout -B tesla-waze-preview-v1 origin/tesla-waze-preview-v1
+
+      - name: Apply v109 patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tesla-waze-preview/music-driving-v109.patch.py
+
+      - name: Verify JS and runtime assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tesla-waze-preview/app.js
+          grep -q 'MUSIC_DRIVING_V109' tesla-waze-preview/app.js
+          grep -q 'MUSIC_DRIVING_UI_V109' tesla-waze-preview/app.css
+          grep -q "setActionHandler('nexttrack'" tesla-waze-preview/app.js
+          grep -q "setActionHandler('previoustrack'" tesla-waze-preview/app.js
+          ! grep -q "music.autoNext=true;music.shuffle=true" tesla-waze-preview/app.js
+          cd tesla-waze-preview
+          gzip -n -c app.js | base64 -w 0 > app.js.gz.b64
+          gzip -n -c app.css | base64 -w 0 > app.css.gz.b64
+          python3 - <<'PY'
+          import base64,gzip
+          from pathlib import Path
+          for n in ('app.js','app.css'):
+              dec=gzip.decompress(base64.b64decode(Path(n+'.gz.b64').read_bytes()))
+              assert dec==Path(n).read_bytes(), n
+          print('runtime-ok')
+          PY
+
+      - name: Commit production patch without legacy workflow trigger
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.css tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/app.css.gz.b64
+          git commit -m 'music: larger rails + Tesla media next/prev v109 [skip ci]'
+          git push origin HEAD:tesla-waze-preview-v1
