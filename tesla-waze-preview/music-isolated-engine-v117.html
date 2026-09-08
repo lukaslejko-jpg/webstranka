@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#player{margin:0;width:100%;height:100%;overflow:hidden;background:#000}iframe{width:100%!important;height:100%!important;border:0!important}</style></head><body><div id="player"></div><script>
+(()=>{
+'use strict';
+const parentWin=window.parent;let player=null,currentId='',ready=false,lastTick=0,lastMeta='';
+const send=(type,data={})=>{try{parentWin.postMessage({source:'tw-music-engine-v110',type,...data},'*')}catch{}};
+const parentClick=action=>{try{parentWin.document.querySelector(`[data-ma="${action}"]`)?.click();return true}catch{return false}};
+function installMediaSession(){
+  try{
+    if(!('mediaSession' in navigator))return;
+    const ms=navigator.mediaSession;
+    ms.setActionHandler('play',()=>{try{player?.playVideo?.()}catch{}});
+    ms.setActionHandler('pause',()=>{try{player?.pauseVideo?.()}catch{}});
+    ms.setActionHandler('stop',()=>{try{player?.stopVideo?.()}catch{}});
+    ms.setActionHandler('nexttrack',()=>parentClick('next'));
+    ms.setActionHandler('previoustrack',()=>parentClick('prev'));
+  }catch{}
+}
+function readParentMeta(){
+  try{
+    const root=parentWin.document.getElementById('musicPlayer'),now=root?.querySelector('.music-now');if(!root||!now)return null;
+    const title=now.querySelector('.music-title')?.textContent?.trim()||'',sub=now.querySelector('.music-sub')?.textContent?.trim()||'';if(!title)return null;
+    const parts=sub.split(' · '),artist=(parts[0]||'').trim(),album=(parts.slice(1).join(' · ')||'Tesla Waze').trim(),artwork=now.querySelector('.music-art')?.currentSrc||now.querySelector('.music-art')?.src||'';
+    return {title,artist,album,artwork};
+  }catch{return null}
+}
+function syncMediaSession(now=0,duration=0,state=-1){
+  try{
+    if(!('mediaSession' in navigator)||typeof MediaMetadata==='undefined')return;
+    const m=readParentMeta();if(m){const key=[m.title,m.artist,m.album,m.artwork].join('|');if(key!==lastMeta){lastMeta=key;navigator.mediaSession.metadata=new MediaMetadata({title:m.title,artist:m.artist,album:m.album,artwork:m.artwork?[{src:m.artwork}]:[]})}}
+    try{navigator.mediaSession.playbackState=state===1?'playing':state===2?'paused':'none'}catch{}
+    if(typeof navigator.mediaSession.setPositionState==='function'&&duration>0){try{navigator.mediaSession.setPositionState({duration,position:Math.min(Math.max(0,now),duration),playbackRate:1})}catch{}}
+  }catch{}
+}
+window.onYouTubeIframeAPIReady=()=>{player=new YT.Player('player',{host:'https://www.youtube-nocookie.com',playerVars:{autoplay:1,playsinline:1,rel:0,controls:1,modestbranding:1},events:{onReady:()=>{ready=true;installMediaSession();send('ready');if(currentId){try{player.loadVideoById({videoId:currentId,startSeconds:0})}catch{}}},onStateChange:e=>{send('state',{state:Number(e.data)});syncMediaSession(Number(player?.getCurrentTime?.()||0),Number(player?.getDuration?.()||0),Number(e.data))},onError:e=>send('error',{code:Number(e.data)||0})}});};
+const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s);
+function call(cmd,d){if(cmd==='load'){currentId=String(d.videoId||'');if(ready&&currentId)player.loadVideoById({videoId:currentId,startSeconds:Number(d.startSeconds)||0});return}if(!ready||!player)return;try{if(cmd==='play')player.playVideo();else if(cmd==='pause')player.pauseVideo();else if(cmd==='seek')player.seekTo(Number(d.seconds)||0,true);else if(cmd==='stop')player.stopVideo()}catch{}}
+window.addEventListener('message',e=>{const d=e.data;if(!d||d.source!=='tw-music-main-v110')return;call(d.cmd,d)});
+setInterval(()=>{if(!ready||!player)return;try{const now=Number(player.getCurrentTime?.()||0),duration=Number(player.getDuration?.()||0),state=Number(player.getPlayerState?.()??-1);syncMediaSession(now,duration,state);if(Date.now()-lastTick>1450){lastTick=Date.now();send('time',{now,duration,state})}}catch{}},750);
+installMediaSession();send('boot');
+})();
+</script></body></html>
