@@ -1,0 +1,14 @@
+name: Offline cache nonblocking V115
+on:
+  push:
+    branches: [tesla-waze-v115-work]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify service worker syntax and V115 patch scope
+        run: |
+          node --check tesla-waze-preview/offline-sw-v98.js
+          test "$(git diff --name-only 858c8657dbf8a17441dbf3e2b506cf53709fee68 316b55af8884d6cabf8022d2259c0f461ab42093 | wc -l)" -eq 1
+          git diff --name-only 858c8657dbf8a17441dbf3e2b506cf53709fee68 316b55af8884d6cabf8022d2259c0f461ab42093 | grep -Fx 'tesla-waze-preview/offline-sw-v98.js'
