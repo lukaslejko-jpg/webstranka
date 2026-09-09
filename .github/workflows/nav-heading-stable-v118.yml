@@ -9,37 +9,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Apply V95-proven heading convention
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import gzip,base64
           p=Path('tesla-waze-preview/app.js')
           s=p.read_text()
-          old="""function setHeadingUpBearing(h){
-  if(!state.map||!Number.isFinite(h))return;
-  if(typeof state.map.setBearing==='function')state.map.setBearing(h);
-  else if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:0,deadzone:0});
-}/* MAP_HEADING_SINGLE_PATH_V116 */"""
-          new="""function setHeadingUpBearing(h){
-  if(!state.map||!Number.isFinite(h))return;
-  if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});
-  else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);
-}/* MAP_HEADING_STABLE_V118 */"""
-          assert s.count(old)==1
-          s=s.replace(old,new)
-          s=s.replace("const now=Date.now(),last=Number.isFinite(state.freeDriveHeading)?state.freeDriveHeading:null,changed=last==null||headingDelta(h,last)>=12;","const now=Date.now(),last=Number.isFinite(state.freeDriveHeading)?state.freeDriveHeading:null,changed=last==null||headingDelta(h,last)>=25;")
-          s=s.replace("if(changed&&now-(state.freeDriveBearingAt||0)>=1200){setHeadingUpBearing(h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}","if(changed&&now-(state.freeDriveBearingAt||0)>=2500){setHeadingUpBearing(h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}")
-          s=s.replace("if(headingChanged&&now-(state.lastBearingAt||0)>=1200){","if(headingChanged&&now-(state.lastBearingAt||0)>=2500){")
+          old="function setHeadingUpBearing(h){\n  if(!state.map||!Number.isFinite(h))return;\n  if(typeof state.map.setBearing==='function')state.map.setBearing(h);\n  else if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:0,deadzone:0});\n}/* MAP_HEADING_SINGLE_PATH_V116 */"
+          new="function setHeadingUpBearing(h){\n  if(!state.map||!Number.isFinite(h))return;\n  if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});\n  else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);\n}/* MAP_HEADING_STABLE_V118 */"
+          assert old in s
+          s=s.replace(old,new,1)
+          old2="const now=Date.now(),last=Number.isFinite(state.freeDriveHeading)?state.freeDriveHeading:null,changed=last==null||headingDelta(h,last)>=12;"
+          new2="const now=Date.now(),last=Number.isFinite(state.freeDriveHeading)?state.freeDriveHeading:null,changed=last==null||headingDelta(h,last)>=25;"
+          assert old2 in s
+          s=s.replace(old2,new2,1)
+          old3="if(changed&&now-(state.freeDriveBearingAt||0)>=1200){setHeadingUpBearing(h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}"
+          new3="if(changed&&now-(state.freeDriveBearingAt||0)>=2500){setHeadingUpBearing(h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}"
+          assert old3 in s
+          s=s.replace(old3,new3,1)
+          old4="if(headingChanged&&now-(state.lastBearingAt||0)>=1200){"
+          new4="if(headingChanged&&now-(state.lastBearingAt||0)>=2500){"
+          assert old4 in s
+          s=s.replace(old4,new4,1)
           p.write_text(s)
-          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(s.encode(),compresslevel=9,mtime=0)).decode())
           PY
           node --check tesla-waze-preview/app.js
           python3 - <<'PY'
-          import gzip,base64
           from pathlib import Path
-          assert gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.js.gz.b64').read_text()))==Path('tesla-waze-preview/app.js').read_bytes()
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(p.read_bytes(),mtime=0)).decode())
+          assert gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.js.gz.b64').read_text()))==p.read_bytes()
           PY
+          git diff --check
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
