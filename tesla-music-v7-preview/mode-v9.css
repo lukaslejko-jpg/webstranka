@@ -33,3 +33,31 @@ body.music-embed.music-full .mini-resize-corner{display:flex!important;left:6px!
 body.music-embed.music-full .phead{cursor:move!important;padding-left:78px!important}
 
 @media(max-width:760px){.video-toggle{min-width:92px;font-size:14px;padding:0 8px}body.music-embed:not(.music-full) .player-window,body.music-embed:not(.music-full) .player-window.max,body.music-embed:not(.music-full) .player-window.mini-recs{left:0!important;top:0!important;bottom:auto!important;width:100%!important;height:100%!important}body.music-embed.music-full .player-window,body.music-embed.music-full .player-window.video-off,body.music-embed.music-full .player-window.mini-recs{left:6px!important;right:auto!important;top:auto!important;bottom:90px!important;width:calc(100vw - 12px)!important;height:calc(100vh - 168px)!important;min-width:0!important;max-width:calc(100vw - 12px)!important;max-height:calc(100vh - 168px)!important}body.music-embed.music-full .mini-resize-corner{display:none!important}body.music-embed.music-full .phead{padding-left:14px!important}}
+
+/* iPhone standalone player state V19: browse+bottom OR full player, never both */
+@media(max-width:600px){
+ body:not(.music-embed).mobile-player-open>.top,
+ body:not(.music-embed).mobile-player-open>.tabs,
+ body:not(.music-embed).mobile-player-open>.history,
+ body:not(.music-embed).mobile-player-open>.content,
+ body:not(.music-embed).mobile-player-open>.bottom{display:none!important}
+ body:not(.music-embed).mobile-player-open .player-window,
+ body:not(.music-embed).mobile-player-open .player-window.max,
+ body:not(.music-embed).mobile-player-open .player-window.video-off{
+   display:flex!important;
+   left:0!important;right:0!important;
+   top:0!important;bottom:0!important;
+   width:100vw!important;height:100dvh!important;
+   min-width:0!important;min-height:0!important;
+   max-width:none!important;max-height:none!important;
+   border-radius:0!important;border-left:0!important;border-right:0!important;
+   box-shadow:none!important;z-index:500!important;
+   padding-top:env(safe-area-inset-top)!important;
+   padding-bottom:env(safe-area-inset-bottom)!important;
+ }
+ body:not(.music-embed).mobile-player-open .player-window .phead{padding-left:12px!important;cursor:default!important}
+ body:not(.music-embed).mobile-player-open .player-window .player-body{overflow:auto!important;-webkit-overflow-scrolling:touch!important;padding-bottom:calc(18px + env(safe-area-inset-bottom))!important}
+ body:not(.music-embed):not(.mobile-player-open) .player-window{display:none!important}
+ body:not(.music-embed):not(.mobile-player-open)>.bottom{display:flex!important}
+ body:not(.music-embed):not(.mobile-player-open)>.content{padding-bottom:calc(108px + env(safe-area-inset-bottom))!important}
+}
