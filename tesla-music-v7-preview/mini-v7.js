@@ -2,12 +2,14 @@
   const MINI_KEY='teslaMusic:miniRecommendations:v3';
   const SIZE_KEY='teslaMusic:miniSize:v5';
   const MAP_MODE=new URLSearchParams(location.search).get('map')==='1';
+  const MOBILE_STANDALONE=()=>!MAP_MODE&&window.innerWidth<=600;
   const pw=document.getElementById('playerWindow'),pmin=document.getElementById('pmin'),restore=document.getElementById('restore'),binfo=document.getElementById('binfo'),pmax=document.getElementById('pmax'),list=document.getElementById('miniRecList');
   const miniSeek=document.getElementById('miniSeek'),miniNowTime=document.getElementById('miniNowTime'),miniTotalTime=document.getElementById('miniTotalTime');
   const corner=document.getElementById('miniResizeCorner');
   if(!pw||!pmin||!list)return;
   const read=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??d}catch{return d}},write=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
   let mini=MAP_MODE?true:!!read(MINI_KEY,false),scrubbing=false,lastDuration=0,drag=null;
+  if(MOBILE_STANDALONE())mini=true;
   let size=read(SIZE_KEY,{w:520,h:570});
   const itemKey=t=>'yt:'+String(t?.id||t?.youtubeId||'');
   const fmt=v=>{v=Math.max(0,Math.floor(Number(v)||0));return Math.floor(v/60)+':'+String(v%60).padStart(2,'0')};
@@ -41,12 +43,22 @@
     return {w:Math.max(380,Math.min(maxW,w)),h:Math.max(390,Math.min(maxH,h))};
   }
   function applySize(){
-    if(!mini)return;
+    if(!mini||MOBILE_STANDALONE())return;
     const s=clampSize(Number(size.w)||520,Number(size.h)||570);size=s;write(SIZE_KEY,size);
     if(window.innerWidth>760){pw.style.setProperty('width',s.w+'px','important');pw.style.setProperty('height',s.h+'px','important')}
   }
   function clearMiniSizeStyles(){pw.style.removeProperty('width');pw.style.removeProperty('height')}
   function apply(){
+    if(MOBILE_STANDALONE()){
+      clearMiniSizeStyles();
+      pw.classList.remove('mini-recs','max');
+      pw.classList.toggle('minimized',mini);
+      document.body.classList.toggle('mobile-player-open',!mini);
+      write(MINI_KEY,mini);
+      if(mini)renderStatic();
+      return;
+    }
+    document.body.classList.remove('mobile-player-open');
     pw.classList.remove('minimized');pw.classList.toggle('mini-recs',mini);write(MINI_KEY,mini);
     if(mini){pw.classList.remove('max');applySize();renderStatic()}else clearMiniSizeStyles();
   }
@@ -85,7 +97,7 @@
   }
   function endResize(e){if(!drag||drag.id!==e.pointerId)return;drag=null;document.body.style.userSelect='';write(SIZE_KEY,size)}
   if(corner){corner.addEventListener('pointerdown',startResize);corner.addEventListener('pointermove',moveResize);corner.addEventListener('pointerup',endResize);corner.addEventListener('pointercancel',endResize)};
-  window.addEventListener('resize',()=>mini&&applySize());
+  window.addEventListener('resize',()=>{if(MOBILE_STANDALONE()&&mini!==pw.classList.contains('minimized'))mini=true;apply();if(mini)applySize()});
   window.addEventListener('tesla-music-trackchange',()=>mini&&renderStatic());
   window.addEventListener('tesla-music-tick',e=>{if(mini)syncSeek(e.detail?.now,e.detail?.duration,e.detail?.playing)});
   setInterval(()=>{if(mini)renderList()},4000);
