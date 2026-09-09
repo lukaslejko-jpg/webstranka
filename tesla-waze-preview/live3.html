@@ -71,7 +71,20 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
    }});
  }catch{}
  window.fetch=(i,o)=>{try{const s=typeof i==='string'?i:(i&&i.url)||'',u=new URL(s,location.href);if(u.origin===location.origin&&u.pathname.startsWith('/api/'))return nf(API+'?p='+encodeURIComponent(u.pathname+u.search),o)}catch{}return nf(i,o)};
- const ung=b=>new TextDecoder().decode(pako.ungzip(Uint8Array.from(atob(b.trim()),c=>c.charCodeAt(0))));
+ const ungBase=b=>new TextDecoder().decode(pako.ungzip(Uint8Array.from(atob(b.trim()),c=>c.charCodeAt(0))));
+ const patchRuntime=text=>{
+   if(!text.includes('function updateNavigation()'))return text;
+   let out=text;
+   out=out.replace("if(!state.car){state.car=state.L.marker(p,{icon:carIcon(),zIndexOffset:1000,rotation:0,rotateWithView:false}).addTo(state.map);state.map.setView(p,16,{animate:false})}\n    else if(!state.navigating){state.car.setLatLng(p);updateFreeDriveHeading(p,moved,sp)}","if(!state.car){state.car=state.L.marker(p,{icon:carIcon(),zIndexOffset:1000,rotation:0,rotateWithView:false}).addTo(state.map);state.map.setView(p,16,{animate:false});if(!state.navigating&&Number.isFinite(state.heading))updateFreeDriveHeading(p,4,sp)}\n    else if(!state.navigating){state.car.setLatLng(p);updateFreeDriveHeading(p,moved,sp)}");
+   out=out.replace("stopHeadingUp(true);$('app')","stopHeadingUp(true);const __freeH=Number.isFinite(state.heading)?state.heading:state.gpsHeading;if(Number.isFinite(__freeH)){setHeadingUpBearing(__freeH);state.freeDriveHeading=__freeH;state.freeDriveBearingAt=Date.now()}$('app')");
+   out=out.replace('[100,320].forEach(delay=>setTimeout(', '[120].forEach(delay=>setTimeout(');
+   out=out.replace("  if(rerouting||!snapped){\n    if(active?.setLatLngs)active.setLatLngs([]);\n    active?.setStyle?.({opacity:0});\n    state.routeLines?.forEach((line,i)=>{if(i!==state.routeIndex)line.setStyle?.({opacity:0})});\n    return;\n  }\n  if(active?.setLatLngs){","  if(rerouting||!snapped){\n    state.routeVisualMisses=(state.routeVisualMisses||0)+1;\n    if(state.routeVisualMisses>=3){\n      if(active?.setLatLngs)active.setLatLngs([]);\n      active?.setStyle?.({opacity:0});\n      state.routeLines?.forEach((line,i)=>{if(i!==state.routeIndex)line.setStyle?.({opacity:0})});\n    }\n    return;\n  }\n  state.routeVisualMisses=0;\n  if(active?.setLatLngs){");
+   out=out.replace('if(state.wrongTurnHits>=1&&!state.routeLoading', 'if(state.wrongTurnHits>=2&&!state.routeLoading');
+   out=out.replace('if(state.offRouteHits>=1&&!state.routeLoading', 'if(state.offRouteHits>=2&&!state.routeLoading');
+   out=out.replace("  const key=`${p.stepIdx}:${bucket}`;\n  if(key===state.lastVoice)return;\n  state.lastVoice=key;","  if(bucket==='step')return;\n  const sig=voiceManeuverSignature(step),rank=({3000:1,2000:2,1000:3,500:4,200:5,now:6})[bucket]||0,seen=voiceManeuverHistory.get(sig)||0;\n  if(rank<=seen)return;\n  voiceManeuverHistory.set(sig,rank);\n  const key=`${sig}:${bucket}`;\n  if(key===state.lastVoice)return;\n  state.lastVoice=key;");
+   return out;
+ };
+ const ung=b=>patchRuntime(ungBase(b));
  const [css64,js64]=await Promise.all([
    nf(RAW+'app.css.gz.b64?v='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('css '+r.status);return r.text()}),
    nf(RAW+'app.js.gz.b64?v='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('js '+r.status);return r.text()})
@@ -88,4 +101,3 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
 </script>
 <script src="./media-session-v112.js?v=112"></script>
 </body></html>
-
