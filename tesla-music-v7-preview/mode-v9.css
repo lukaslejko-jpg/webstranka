@@ -1,32 +1,28 @@
-/* Tesla Music V12: map/embed + full workspace */
+/* Tesla Music V13: MINI map overlay + original tested standalone FULL layout */
 .video-toggle{height:40px;min-width:112px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);font-weight:800;font-size:15px;padding:0 12px;white-space:nowrap}
 .player-window.mini-recs .video-toggle{display:none!important}
 .player-window.video-off:not(.mini-recs) .player-body{position:relative;background:var(--panel)}
 .player-window.video-off:not(.mini-recs) .player-body>.video{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;aspect-ratio:auto!important;opacity:.01!important;visibility:visible!important;pointer-events:none!important;z-index:0!important;border-radius:0!important}
 .player-window.video-off:not(.mini-recs) .player-body>.nowrow,.player-window.video-off:not(.mini-recs) .player-body>.seek,.player-window.video-off:not(.mini-recs) .player-body>.controls,.player-window.video-off:not(.mini-recs) .player-body>.stats,.player-window.video-off:not(.mini-recs) .player-body>.status{position:relative;z-index:2;background:var(--panel)}
 body.music-embed{background:transparent!important;overflow:hidden!important}
+
+/* MINI: only compact player over the map */
 body.music-embed:not(.music-full)>.top,body.music-embed:not(.music-full)>.tabs,body.music-embed:not(.music-full)>.history,body.music-embed:not(.music-full)>.content,body.music-embed:not(.music-full)>.bottom{display:none!important}
-body.music-embed:not(.music-full) .player-window,body.music-embed:not(.music-full) .player-window.max,body.music-embed:not(.music-full) .player-window.mini-recs{left:0!important;top:0!important;right:auto!important;bottom:auto!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;border-radius:16px!important;margin:0!important}
-body.music-embed:not(.music-full) .player-window{box-shadow:0 10px 30px rgba(0,0,0,.35)}
+body.music-embed:not(.music-full) .player-window,body.music-embed:not(.music-full) .player-window.max,body.music-embed:not(.music-full) .player-window.mini-recs{left:0!important;top:0!important;right:auto!important;bottom:auto!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;border-radius:16px!important;margin:0!important;box-shadow:0 10px 30px rgba(0,0,0,.35)!important}
 body.music-embed:not(.music-full) .phead{cursor:move}
 body.music-embed:not(.music-full) .player-window.mini-recs .phead{padding-left:78px}
 body.music-embed:not(.music-full) .player-window.mini-recs .mini-resize-corner{display:flex!important}
 
-/* Full music workspace: whole browser area, with search/account/results restored */
+/* FULL: do not redesign. Use original tested standalone layout from style-v7.css. */
 body.music-embed.music-full{background:var(--bg)!important;overflow:hidden!important}
-body.music-embed.music-full>.top{display:flex!important;position:fixed;left:0;right:0;top:0;z-index:210;height:74px}
-body.music-embed.music-full>.tabs{display:flex!important;position:fixed;left:0;right:0;top:74px;z-index:210;height:54px}
-body.music-embed.music-full>.history{position:fixed;left:0;right:0;top:128px;z-index:205}
+body.music-embed.music-full>.top{display:flex!important}
+body.music-embed.music-full>.tabs{display:flex!important}
 body.music-embed.music-full>.history.show{display:flex!important}
-body.music-embed.music-full>.content{display:block!important;position:fixed;left:0;top:128px;bottom:0;width:44%;height:auto!important;padding:14px 12px 24px;overflow:auto;background:var(--bg);border-right:1px solid var(--line);z-index:120}
-body.music-embed.music-full>.bottom{display:none!important}
-body.music-embed.music-full .grid{grid-template-columns:1fr!important}
-body.music-embed.music-full .player-window,body.music-embed.music-full .player-window.max{position:fixed!important;left:44%!important;right:0!important;top:128px!important;bottom:0!important;width:56%!important;height:calc(100vh - 128px)!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;border-radius:0!important;border-top:0!important;border-right:0!important;border-bottom:0!important;box-shadow:none!important;margin:0!important;z-index:180}
-body.music-embed.music-full .player-window.mini-recs{left:44%!important;top:128px!important;width:56%!important;height:calc(100vh - 128px)!important}
-body.music-embed.music-full .phead{cursor:default!important}
-body.music-embed.music-full .mini-resize-corner,body.music-embed.music-full>.resize{display:none!important}
-body.music-embed.music-full #pmin{display:inline-flex!important}
-body.music-embed.music-full #pmax{display:inline-flex!important}
+body.music-embed.music-full>.content{display:block!important}
+body.music-embed.music-full>.bottom{display:flex!important}
+body.music-embed.music-full .player-window{z-index:100!important}
+body.music-embed.music-full .player-window.mini-recs{width:720px!important;height:610px!important;min-width:420px!important;min-height:360px!important}
+body.music-embed.music-full .mini-resize-corner{display:none!important}
+body.music-embed.music-full .phead{cursor:move!important}
 
-@media(max-width:900px){body.music-embed.music-full>.content{width:40%}body.music-embed.music-full .player-window,body.music-embed.music-full .player-window.max,body.music-embed.music-full .player-window.mini-recs{left:40%!important;width:60%!important}}
-@media(max-width:760px){.video-toggle{min-width:92px;font-size:14px;padding:0 8px}body.music-embed:not(.music-full) .player-window,body.music-embed:not(.music-full) .player-window.max,body.music-embed:not(.music-full) .player-window.mini-recs{left:0!important;top:0!important;bottom:auto!important;width:100%!important;height:100%!important}body.music-embed.music-full>.content{left:0;top:128px;bottom:48%;width:100%;border-right:0;border-bottom:1px solid var(--line)}body.music-embed.music-full .player-window,body.music-embed.music-full .player-window.max,body.music-embed.music-full .player-window.mini-recs{left:0!important;top:52%!important;width:100%!important;height:48%!important}}
+@media(max-width:760px){.video-toggle{min-width:92px;font-size:14px;padding:0 8px}body.music-embed:not(.music-full) .player-window,body.music-embed:not(.music-full) .player-window.max,body.music-embed:not(.music-full) .player-window.mini-recs{left:0!important;top:0!important;bottom:auto!important;width:100%!important;height:100%!important}}
