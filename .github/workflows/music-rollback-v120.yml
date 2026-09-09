@@ -1,0 +1,45 @@
+name: Restore pre-v117 music V120
+on:
+  push:
+    branches: [tesla-waze-v120-work]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore stable pre-v117 music path
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text()
+          old="const TW_MUSIC_ENGINE_URL='https://raw.githack.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/music-isolated-engine-v117.html?v=119';/* MUSIC_HARD_ISOLATION_V117 */"
+          new="const TW_MUSIC_ENGINE_URL='https://raw.githack.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/music-isolated-engine-v111.html?v=111';/* MUSIC_STABLE_ROLLBACK_V120 */"
+          assert s.count(old)==1, s.count(old)
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(s.encode(),compresslevel=9,mtime=0)).decode())
+          live=Path('tesla-waze-preview/live3.html')
+          h=live.read_text()
+          oldh='<!-- Media Session now owned by isolated music engine V117 -->'
+          newh='<script src="./media-session-v112.js?v=112"></script>'
+          assert h.count(oldh)==1, h.count(oldh)
+          live.write_text(h.replace(oldh,newh,1))
+          PY
+          node --check tesla-waze-preview/app.js
+          python3 - <<'PY'
+          import gzip,base64
+          from pathlib import Path
+          assert gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.js.gz.b64').read_text()))==Path('tesla-waze-preview/app.js').read_bytes()
+          PY
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64 tesla-waze-preview/live3.html
+          git commit -m "music: restore stable pre-v117 architecture V120"
+          git push
