@@ -1,4 +1,4 @@
-/* Tesla Music V15: MINI overlay + tested FULL layout + touch resize */
+/* Tesla Music V16: stable MINI layout + smooth touch resize */
 .video-toggle{height:40px;min-width:112px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);font-weight:800;font-size:15px;padding:0 12px;white-space:nowrap}
 .player-window.mini-recs .video-toggle{display:none!important}
 .player-window.video-off:not(.mini-recs) .player-body{position:relative;background:var(--panel)}
@@ -12,6 +12,13 @@ body.music-embed:not(.music-full) .player-window,body.music-embed:not(.music-ful
 body.music-embed:not(.music-full) .phead{cursor:move}
 body.music-embed:not(.music-full) .player-window.mini-recs .phead{padding-left:78px}
 body.music-embed:not(.music-full) .player-window.mini-recs .mini-resize-corner{display:flex!important}
+.player-window.mini-recs .mini-now{height:152px!important;min-height:152px!important;max-height:152px!important;padding:2px 2px 10px!important;overflow:hidden!important}
+.player-window.mini-recs .mini-now-title{height:24px!important;line-height:24px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.player-window.mini-recs .mini-now-sub{height:18px!important;line-height:18px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;margin-top:2px!important}
+.player-window.mini-recs .mini-seek-row{height:42px!important;min-height:42px!important;margin-top:4px!important}
+.player-window.mini-recs .mini-controls{height:52px!important;min-height:52px!important;margin-top:4px!important;align-items:center!important}
+.player-window.mini-recs .mini-controls button{height:46px!important;min-height:46px!important}
+.player-window.mini-recs .mini-rec-title{height:28px!important;line-height:28px!important;margin:8px 2px 6px!important}
 
 /* FULL: original standalone layout, floating player anchored bottom-right */
 body.music-embed.music-full{background:var(--bg)!important;overflow:hidden!important}
