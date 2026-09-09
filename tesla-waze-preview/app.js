@@ -135,15 +135,15 @@ async function initMap(){const L=window.L;state.L=L;state.map=L.map('map',{zoomC
 function carIcon(){return state.L.divIcon({className:'car-wrap',html:'<div class="car-arrow">▲</div>',iconSize:[40,40],iconAnchor:[20,20]})}
 function setHeadingUpBearing(h){
   if(!state.map||!Number.isFinite(h))return;
-  if(typeof state.map.setBearing==='function')state.map.setBearing(h);
-  else if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:0,deadzone:0});
-}/* MAP_HEADING_SINGLE_PATH_V116 */
+  if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});
+  else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);
+}/* MAP_HEADING_STABLE_V118 */
 function updateFreeDriveHeading(p,moved,speed){
   if(!state.map||state.navigating||!p)return;
   const h=Number.isFinite(state.heading)?state.heading:(Number.isFinite(state.gpsHeading)?state.gpsHeading:null),moving=(Number(speed)||0)>=1.5||moved>=4;
   if(!moving||!Number.isFinite(h))return;
-  const now=Date.now(),last=Number.isFinite(state.freeDriveHeading)?state.freeDriveHeading:null,changed=last==null||headingDelta(h,last)>=12;
-  if(changed&&now-(state.freeDriveBearingAt||0)>=1200){setHeadingUpBearing(h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}
+  const now=Date.now(),last=Number.isFinite(state.freeDriveHeading)?state.freeDriveHeading:null,changed=last==null||headingDelta(h,last)>=25;
+  if(changed&&now-(state.freeDriveBearingAt||0)>=2500){setHeadingUpBearing(h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}
   if(!state.freeDriveCenter||dist(state.freeDriveCenter,p)>=10){state.map.panTo?.(p,{animate:false});state.freeDriveCenter={...p}}
 }/* FREE_DRIVE_HEADING_UP_V97 */
 function startGPS(){
@@ -176,7 +176,7 @@ function applyHeadingUp(markerPosition,zoom,headingOverride=null){
   const moved=state.lastCameraCenter?dist(state.lastCameraCenter,center):Infinity,headingChanged=Number.isFinite(h)&&(!Number.isFinite(state.lastAppliedHeading)||headingDelta(h,state.lastAppliedHeading)>=25),zoomChanged=!Number.isFinite(state.lastCameraZoom)||Math.abs(Number(zoom)-Number(state.lastCameraZoom))>=.35;
   if(moved<10&&!headingChanged&&!zoomChanged)return;
   state.lastCameraAt=now;
-  if(headingChanged&&now-(state.lastBearingAt||0)>=1200){
+  if(headingChanged&&now-(state.lastBearingAt||0)>=2500){
     // Leaflet Rotate expects the camera bearing itself. Positive route heading makes
     // the driven road point straight to the top of the Tesla display.
     setHeadingUpBearing(h);
