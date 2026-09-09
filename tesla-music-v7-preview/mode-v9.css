@@ -1,4 +1,4 @@
-/* Tesla Music V14: MINI map overlay + original tested standalone FULL layout */
+/* Tesla Music V15: MINI overlay + tested FULL layout + touch resize */
 .video-toggle{height:40px;min-width:112px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);font-weight:800;font-size:15px;padding:0 12px;white-space:nowrap}
 .player-window.mini-recs .video-toggle{display:none!important}
 .player-window.video-off:not(.mini-recs) .player-body{position:relative;background:var(--panel)}
@@ -6,23 +6,23 @@
 .player-window.video-off:not(.mini-recs) .player-body>.nowrow,.player-window.video-off:not(.mini-recs) .player-body>.seek,.player-window.video-off:not(.mini-recs) .player-body>.controls,.player-window.video-off:not(.mini-recs) .player-body>.stats,.player-window.video-off:not(.mini-recs) .player-body>.status{position:relative;z-index:2;background:var(--panel)}
 body.music-embed{background:transparent!important;overflow:hidden!important}
 
-/* MINI: only compact player over the map */
+/* MINI */
 body.music-embed:not(.music-full)>.top,body.music-embed:not(.music-full)>.tabs,body.music-embed:not(.music-full)>.history,body.music-embed:not(.music-full)>.content,body.music-embed:not(.music-full)>.bottom{display:none!important}
 body.music-embed:not(.music-full) .player-window,body.music-embed:not(.music-full) .player-window.max,body.music-embed:not(.music-full) .player-window.mini-recs{left:0!important;top:0!important;right:auto!important;bottom:auto!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;border-radius:16px!important;margin:0!important;box-shadow:0 10px 30px rgba(0,0,0,.35)!important}
 body.music-embed:not(.music-full) .phead{cursor:move}
 body.music-embed:not(.music-full) .player-window.mini-recs .phead{padding-left:78px}
 body.music-embed:not(.music-full) .player-window.mini-recs .mini-resize-corner{display:flex!important}
 
-/* FULL: original tested standalone layout. Parent iframe already covers whole browser. */
+/* FULL: original standalone layout, floating player anchored bottom-right */
 body.music-embed.music-full{background:var(--bg)!important;overflow:hidden!important}
 body.music-embed.music-full>.top{display:flex!important}
 body.music-embed.music-full>.tabs{display:flex!important}
 body.music-embed.music-full>.history.show{display:flex!important}
-body.music-embed.music-full>.content{display:block!important}
+body.music-embed.music-full>.content{display:block!important;overflow:auto!important;padding-bottom:118px!important}
 body.music-embed.music-full>.bottom{display:flex!important}
-body.music-embed.music-full .player-window,body.music-embed.music-full .player-window.video-off{z-index:100!important;left:auto!important;right:18px!important;top:auto!important;bottom:96px!important;width:720px!important;height:610px!important;min-width:420px!important;min-height:360px!important}
-body.music-embed.music-full .player-window.mini-recs{left:auto!important;right:18px!important;top:auto!important;bottom:96px!important;width:720px!important;height:610px!important;min-width:420px!important;min-height:360px!important}
-body.music-embed.music-full .mini-resize-corner{display:none!important}
-body.music-embed.music-full .phead{cursor:move!important}
+body.music-embed.music-full .player-window,body.music-embed.music-full .player-window.video-off,body.music-embed.music-full .player-window.mini-recs{z-index:100!important;left:auto!important;right:18px!important;top:auto!important;bottom:96px!important;width:720px;height:610px;min-width:420px!important;min-height:360px!important;max-width:calc(100vw - 36px)!important;max-height:calc(100vh - 120px)!important;overflow:hidden!important}
+body.music-embed.music-full .player-body{overflow:auto!important;min-height:0!important}
+body.music-embed.music-full .mini-resize-corner{display:flex!important;left:6px!important;top:4px!important;right:auto!important;bottom:auto!important;width:64px!important;height:58px!important;border-radius:14px!important;background:var(--panel2)!important;border:2px solid var(--line)!important;align-items:center!important;justify-content:center!important;font-size:30px!important;font-weight:800!important;cursor:nwse-resize!important;z-index:50!important;touch-action:none!important}
+body.music-embed.music-full .phead{cursor:move!important;padding-left:78px!important}
 
-@media(max-width:760px){.video-toggle{min-width:92px;font-size:14px;padding:0 8px}body.music-embed:not(.music-full) .player-window,body.music-embed:not(.music-full) .player-window.max,body.music-embed:not(.music-full) .player-window.mini-recs{left:0!important;top:0!important;bottom:auto!important;width:100%!important;height:100%!important}body.music-embed.music-full .player-window,body.music-embed.music-full .player-window.video-off,body.music-embed.music-full .player-window.mini-recs{left:6px!important;right:auto!important;top:auto!important;bottom:90px!important;width:calc(100vw - 12px)!important;height:calc(100vh - 168px)!important;min-width:0!important}}
+@media(max-width:760px){.video-toggle{min-width:92px;font-size:14px;padding:0 8px}body.music-embed:not(.music-full) .player-window,body.music-embed:not(.music-full) .player-window.max,body.music-embed:not(.music-full) .player-window.mini-recs{left:0!important;top:0!important;bottom:auto!important;width:100%!important;height:100%!important}body.music-embed.music-full .player-window,body.music-embed.music-full .player-window.video-off,body.music-embed.music-full .player-window.mini-recs{left:6px!important;right:auto!important;top:auto!important;bottom:90px!important;width:calc(100vw - 12px)!important;height:calc(100vh - 168px)!important;min-width:0!important;max-width:calc(100vw - 12px)!important;max-height:calc(100vh - 168px)!important}body.music-embed.music-full .mini-resize-corner{display:none!important}body.music-embed.music-full .phead{padding-left:14px!important}}
