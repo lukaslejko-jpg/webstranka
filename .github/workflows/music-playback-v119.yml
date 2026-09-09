@@ -1,0 +1,46 @@
+name: Music playback recovery V119
+on:
+  push:
+    branches: [tesla-waze-v119-work]
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Bump isolated engine cache key and verify runtime
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text()
+          old="music-isolated-engine-v117.html?v=117"
+          new="music-isolated-engine-v117.html?v=119"
+          assert s.count(old)==1, s.count(old)
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(s.encode(),compresslevel=9,mtime=0)).decode())
+          PY
+          node --check tesla-waze-preview/app.js
+          python3 - <<'PY'
+          import gzip,base64
+          from pathlib import Path
+          raw=Path('tesla-waze-preview/app.js').read_bytes()
+          dec=gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.js.gz.b64').read_text()))
+          assert raw==dec
+          h=Path('tesla-waze-preview/music-isolated-engine-v117.html').read_text()
+          assert "send('boot')" in h
+          assert "if(st===1)installMediaSession()" in h
+          assert "setActionHandler('nexttrack'" in h
+          assert "setActionHandler('previoustrack'" in h
+          assert "installMediaSession();send('boot')" not in h
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m "music: force repaired isolated engine V119"
+          git push
