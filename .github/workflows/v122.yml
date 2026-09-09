@@ -1,0 +1,25 @@
+name: V122
+on:
+  push:
+    branches:
+      - tesla-waze-v122-work
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-waze-v122-work
+          fetch-depth: 0
+      - run: python tesla-waze-preview/v122_patch.py
+      - run: node --check tesla-waze-preview/app.js
+      - run: git diff --check
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m "music: direct player with V118 map V122 [skip ci]"
+          git push origin HEAD:tesla-waze-v122-work
