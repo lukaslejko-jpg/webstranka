@@ -1,0 +1,47 @@
+name: Stable heading correction V118
+on:
+  push:
+    branches: [tesla-waze-v118-work]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply V95-proven heading convention
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import gzip,base64
+          p=Path('tesla-waze-preview/app.js')
+          s=p.read_text()
+          old="""function setHeadingUpBearing(h){
+  if(!state.map||!Number.isFinite(h))return;
+  if(typeof state.map.setBearing==='function')state.map.setBearing(h);
+  else if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:0,deadzone:0});
+}/* MAP_HEADING_SINGLE_PATH_V116 */"""
+          new="""function setHeadingUpBearing(h){
+  if(!state.map||!Number.isFinite(h))return;
+  if(typeof state.map.setHeading==='function')state.map.setHeading(h,{ease:1,deadzone:0});
+  else if(typeof state.map.setBearing==='function')state.map.setBearing(-h);
+}/* MAP_HEADING_STABLE_V118 */"""
+          assert s.count(old)==1
+          s=s.replace(old,new)
+          s=s.replace("const now=Date.now(),last=Number.isFinite(state.freeDriveHeading)?state.freeDriveHeading:null,changed=last==null||headingDelta(h,last)>=12;","const now=Date.now(),last=Number.isFinite(state.freeDriveHeading)?state.freeDriveHeading:null,changed=last==null||headingDelta(h,last)>=25;")
+          s=s.replace("if(changed&&now-(state.freeDriveBearingAt||0)>=1200){setHeadingUpBearing(h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}","if(changed&&now-(state.freeDriveBearingAt||0)>=2500){setHeadingUpBearing(h);state.freeDriveHeading=h;state.freeDriveBearingAt=now}")
+          s=s.replace("if(headingChanged&&now-(state.lastBearingAt||0)>=1200){","if(headingChanged&&now-(state.lastBearingAt||0)>=2500){")
+          p.write_text(s)
+          Path('tesla-waze-preview/app.js.gz.b64').write_text(base64.b64encode(gzip.compress(s.encode(),compresslevel=9,mtime=0)).decode())
+          PY
+          node --check tesla-waze-preview/app.js
+          python3 - <<'PY'
+          import gzip,base64
+          from pathlib import Path
+          assert gzip.decompress(base64.b64decode(Path('tesla-waze-preview/app.js.gz.b64').read_text()))==Path('tesla-waze-preview/app.js').read_bytes()
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tesla-waze-preview/app.js tesla-waze-preview/app.js.gz.b64
+          git commit -m "nav: restore proven heading-up convention V118"
+          git push
