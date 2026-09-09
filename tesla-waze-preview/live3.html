@@ -16,6 +16,9 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
 #preSearchDock{position:fixed!important;top:18px!important;left:18px!important;right:auto!important;transform:none!important;width:min(520px,calc(100vw - 180px))!important;z-index:5500!important}
 .music-fab{display:flex!important;position:fixed!important;right:24px!important;bottom:96px!important;z-index:7000!important;opacity:.78!important;width:54px!important;height:54px!important;border-radius:50%!important;align-items:center!important;justify-content:center!important;font-size:26px!important}
 #map{width:100%!important;height:100%!important}
+/* V123: music is outside #app and must stay a contained paint/layout island. */
+#musicModal{contain:layout paint style;isolation:isolate}
+#musicModal .music-shell{contain:layout paint style;isolation:isolate}
 </style>
 </head>
 <body>
@@ -82,6 +85,11 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
  sc.src=url;sc.onload=()=>{URL.revokeObjectURL(url);setTimeout(()=>{
    const f=document.getElementById('musicFab'),m=document.getElementById('musicModal');
    const syncFab=()=>{if(!f||!m)return;f.style.setProperty('display',m.classList.contains('hidden')?'flex':'none','important');f.style.position='fixed';f.style.right='24px';f.style.bottom='96px';f.style.zIndex='7000'};
+   /* V123: app.js may request a global music-window-open class. Strip it in the same microtask cycle so music state never becomes map/root state. */
+   const clearMusicRootState=()=>{document.documentElement.classList.remove('music-window-open');document.body.classList.remove('music-window-open')};
+   clearMusicRootState();
+   new MutationObserver(clearMusicRootState).observe(document.documentElement,{attributes:true,attributeFilter:['class']});
+   new MutationObserver(clearMusicRootState).observe(document.body,{attributes:true,attributeFilter:['class']});
    syncFab();if(m)new MutationObserver(syncFab).observe(m,{attributes:true,attributeFilter:['class']});
  },250)};document.body.appendChild(sc);
 }catch(e){document.body.innerHTML='<div style="padding:24px;color:white;background:#111">Tesla Waze chyba: '+String(e.message||e)+'</div>'}})();
