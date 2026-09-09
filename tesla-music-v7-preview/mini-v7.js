@@ -1,12 +1,13 @@
 (()=>{
   const MINI_KEY='teslaMusic:miniRecommendations:v3';
   const SIZE_KEY='teslaMusic:miniSize:v5';
+  const MAP_MODE=new URLSearchParams(location.search).get('map')==='1';
   const pw=document.getElementById('playerWindow'),pmin=document.getElementById('pmin'),restore=document.getElementById('restore'),binfo=document.getElementById('binfo'),pmax=document.getElementById('pmax'),list=document.getElementById('miniRecList');
   const miniSeek=document.getElementById('miniSeek'),miniNowTime=document.getElementById('miniNowTime'),miniTotalTime=document.getElementById('miniTotalTime');
   const corner=document.getElementById('miniResizeCorner');
   if(!pw||!pmin||!list)return;
   const read=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??d}catch{return d}},write=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
-  let mini=!!read(MINI_KEY,false),scrubbing=false,lastDuration=0,drag=null;
+  let mini=MAP_MODE?true:!!read(MINI_KEY,false),scrubbing=false,lastDuration=0,drag=null;
   let size=read(SIZE_KEY,{w:520,h:570});
   const itemKey=t=>'yt:'+String(t?.id||t?.youtubeId||'');
   const fmt=v=>{v=Math.max(0,Math.floor(Number(v)||0));return Math.floor(v/60)+':'+String(v%60).padStart(2,'0')};
@@ -47,7 +48,7 @@
   function clearMiniSizeStyles(){pw.style.removeProperty('width');pw.style.removeProperty('height')}
   function apply(){
     pw.classList.remove('minimized');pw.classList.toggle('mini-recs',mini);write(MINI_KEY,mini);
-    if(mini){applySize();renderStatic()}else clearMiniSizeStyles();
+    if(mini){pw.classList.remove('max');applySize();renderStatic()}else clearMiniSizeStyles();
   }
   function enter(){mini=true;apply()}
   function exit(){mini=false;apply()}
@@ -88,5 +89,7 @@
   window.addEventListener('tesla-music-trackchange',()=>mini&&renderStatic());
   window.addEventListener('tesla-music-tick',e=>{if(mini)syncSeek(e.detail?.now,e.detail?.duration,e.detail?.playing)});
   setInterval(()=>{if(mini)renderList()},4000);
+  window.teslaMusicSetMini=enter;
+  window.teslaMusicSetFull=exit;
   apply();
 })();
