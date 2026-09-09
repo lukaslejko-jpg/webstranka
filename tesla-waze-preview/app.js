@@ -870,7 +870,7 @@ function refreshPersistentYoutubeUi(){
   const q=ensureMusicQueue(),box=r.querySelector('.music-mini-queue');if(box){box.querySelectorAll('[data-mini-play]').forEach(b=>b.classList.toggle('active',b.dataset.miniPlay===s.id));}
   updateMiniSeek();syncMediaSession();installTeslaMediaSession();renderMusicStatus();
 }
-const TW_MUSIC_ENGINE_URL='https://raw.githack.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/music-isolated-engine-v117.html?v=119';/* MUSIC_HARD_ISOLATION_V117 */
+const TW_MUSIC_ENGINE_URL='https://raw.githack.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/music-isolated-engine-v111.html?v=111';/* MUSIC_STABLE_ROLLBACK_V120 */
 let twMusicEngineFrame=null,twMusicEngineReady=false,twMusicEngineState={state:-1,now:0,duration:0};
 let twMusicEngineWaiters=[];
 function ensureTwMusicEngine(){
