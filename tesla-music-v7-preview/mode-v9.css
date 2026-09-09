@@ -1,0 +1,18 @@
+/* Tesla Music V9: map/embed + optional video */
+.video-toggle{height:40px;min-width:112px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);font-weight:800;font-size:15px;padding:0 12px;white-space:nowrap}
+.player-window.mini-recs .video-toggle{display:none!important}
+.player-window.video-off:not(.mini-recs) .player-body{position:relative;background:var(--panel)}
+.player-window.video-off:not(.mini-recs) .player-body>.video{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;aspect-ratio:auto!important;opacity:.01!important;visibility:visible!important;pointer-events:none!important;z-index:0!important;border-radius:0!important}
+.player-window.video-off:not(.mini-recs) .player-body>.nowrow,
+.player-window.video-off:not(.mini-recs) .player-body>.seek,
+.player-window.video-off:not(.mini-recs) .player-body>.controls,
+.player-window.video-off:not(.mini-recs) .player-body>.stats,
+.player-window.video-off:not(.mini-recs) .player-body>.status{position:relative;z-index:2;background:var(--panel)}
+body.music-embed{background:transparent!important;overflow:hidden!important}
+body.music-embed>.top,body.music-embed>.tabs,body.music-embed>.history,body.music-embed>.content,body.music-embed>.bottom{display:none!important}
+body.music-embed .player-window,body.music-embed .player-window.max,body.music-embed .player-window.mini-recs{left:0!important;top:0!important;right:auto!important;bottom:auto!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;border-radius:16px!important;margin:0!important}
+body.music-embed .player-window{box-shadow:0 10px 30px rgba(0,0,0,.35)}
+body.music-embed .phead{cursor:move}
+body.music-embed .player-window.mini-recs .phead{padding-left:78px}
+body.music-embed .player-window.mini-recs .mini-resize-corner{display:flex!important}
+@media(max-width:760px){.video-toggle{min-width:92px;font-size:14px;padding:0 8px}body.music-embed .player-window,body.music-embed .player-window.max,body.music-embed .player-window.mini-recs{left:0!important;top:0!important;bottom:auto!important;width:100%!important;height:100%!important}}
