@@ -34,5 +34,70 @@
     if(corner){corner.addEventListener('pointerdown',e=>{e.preventDefault();e.stopImmediatePropagation();const r=pw.getBoundingClientRect();resize={id:e.pointerId,x:e.clientX,y:e.clientY,w:r.width,h:r.height,mini:isMini()};corner.setPointerCapture?.(e.pointerId)},true);corner.addEventListener('pointermove',e=>{if(!resize||resize.id!==e.pointerId)return;e.preventDefault();e.stopImmediatePropagation();const dx=e.clientX-resize.x,dy=e.clientY-resize.y;if(resize.mini){resize.x=e.clientX;resize.y=e.clientY;pendingMiniDx+=dx;pendingMiniDy+=dy;if(!rafMove)rafMove=requestAnimationFrame(flushMiniResize)}else{fullSize=clampFullSize(resize.w-dx,resize.h-dy);applyFullSize()}},true);corner.addEventListener('pointerup',e=>{if(!resize||resize.id!==e.pointerId)return;e.preventDefault();e.stopImmediatePropagation();if(resize.mini&&rafMove){cancelAnimationFrame(rafMove);flushMiniResize()}if(!resize.mini)write(FULL_SIZE_KEY,fullSize);resize=null},true);corner.addEventListener('pointercancel',e=>{if(resize?.id===e.pointerId){if(!resize.mini)write(FULL_SIZE_KEY,fullSize);resize=null}},true)}
   }
   addEventListener('resize',()=>{if(!isMini())applyFullSize()});
+
+  /* V17: active tab = playback context + progressively expanding For You feed */
+  const CTX_LIMIT_STEP=48,CTX_FETCH='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twyoutubesearch';
+  let ctxSource='foryou',ctxAdvancing=false,ctxExpandBusy=false,ctxSeedCursor=0;
+  const ctxLimits={foryou:60,likes:60,recent:60,queue:160};
+  const ctxBaseRender=render,ctxBasePlayTrack=playTrack;
+  function ctxAll(which=tab){
+    const learned=Object.values(profile.tracks||{});
+    if(which==='likes')return learned.filter(x=>x.liked).sort((a,b)=>score(b)-score(a)).map(item);
+    if(which==='recent')return learned.filter(x=>x.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed)-Date.parse(a.lastPlayed)).map(item);
+    if(which==='queue')return [...queue];
+    const ranked=learned.filter(x=>isAutoMusic(item(x))).sort((a,b)=>score(b)-score(a)).map(item),seen=new Set(ranked.map(key));
+    return [...ranked,...queue.filter(x=>isAutoMusic(x)&&!seen.has(key(x)))];
+  }
+  function ctxVisible(which=tab){const all=ctxAll(which),limit=ctxLimits[which]||60;return all.slice(0,limit)}
+  render=function(list){if(Array.isArray(list))return ctxBaseRender(list);return ctxBaseRender(ctxVisible(tab))};
+  function ctxSetSource(which){ctxSource=which||tab||'foryou'}
+  playTrack=function(t){if(!ctxAdvancing)ctxSetSource(tab);return ctxBasePlayTrack(t)};
+  window.playTrack=playTrack;
+  document.querySelectorAll('[data-tab]').forEach(b=>{const old=b.onclick;b.onclick=e=>{old?.call(b,e);ctxSetSource(b.dataset.tab);if(b.dataset.tab!=='queue')render()}});
+  async function ctxFetch(q){try{const r=await fetch(CTX_FETCH+'?q='+encodeURIComponent(q),{cache:'no-store'}),d=await r.json();if(!r.ok)return[];return(d.items||[]).map(x=>({id:x.youtubeId||String(x.id||'').replace(/^youtube:/,''),title:x.title||'',uploader:x.artist||'YouTube',duration:Number(x.duration||0),thumbnail:x.artwork||''})).filter(x=>x.id&&x.title&&isAutoMusic(x))}catch{return[]}}
+  async function ctxExpandForYou(){
+    if(ctxExpandBusy)return false;ctxExpandBusy=true;
+    try{
+      const seeds=Object.values(profile.tracks||{}).filter(x=>isAutoMusic(item(x))).sort((a,b)=>score(b)-score(a));
+      const seed=seeds.length?seeds[ctxSeedCursor++%Math.min(seeds.length,30)]:null;
+      const artist=seed?.artist||current?.uploader||'music',title=seed?.title||current?.title||'';
+      const qs=[artist+' songs',artist+' '+title+' similar songs music'];
+      const batches=await Promise.all(qs.map(ctxFetch)),seen=new Set(queue.map(key));let added=0;
+      for(const batch of batches)for(const x of batch){tr(x);if(!seen.has(key(x))){queue.push(x);seen.add(key(x));added++}}
+      if(added){save(PK,profile);save(QK,queue)}
+      return added>0;
+    }finally{ctxExpandBusy=false}
+  }
+  function ctxMusicList(which){const all=ctxAll(which);return which==='queue'?all.filter(isAutoMusic):all.filter(isAutoMusic)}
+  async function ctxNext(man=true){
+    let list=ctxMusicList(ctxSource);
+    if(!list.length){ctxSource='foryou';list=ctxMusicList('foryou')}
+    if(!list.length&&current)await ctxExpandForYou(),list=ctxMusicList(ctxSource);
+    if(!list.length)return;
+    const cur=current?list.findIndex(x=>key(x)===key(current)):-1;
+    let pick=-1;
+    if(settings.shuffle&&list.length>1){const choices=list.filter(x=>!current||key(x)!==key(current));if(choices.length)pick=Math.floor(Math.random()*choices.length)}
+    else pick=cur>=0?cur+1:0;
+    if(pick>=list.length){if(ctxSource==='foryou'||ctxSource==='likes'||ctxSource==='recent'){await ctxExpandForYou();list=ctxMusicList(ctxSource);pick=Math.min(cur+1,list.length-1)}else pick=0}
+    let chosen=settings.shuffle&&list.length>1?list.filter(x=>!current||key(x)!==key(current))[pick]:list[pick];
+    if(!chosen){const fallback=ctxMusicList('foryou');chosen=fallback.find(x=>!current||key(x)!==key(current))}
+    if(!chosen)return;
+    if(current&&man&&started&&Date.now()-started<15000)ev('skip',current);
+    ctxAdvancing=true;try{ctxBasePlayTrack(chosen)}finally{ctxAdvancing=false}
+  }
+  next=ctxNext;
+  prev=function(){let list=ctxMusicList(ctxSource);if(!list.length)return;const cur=current?list.findIndex(x=>key(x)===key(current)):-1,chosen=list[cur>0?cur-1:Math.max(0,list.length-1)];if(!chosen)return;ctxAdvancing=true;try{ctxBasePlayTrack(chosen)}finally{ctxAdvancing=false}};
+  $('next').onclick=$('bnext').onclick=()=>next(true);$('prev').onclick=$('bprev').onclick=prev;
+  try{if('mediaSession'in navigator){navigator.mediaSession.setActionHandler('nexttrack',()=>next(true));navigator.mediaSession.setActionHandler('previoustrack',prev)}}catch{}
+  const ctxScroller=document.querySelector('.content');
+  if(ctxScroller)ctxScroller.addEventListener('scroll',async()=>{
+    if(ctxScroller.scrollHeight-ctxScroller.scrollTop-ctxScroller.clientHeight>900)return;
+    const all=ctxAll(tab),old=ctxLimits[tab]||60;
+    if(old<all.length){ctxLimits[tab]=Math.min(all.length,old+CTX_LIMIT_STEP);render();return}
+    if(tab==='foryou'){
+      const added=await ctxExpandForYou();if(added){ctxLimits.foryou+=CTX_LIMIT_STEP;render()}
+    }
+  },{passive:true});
+
   ensureCloseButton();ensureVideoButton();syncUi(true);localizeLabels();
 })();
