@@ -1,6 +1,10 @@
 (()=>{
 'use strict';
 if(window.__TESLA_OFFLINE_V20__)return;window.__TESLA_OFFLINE_V20__=true;
+const st=document.createElement('style');st.textContent=`
+.offline-tools{grid-column:1/-1;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}.offline-add{min-width:170px}.offline-summary{color:var(--muted);font-size:14px}.offline-card{grid-column:1/-1;display:grid;grid-template-columns:54px minmax(0,1fr) 48px;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:9px 10px;cursor:pointer;min-height:70px}.offline-note{width:50px;height:50px;border-radius:12px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:26px}.offline-info{min-width:0}.offline-info .ctitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.offline-delete{width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);font-size:26px}.offline-empty{grid-column:1/-1}.offline-empty small{display:block;margin-top:8px;line-height:1.4}.offline-mode .video{visibility:hidden}.offline-mode #like,.offline-mode #shuffle,.offline-mode #auto{visibility:hidden}
+@media(max-width:600px){.offline-tools{display:grid;grid-template-columns:1fr;gap:8px}.offline-add{width:100%;height:50px}.offline-summary{font-size:12px;padding:0 2px}.offline-card{grid-template-columns:48px minmax(0,1fr) 44px;min-height:66px;padding:8px}.offline-note{width:44px;height:44px;font-size:23px}.offline-info .ctitle{font-size:15px}.offline-info .meta{font-size:12px}.offline-delete{width:40px;height:40px}.offline-mode .content{padding-bottom:calc(108px + env(safe-area-inset-bottom))!important}}
+`;document.head.appendChild(st);
 const DB='teslaMusicOfflineV1',STORE='tracks';
 let db=null,offlineMode=false,list=[],currentIndex=-1,currentRec=null,currentUrl='';
 const audio=new Audio();audio.preload='metadata';audio.setAttribute('playsinline','');document.body.appendChild(audio);audio.style.display='none';
