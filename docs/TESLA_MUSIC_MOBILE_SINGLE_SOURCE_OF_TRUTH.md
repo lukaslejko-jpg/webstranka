@@ -282,3 +282,19 @@ K 10. 9. 2026:
 ---
 
 **Pravidlo:** Ak je informácia v inom staršom dokumente v rozpore s týmto súborom, platí tento dokument. Pri každej ďalšej stabilnej zmene mobilnej Tesla Music sa musí aktualizovať tento súbor v tom istom pracovnom kroku.
+
+
+## 8. Offline V28 – maximalizácia bezplatných zdrojov
+
+Resolver bol rozšírený bez platených služieb a bez závislosti od Synology/Supabase queue. Aktívne zdroje sú:
+
+- Jamendo – iba výsledky s explicitne povoleným downloadom a CC licenciou,
+- ccMixter – verejné RSS/Pool API, iba plné audio enclosure s Creative Commons licenciou,
+- Openverse Audio – širšie vyhľadávanie cez všetky query varianty a väčší počet kandidátov,
+- Internet Archive – prioritne Netlabels a Open Source Audio, potom všeobecné audio,
+- Wikimedia Commons – exact fallback + fulltext fallback,
+- MusicBrainz – iba identifikácia/metadáta, nie zdroj audio súboru.
+
+Free Music Archive sa nepripája priamo: verejné API bolo ukončené a FMA nepovoľuje hotlinking bez osobitného súhlasu. Freesound sa nepripája ako automatický full-download zdroj: originálny download cez API vyžaduje OAuth používateľa; preview súbory sa v Tesla Music nepovažujú za plnohodnotný offline zdroj.
+
+Pravidlo ostáva nezmenené: kandidát sa uloží do IndexedDB iPhonu iba po úspešnom Rights Gate a po stiahnutí reálneho audio súboru väčšieho než minimálny limit.
