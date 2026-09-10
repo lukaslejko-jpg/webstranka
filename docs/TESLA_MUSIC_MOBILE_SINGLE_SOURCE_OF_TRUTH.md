@@ -77,7 +77,7 @@ Offline skladba je fyzicky uložená v zariadení, ale nie ako používateľsky 
 
 ---
 
-## 5. Offline resolver – V26
+## 5. Offline resolver – V28
 
 Aktuálny súbor:
 
@@ -85,15 +85,16 @@ Aktuálny súbor:
 
 Aktuálna runtime značka:
 
-`__TESLA_OFFLINE_V26__`
+`__TESLA_OFFLINE_V28__`
 
 Resolver pracuje s týmito zdrojmi:
 
 1. Jamendo
-2. Openverse Audio
-3. Internet Archive
-4. Wikimedia Commons
-5. MusicBrainz ako metadata/normalizácia identity skladby
+2. ccMixter
+3. Openverse Audio
+4. Internet Archive – vrátane priorizácie Netlabels a Open Source Audio
+5. Wikimedia Commons
+6. MusicBrainz ako metadata/normalizácia identity skladby
 
 YouTube sa používa iba ako zdroj identity, názvu, interpreta, výsledkov a prehrávania. Nie ako zdroj extrahovaného audio súboru.
 
@@ -123,7 +124,7 @@ Resolver musí odmietnuť:
 
 ---
 
-## 7. Wikimedia Commons – V26 exact fallback
+## 7. Wikimedia Commons – exact fallback (od V26, aktívny vo V28)
 
 V26 obsahuje presný fallback `commonsExact()`.
 
@@ -194,7 +195,7 @@ Historicky obsahoval offline queue/resolver/worker, ale bol zasiahnutý egress o
 Preto:
 
 - mobilné vyhľadávanie už cez Supabase nejde,
-- aktuálny mobilný Offline V26 nepoužíva Supabase queue,
+- aktuálny mobilný Offline V28 nepoužíva Supabase queue,
 - Supabase nesmie byť znovu zavedený do kritickej cesty bez výslovného rozhodnutia.
 
 ---
