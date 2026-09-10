@@ -64,6 +64,8 @@ Nesmú sa znovu zaviesť bez samostatného rozhodnutia a testu mimo funkčného 
 - Ikony, ktoré Tesla browser nemusí vedieť vykresliť z fontu, majú byť riešené SVG, nie závislosťou od Unicode glyphu.
 - Shuffle ikona má byť SVG priamo v tlačidle.
 - Hudobná favicon musí byť vložená do skutočného `document.head` produkčnej stránky, nie iba do zdrojového `index.html`, ak produkčný bootstrap `<head>` nepreberá.
+- Schválená ikona Tesla Music pri linku je používateľom vybraná ikona čiernej vinylovej platne s červeným stredom a veľkou bielou hudobnou notou. V36 je vložená priamo ako dátová JPEG favicon do `document.head`, aby ju produkčný bootstrap neodstránil.
+- Pred nasadením schválenej ikony V36 bola vytvorená záloha `backup/tesla-music-before-selected-icon-v36`.
 
 ## 7. Účet
 
