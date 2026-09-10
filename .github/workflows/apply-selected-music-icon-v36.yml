@@ -1,0 +1,41 @@
+name: Apply selected Tesla Music icon v36
+on:
+  push:
+    branches: [tesla-music-v6-preview]
+    paths: ['.github/workflows/apply-selected-music-icon-v36.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-music-v6-preview
+      - name: Apply selected icon
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('tesla-music-v7-preview/account-v8.js')
+          s=p.read_text(encoding='utf-8')
+          start='/* TESLA_MUSIC_SELECTED_ICON_V36 */'
+          # Remove prior dynamic favicon block if present.
+          import re
+          s=re.sub(r'/\* TESLA_MUSIC_FAVICON_V34 \*/\n\(\(\)=>\{try\{.*?\}\}\)\(\);\n?', '', s, count=1, flags=re.S)
+          if start not in s:
+              b64='/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAgQDAwMEBAQFBgoGBgUFBgwICQcKDgwPDg4MDQ0PERYTDxAVEQ0NExoTFRcYGRkZDxIbHRsYHRYYGRj/2wBDAQQEBAYFBgsGBgsYEA0QGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBj/wgARCABgAGADASIAAhEBAxEB/8QAHAAAAgEFAQAAAAAAAAAAAAAABgcCAAEEBQgD/8QAGgEBAAIDAQAAAAAAAAAAAAAAAAEEAgMFBv/aAAwDAQACEAMQAAABfyZlzgHeKHXDCwfILqENubjLDcY6OcvBnSgq1+bBRRJFtgGNmwIYJ4vmAO/mHqnYYzxexQktyjxCTYQC6Gl8A01sT2n3lmS7KbYt2St8a350izgk2PEOMQmWfa2OEJcrmRU7xmZm4tt5fLGLttluqh5sBnh4hLBXx6QtMhl4shjawY3sGUs4DEqPANijN5t7zT5zZTI8BfXYFABFg0L6mDki16Zptn//xAAnEAAABgEDBAIDAQAAAAAAAAABAgMEBQYAERY2EBIUISA1ByQxMv/aAAgBAQABBQLJu+ItVlrlYlTbqsObqsObqsObqsObqsObqsOI3KxImg74i8Wy+TSjRp8AARwQEMi41eWkXDdZq66USaO9YXRUVbp0i4R3KCs2aMMWcuDCKh8pHu52KstZxGRjHsU7yjqinc7dzXIiOB8685M6UgXUFQ9myj80ZWSKfOZJg1k2L1qdjI0zm1u5rnf4zMHY6mfIkaFjJF2DmKdoFo/NJP7qpWN0R9aDlPb6Zza3c1RDucqKCdTu9w6JXMq5dJoIg4IulWEgT/IUn901XO1eqmOovTObW7mqY9qw/wCv5kS5K3kHQpHbxlTeOWzCrs42ZkQ1mkkhUWV08imc2t3NcMbXBHpUP3LOY+TEyhEsfHVOKCPipZTObW7muFH0OoDjddZs43jPHSSOdy8QZlVLNSCTlXKZza6oildOmvrTAxMDYgokgL+aWdN+lHSFS53yFUeMfhqOdxvjRoQ7COyaobV4spRbCQ2ybJmybJmybJmybJmybJmybJiVEsChoWis2Cuf/8QAIhEAAQMCBgMAAAAAAAAAAAAAAwECBQAEESAhIjBRQZHh/9oACAEDAQE/AeaLimHYpzLtqXiR240OBduWPmEtgOC9uPX2jXZjaPdp149c/wD/xAAdEQABAwUBAAAAAAAAAAAAAAACAQQSAAMgMDER/9oACAECAQE/AdXuDhwoLAO03cEaxPG82mckoQQeb//EAD8QAAECAwEJDQcDBQAAAAAAAAECAwAEESEQEiIxQVFhstEFEzI0NXFygYKRk6HBFBUgQ1Jz4SOSsSQzQlNi/9oACAEBAAY/AoVLbktpmFiwvK4HVnivvDexmbbSI5Ve8tkcqveWyOVXvLZHKr3lsjlV7y2Ryq95bIr7w3zQ4hJhMruq2mWcVYHk8A8+a4jcqWXerfF84RkRm6/hwQTzRaCIElLFAcKSoX5oLIXLzDZbdQaKScl1e5syu+dlxVBOVH4iaBxICED9v5ulaP0pdNinlYuYZzF5KsJWofNewz3YhGE+vvpHDV3wx9tf8RvgIZm0jBdpj0K0R7POsFtWQ5FcxuMJBscQtJ7q+kT/AEk6ouFT5KZZv+4RjOZI0mEsNICJdOA203Zf7EwVC9IFlRYkaBnusdBf8QuVEwGphCygtO2E0NLM8LlJxu+QrvSc4h+Td4TSyg6Yku3qGJ/pJ1Rcbk02UtX0jj2RjoKUsyJzRvj+PEhIyaBG+qSiXQcQXji+wXR/xDHQX/ETn316xhvcqcdU6y5gtlRqUHNzRPFH1gddBEl29QxP9JOqIbB+oQpRymtwuO2pZTUDTBddVRIgOtqqkwze2BTa1eUTn316xhqZbpftLC01ziFrcVfLUSVE5TEl29QxP9JOqISrMYIuKCjRLopXTCg/wMsJVMue72P8WkirnXXFDW6DU3NOOIBTR0gg16onPvr1jCEAWqUBDlMV8Yku3qGJ/pJ1RcC892XYml36GgXUpVlUMW3quGYdIK/lt5VmFOu8NZv1Q7POfJTZpcNiR69VyS7eoYn+knVFy9OKKG4h+XcU26g1SpOSLzf2En696FY9pm3lvun5jtvdGIDLhZNJhMrJn+laNiv9isqtlyS7eoYmScTgQsftp6XaGLLblgMXzzob5sJUeyMAsy2VNcJzpH0usKAsbQtZ7qesI3TlkXzkuKOAZUfj4cccI/CvdCZRevTPBScaUfm4qY3NdEq4q0tkYB2RRLDLulLo9Y4inxk7Y4inxk7Y4inxk7Y4inxk7Y4gnxk7Y4inxk7YotphrSp3ZCZndBz2t5NoTSiBtuf/xAAnEAEAAQIFAwQDAQAAAAAAAAABEQAhMUFRYXEQgaEgkfDxscHR4f/aAAgBAQABPyFQJbFPp+VYuwvzsc0mk0IHha+nq+nq+nq+vq+vq+vqCSDMq+BpLMSt7SV+dzjo5hdaHA9yew6+nwKpryAEVd1mgQmJrM3ytdX8FLSvaO63CU9HZAg/ldQzEQbB0PEd0opsXTJdv0l3pNY6EHsU3FuZUroKdhhx2DSz8jxS7lTPXOOkFzcI/sOsuLKrZK/kHALQbTaGZGhm4t13N1qRXwfIqNVi6Dqa9iYlzDBlegKYJjZNklLRLgaM++PVGW0z3MymYS+xHZRpTbgGTmnF8ny5y1jObIkcY+8U/mW7mO3W84hg9vHLVhGVqbIQTGgnydUZYApEn3pzrt7mpUIkmrhfb9vYrOMRxrEhQcKTiQ4ZM56PAGQBgkkmljYipG71Rl7ZL5q3SKVJQS1xspWozxjY/Maa7BI7mrs43ajDBZAjIR0GksQD3aa2o9/QjLiaG/OdS1I2a1RbSD7omgQpLJEn2YbauVRbVCxqz5agZBNP/CL92svQDLOTws9HWjDIampCqKhVODMiH+XxWtsBZw+FF2wFqjc+UeKWMuYIXsu2Q05eqJTJuUQ/JdSceQw1K3qB0aQ3fBVheyueAw7xSBD1kGehstz1fI7In9hSrFCpcSe6/C+kDBHelCFe/pbgYgQC5O6vxFYkNIm6722i/bJtTcVo0+HrdOnTpU6Ch9Ex5URlmLvWG/fbbp//2gAMAwEAAgADAAAAEIKGPKNHEGPOgOLJZC4gMBKuIAMFKmBDCEIAAP/EAB8RAAIBBAMBAQAAAAAAAAAAAAERMQAgIUEwUZFhgf/aAAgBAwEBPxDiTsWyB7USSdAU3+SYbmCD17IzQKs31/xnQdb9FCWj+AKAAwFrFz4f/8QAHxEAAQIGAwAAAAAAAAAAAAAAAQARECAhMDFRQZHh/9oACAECAQE/ELVGZA0DoYiqEQ4QiQBm34sFrvnuZgLP/8QAJxABAAIBAwQCAgIDAAAAAAAAAQARITFBYRBRcYGRoSCxwdHh8PH/2gAIAQEAAT8QRoAWrtFy6o54RhQ92DDAYYccDBfmL+E6dO7HVw4dRSW+BCz4iQoVFNvACUXc5MsCII2MrcfOVqEyVBeyitCqh2mCKUrgIfgOX9YvTnN+0sg/tk+gaUKFKvWo7b59B+kSkTCIij09SypKZFE6rVbsdow1GVuhZ8j30wS8QNbWI808BihMxDmga37+wLdS3gNHh4pD0R55i79oqgOqFXn2gzJHwWQGbtE1bLLWes3S3aY8WTcGVHUB87kj7UyiVURaFObA23SjL0AHUzA29T8hVtsIy7FLHTY7qNL0vtofCTyVAihse/7sB8kdsFmtUguQQJuNoKnctcO+jYpDzCiosoPAoeeoAJAK6BeJq3jdJyHvT9vNjHIJanSU6YZr+CaWOkUKwOhj/jRKyYvEzRqIv/BEmPVTV3uCni5RY3/cgskxGsNKdSqTy1ZLsoosjICjd9th6n2OgBUwmncrf1H4LZ8jBbXuPxpAYuFtKjTh9kMWt4VKtABlVZTabTVhpEciJpCpgioQKcWL7guqMH6GVYKBqWGN4ozoMgU5VWfY6CEC2BbwCFd1U9MDWuYJNASgLXey2eyZ7jXNkqqzlVVm8RhsK1Ocgzd4FeacRdLZGRa2l3vGUGL5PCAgaoH8xgV5Y3L1PsdRSp9zZwOP7e4q1iH4Y0LpMaDq5DQG8h2lCuBbMWFMDtadEXvQuJLVss8bKONipVS+Owou6rTYgFUtaKt3n2uohblTPheGzx4iigf7fJzDKCdnTn3HwojhFGxgx5gNXOVt4iyIwU8AutbAA7bzHgyYIWvgC1vA15ZpPUUAnJQGZDbT0lAMhKU1FPwvXSoAbrDHhe3EXeMfD8QaWXkgsY52Cawv4+rLlDmJXATvFYILDkqLlsX1X8WG4ivpS4RuZ3CGXMju9p8fh9PSJQkdlpAoxp1fXNwz8e1CWoi52b7IggCOEYv/AAgdyp1DlOAIAeNBjlV/11pEsnXRINkkmnlpPjvRbD6UPR8iuQaRp5MzSf/Z'
+              icon="data:image/jpeg;base64,"+b64
+              inject=(start+"\n(()=>{try{document.querySelectorAll('link[rel*=\\\"icon\\\"]').forEach(x=>x.remove());const l=document.createElement('link');l.rel='icon';l.type='image/jpeg';l.href='"+icon+"';document.head.appendChild(l)}catch{}})();\n")
+              s=inject+s
+          p.write_text(s,encoding='utf-8')
+      - name: Verify search and icon guard
+        run: |
+          grep -q 'TESLA_MUSIC_SELECTED_ICON_V36' tesla-music-v7-preview/account-v8.js
+          grep -q '/api/youtube-search' tesla-music-v7-preview/app-v7.js
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tesla-music-v7-preview/account-v8.js
+          git commit -m 'feat(tesla-music): use selected vinyl music icon' || exit 0
+          git push origin HEAD:tesla-music-v6-preview
