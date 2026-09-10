@@ -1,0 +1,1 @@
+Search V149: runtime patch redirects only app.js address search fetch from /api/search to https://europrojekty-app.vercel.app/api/tesla/search. No GPS/routing/map/traffic/tile changes.
