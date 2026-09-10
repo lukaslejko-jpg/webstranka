@@ -312,3 +312,10 @@ Pri lokálnom alebo offline audiu používa natívny iOS/Safari playback-target 
 Pri online YouTube zostáva prehrávanie výhradne cez oficiálny YouTube IFrame Player. Aplikácia nastaví iframe pre kompatibilné systémové prehrávanie, ale nemá prístup k internému `<video>` elementu vo cross-origin YouTube iframe. Ak Safari neposkytne natívny picker priamo, používateľ vyberie AirPlay cez ovládanie YouTube alebo Ovládacie centrum iPhonu.
 
 V29 nemení YouTube Search, účet, Offline resolver ani Tesla Waze navigáciu.
+
+
+## V29 – AirPlay a permanentný cache bust
+
+Produkčný root, Service Worker a asset loadery používajú verziu V29. Service Worker cache je `tesla-music-pwa-v29`; CORE používa assety s `&v=29` a root registruje `/sw.js?v=29`. `account-v8.js` načítava `/api/asset?name=offline-v20.js&v=29`. Tým sa zabraňuje tomu, aby iPhone po nasadení novej mobilnej funkcie ostal na starej V23/V24 cache.
+
+Offline modul V29 pridáva tlačidlo `◉ AirPlay` do hornej lišty mobilnej Tesla Music. Pri lokálnom/offline audiu používa systémový iOS AirPlay picker, ak ho WebKit sprístupní. Funkcia nevyžaduje YouTube konto a nemení Tesla Waze navigáciu.
