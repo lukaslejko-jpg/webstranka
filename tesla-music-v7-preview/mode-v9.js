@@ -101,3 +101,44 @@
 
   ensureCloseButton();ensureVideoButton();syncUi(true);localizeLabels();
 })();
+
+(()=>{
+  'use strict';
+  const ORIGIN='https://tesla-waze.vercel.app';
+  if(window.parent===window)return;
+  let lastCommandAt=0,lastState='';
+  const command=a=>{
+    const now=Date.now();
+    if(now-lastCommandAt<280)return;
+    lastCommandAt=now;
+    const id=a==='next'?'next':a==='prev'?'prev':'play';
+    const btn=document.getElementById(id);
+    if(!btn)return;
+    if(a==='play'){
+      const playing=document.getElementById('play')?.textContent?.includes('⏸');
+      if(!playing)btn.click();
+    }else if(a==='pause'){
+      const playing=document.getElementById('play')?.textContent?.includes('⏸');
+      if(playing)btn.click();
+    }else btn.click();
+  };
+  addEventListener('message',e=>{
+    if(e.origin!==ORIGIN||e.data?.type!=='tesla-music-command')return;
+    const a=e.data.action;
+    if(a==='play'||a==='pause'||a==='next'||a==='prev')command(a);
+  });
+  const sendState=detail=>{
+    const title=(document.getElementById('now')?.textContent||'').trim();
+    if(!title||title==='Vyber skladbu')return;
+    const raw=(document.getElementById('sub')?.textContent||'').trim();
+    const artist=raw.split(' · ')[0]||'YouTube';
+    const playing=typeof detail?.playing==='boolean'?detail.playing:document.getElementById('play')?.textContent?.includes('⏸');
+    const position=Number(detail?.now)||0,duration=Number(detail?.duration)||0;
+    const sig=[title,artist,playing,Math.floor(position),Math.floor(duration)].join('|');
+    if(sig===lastState)return;lastState=sig;
+    try{parent.postMessage({type:'tesla-music-media-state',title,artist,album:'Tesla Music',playing,position,duration},ORIGIN)}catch{}
+  };
+  addEventListener('tesla-music-trackchange',e=>setTimeout(()=>sendState({}),0));
+  addEventListener('tesla-music-tick',e=>sendState(e.detail||{}));
+  setInterval(()=>sendState({}),1800);
+})();
