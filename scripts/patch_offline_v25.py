@@ -3,17 +3,30 @@ from pathlib import Path
 p = Path('tesla-music-v7-preview/offline-v20.js')
 s = p.read_text()
 
-old = "function sim(a,b){const A=toks(a),B=toks(b);if(!A.size||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return 2*n/(A.size+B.size)}\nfunction candidateScore(qt,qa,t,a){const ts=sim(qt,t),as=qa?sim(qa,a):1;if(ts<.66)return 0;if(qa&&as<.25)return 0;return ts*.78+as*.22}"
-new = "function sim(a,b){const A=toks(a),B=toks(b);if(!A.size||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return 2*n/(A.size+B.size)}\nfunction dashParts(s){return String(s||'').split(/\\s+[-–—]\\s+/).map(x=>x.trim()).filter(Boolean)}\nfunction candidateScore(qt,qa,t,a){const ps=dashParts(t);const ts=Math.max(sim(qt,t),...ps.map(x=>sim(qt,x)),0),as=qa?Math.max(sim(qa,a),...ps.map(x=>sim(qa,x)),0):1;if(ts<.66)return 0;if(qa&&as<.25)return 0;return ts*.78+as*.22}\nfunction genericUploader(a){return /^(audio library|youtube|various artists|music|topic|unknown)$/i.test(fold(a))}\nfunction requestIdentity(title,artist){let t=String(title||'').replace(/\\([^)]*(no copyright|copyright free|royalty free)[^)]*\\)/ig,'').replace(/\\[[^\\]]*(no copyright|copyright free|royalty free)[^\\]]*\\]/ig,'').replace(/\\s+/g,' ').trim(),a=clean(artist);if(genericUploader(a)){const ps=dashParts(t);if(ps.length>=2){const left=clean(ps[0]),right=clean(ps.slice(1).join(' - '));if(left&&right&&right.split(/\\s+/).length<=6){t=left;a=right}else{a=''}}else a=''}return{title:clean(t),artist:a}}"
+old = "function metaVal(x,k){return String(x?.[k]?.value||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\\s+/g,' ').trim()}\nasync function findCommons(title,artist){const out=[];try{for(const q of queryVariants(title,artist).slice(0,3)){"
+new = """function metaVal(x,k){return String(x?.[k]?.value||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\\s+/g,' ').trim()}
+async function commonsExact(title,artist){const out=[];try{if(!title||!artist)return out;const names=[`File:${artist} - ${title}.ogg`,`File:${artist} – ${title}.ogg`,`File:${title} - ${artist}.ogg`,`File:${artist} - ${title}.mp3`,`File:${title} - ${artist}.mp3`];for(const name of names){let j;try{j=await fetchJson(`https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(name)}&prop=imageinfo&iiprop=url|mime|size|extmetadata&format=json&formatversion=2&origin=*`,10000)}catch{continue}const p=j?.query?.pages?.[0],ii=p?.imageinfo?.[0];if(!ii||p?.missing)continue;const fileTitle=String(p.title||'').replace(/^File:/i,'').replace(/\\.[^.]+$/,''),mime=String(ii.mime||'').toLowerCase(),url=String(ii.url||'');if((!mime.startsWith('audio/')&&!isAudioName(url))||Number(ii.size||0)<MIN_AUDIO_BYTES||badName(fileTitle)||!versionOk(title,fileTitle))continue;const ext=ii.extmetadata||{},lic=[metaVal(ext,'LicenseShortName'),metaVal(ext,'LicenseUrl'),metaVal(ext,'UsageTerms')].filter(Boolean).join(' ');if(!allowedLicense(lic))continue;const creator=[metaVal(ext,'Artist'),metaVal(ext,'Credit')].filter(Boolean).join(' '),score=Math.max(candidateScore(title,artist,fileTitle,creator),.99);out.push({kind:'wm',title:fileTitle,artist:creator||artist,audioUrl:url,license:lic,source:'Wikimedia Commons',sourcePage:String(ii.descriptionurl||''),score});break}}}catch{}return out}
+async function findCommons(title,artist){const out=await commonsExact(title,artist);if(out.length)return out;try{for(const q of queryVariants(title,artist).slice(0,3)){"""
 if old not in s:
-    raise SystemExit('candidateScore block not found')
+    raise SystemExit('commons anchor not found')
 s = s.replace(old, new, 1)
 
-old2 = "try{const candidates=await resolveCandidates(t.title||'',t.uploader||t.artist||'');if(!candidates.length)throw new Error('not_found');"
-new2 = "try{const rq=requestIdentity(t.title||'',t.uploader||t.artist||'');const candidates=await resolveCandidates(rq.title,rq.artist);if(!candidates.length)throw new Error('not_found');"
+old2 = "if(window.__TESLA_OFFLINE_V25__)return;window.__TESLA_OFFLINE_V25__=true;"
+new2 = "if(window.__TESLA_OFFLINE_V26__)return;window.__TESLA_OFFLINE_V26__=true;"
 if old2 not in s:
-    raise SystemExit('saveOffline resolver call not found')
+    raise SystemExit('version anchor not found')
 s = s.replace(old2, new2, 1)
 
-s = s.replace("if(window.__TESLA_OFFLINE_V24__)return;window.__TESLA_OFFLINE_V24__=true;", "if(window.__TESLA_OFFLINE_V25__)return;window.__TESLA_OFFLINE_V25__=true;", 1)
+old3 = "if(!candidates.length)throw new Error('not_found');let last=null;"
+new3 = "if(!candidates.length)throw new Error('resolve:no_candidates');let last=null;"
+if old3 not in s:
+    raise SystemExit('candidate diagnostic anchor not found')
+s = s.replace(old3, new3, 1)
+
+old4 = "if(status)status.textContent='Offline verzia s povoleným stiahnutím sa nenašla';return false"
+new4 = "if(status)status.textContent='Offline zlyhalo: '+String(e?.message||e);return false"
+if old4 not in s:
+    raise SystemExit('status diagnostic anchor not found')
+s = s.replace(old4, new4, 1)
+
 p.write_text(s)
