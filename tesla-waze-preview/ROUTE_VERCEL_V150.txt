@@ -1,0 +1,1 @@
+V150: Route backend migration from Supabase twroute to isolated Vercel /api/tesla/route. No GPS, map, navigation, traffic rendering, or route processing logic changed.
