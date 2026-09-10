@@ -1,4 +1,4 @@
-name: Apply Tesla Music Offline V26 Commons fallback
+name: Apply Tesla Music AirPlay V30 mobile fix
 
 on:
   push:
@@ -17,23 +17,24 @@ jobs:
         with:
           ref: tesla-music-v6-preview
           fetch-depth: 0
-      - name: Apply corrected V26 patch
-        run: python3 scripts/patch_offline_v25.py
+      - name: Apply AirPlay V30 mobile patch
+        run: python3 scripts/patch_airplay_v30_mobile.py
       - name: Verify
         run: |
           set -euo pipefail
           node --check tesla-music-v7-preview/offline-v20.js
-          grep -q 'async function commonsExact' tesla-music-v7-preview/offline-v20.js
-          grep -q '__TESLA_OFFLINE_V26__' tesla-music-v7-preview/offline-v20.js
+          grep -q '__TESLA_OFFLINE_V30__' tesla-music-v7-preview/offline-v20.js
+          grep -q '__TESLA_AIRPLAY_V30__' tesla-music-v7-preview/offline-v20.js
+          grep -q "tabs.appendChild(b)" tesla-music-v7-preview/offline-v20.js
+          grep -q "iPhone|iPad|iPod" tesla-music-v7-preview/offline-v20.js
           grep -q 'resolve:no_candidates' tesla-music-v7-preview/offline-v20.js
-          grep -q "Offline zlyhalo:" tesla-music-v7-preview/offline-v20.js
           grep -q "qs.get('map')==='1'||qs.get('embed')==='1'" tesla-music-v7-preview/offline-v20.js
           ! grep -q 'twmusic-offline-queue' tesla-music-v7-preview/offline-v20.js
-      - name: Commit resolver fix
+      - name: Commit mobile AirPlay fix
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add tesla-music-v7-preview/offline-v20.js
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'fix(tesla-music): exact Commons fallback and diagnostics'
+          git commit -m 'fix(tesla-music): iPhone AirPlay control V30'
           git push origin HEAD:tesla-music-v6-preview
