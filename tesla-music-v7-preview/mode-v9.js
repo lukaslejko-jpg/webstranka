@@ -161,3 +161,62 @@
   };
   bind('play');bind('bplay');
 })();
+
+/* V19_TRANSITION_AUDIO_HOLD: keep Tesla media focus during YouTube track handoff. */
+(()=>{
+  const PARENT_ORIGIN='https://tesla-waze.vercel.app';
+  let holdUntil=0;
+  const arm=()=>{
+    holdUntil=Date.now()+5000;
+    try{if('mediaSession'in navigator)navigator.mediaSession.playbackState='playing'}catch{}
+    pushParent();
+  };
+  const pushParent=()=>{
+    if(window.parent===window||!current)return;
+    try{
+      const position=Number(player?.getCurrentTime?.())||0,duration=Number(player?.getDuration?.())||Number(current?.duration)||0;
+      parent.postMessage({type:'tesla-music-media-state',title:current.title||'',artist:current.uploader||'YouTube',album:'Tesla Music',playing:true,position,duration},PARENT_ORIGIN);
+    }catch{}
+  };
+
+  const previousMedia=media;
+  media=function(){
+    if(!current)return;
+    try{
+      if('mediaSession'in navigator){
+        navigator.mediaSession.metadata=new MediaMetadata({title:current.title,artist:current.uploader||'YouTube',album:'Tesla Music'});
+        const s=player?.getPlayerState?.();
+        const trulyPaused=s===2;
+        navigator.mediaSession.playbackState=(s===1||(!trulyPaused&&Date.now()<holdUntil))?'playing':'paused';
+      }
+    }catch{try{previousMedia?.()}catch{}}
+  };
+
+  const previousPlayTrack=playTrack;
+  playTrack=function(t){if(t&&(!current||key(t)!==key(current)))arm();return previousPlayTrack(t)};
+  window.playTrack=playTrack;
+
+  const previousNext=next;
+  next=async function(...args){arm();return previousNext(...args)};
+  const previousPrev=prev;
+  prev=function(...args){arm();return previousPrev(...args)};
+
+  $('next').onclick=$('bnext').onclick=()=>next(true);
+  $('prev').onclick=$('bprev').onclick=prev;
+  try{
+    if('mediaSession'in navigator){
+      navigator.mediaSession.setActionHandler('nexttrack',()=>next(true));
+      navigator.mediaSession.setActionHandler('previoustrack',prev);
+    }
+  }catch{}
+
+  addEventListener('tesla-music-tick',e=>{
+    const s=player?.getPlayerState?.();
+    if(s===1)holdUntil=0;
+    else if(Date.now()<holdUntil&&s!==2){
+      try{navigator.mediaSession.playbackState='playing'}catch{}
+      pushParent();
+    }
+  });
+  setInterval(()=>{if(Date.now()<holdUntil){try{navigator.mediaSession.playbackState='playing'}catch{}pushParent()}},350);
+})();
