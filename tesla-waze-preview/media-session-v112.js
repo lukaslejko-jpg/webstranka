@@ -1,9 +1,11 @@
 (()=>{
 'use strict';
 
-/* SEARCH_DIRECT_OSM_FALLBACK_V145
+/* SEARCH_DIRECT_OSM_FALLBACK_V146
    Address search must not depend on Supabase egress. Intercept only /api/search;
-   all GPS, routing, map and music requests keep their existing paths. */
+   all GPS, routing, map and music requests keep their existing paths.
+   Slovak cadastral/orientation address forms such as 2547/41 are normalized only
+   when the exact query returns no result. */
 try{
   const previousFetch=window.fetch.bind(window);
   window.fetch=async(input,init)=>{
@@ -32,7 +34,21 @@ try{
           return Array.isArray(rows)?rows:[];
         };
         let rows=await run(q);
-        if(!rows.length&&/\d+\/\d+/.test(q))rows=await run(q.replace(/(\d+)\/(\d+)/g,'$1 $2'));
+        if(!rows.length){
+          const m=q.match(/^(.*?)(\d+)\s*\/\s*(\d+)(.*)$/);
+          if(m){
+            const prefix=m[1],supisne=m[2],orientacne=m[3],suffix=m[4]||'';
+            const variants=[
+              `${prefix}${orientacne}${suffix}`.trim(),
+              `${prefix}${supisne}${suffix}`.trim(),
+              `${prefix}${supisne} ${orientacne}${suffix}`.trim()
+            ].filter((v,i,a)=>v&&v!==q&&a.indexOf(v)===i);
+            for(const variant of variants){
+              const alt=await run(variant);
+              if(alt.length){rows=alt;break}
+            }
+          }
+        }
         const results=rows.map((x,i)=>{
           const la=Number(x.lat),ln=Number(x.lon),ad=x.address||{};
           const house=String(ad.house_number||'').trim();
