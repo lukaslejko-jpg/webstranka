@@ -72,6 +72,57 @@ try{
   };
 }catch(e){console.warn('Search fallback init failed:',e?.message||e)}
 
+/* MAP_TILE_PREFETCH_V155
+   Passive only: never changes Leaflet state, zoom, bearing, GPS or route.
+   It warms the browser image cache for nearby tiles and the next zoom level. */
+try{
+  const warmed=new Set();
+  const warm=url=>{
+    if(!url||warmed.has(url)||warmed.size>900)return false;
+    warmed.add(url);
+    const img=new Image();
+    img.decoding='async';
+    img.referrerPolicy='no-referrer-when-downgrade';
+    img.src=url;
+    return true;
+  };
+  const candidates=src=>{
+    const out=[];
+    try{
+      const u=new URL(src,location.href);
+      let m=u.pathname.match(/\/row-tiles\/live\/base\/(\d+)\/(\d+)\/(\d+)\/tile\.png$/);
+      if(m){
+        const z=+m[1],x=+m[2],y=+m[3],base=`${u.origin}/row-tiles/live/base`;
+        for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]])out.push(`${base}/${z}/${x+dx}/${y+dy}/tile.png`);
+        if(z<20){const zz=z+1,xx=x*2,yy=y*2;out.push(`${base}/${zz}/${xx}/${yy}/tile.png`,`${base}/${zz}/${xx+1}/${yy}/tile.png`,`${base}/${zz}/${xx}/${yy+1}/tile.png`,`${base}/${zz}/${xx+1}/${yy+1}/tile.png`)}
+        if(z>1)out.push(`${base}/${z-1}/${Math.floor(x/2)}/${Math.floor(y/2)}/tile.png`);
+        return out;
+      }
+      m=u.pathname.match(/^(.*\/MapServer\/tile)\/(\d+)\/(\d+)\/(\d+)$/);
+      if(m){
+        const base=u.origin+m[1],z=+m[2],y=+m[3],x=+m[4];
+        for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])out.push(`${base}/${z}/${y+dy}/${x+dx}`);
+        if(z<20){const zz=z+1,xx=x*2,yy=y*2;out.push(`${base}/${zz}/${yy}/${xx}`,`${base}/${zz}/${yy}/${xx+1}`,`${base}/${zz}/${yy+1}/${xx}`,`${base}/${zz}/${yy+1}/${xx+1}`)}
+      }
+    }catch{}
+    return out;
+  };
+  const prefetch=()=>{
+    if(document.hidden)return;
+    const tiles=[...document.querySelectorAll('img.leaflet-tile[src]')].filter(img=>img.complete&&img.naturalWidth>0);
+    let budget=14;
+    for(const tile of tiles){
+      if(budget<=0)break;
+      for(const url of candidates(tile.currentSrc||tile.src)){
+        if(budget<=0)break;
+        if(warm(url))budget--;
+      }
+    }
+  };
+  setInterval(prefetch,1800);
+  setTimeout(prefetch,1200);
+}catch(e){console.warn('Map tile prefetch unavailable:',e?.message||e)}
+
 if(!('mediaSession' in navigator)||typeof MediaMetadata==='undefined')return;
 let lastKey='';
 const parseClock=s=>{const p=String(s||'').trim().split(':').map(Number);if(p.some(n=>!Number.isFinite(n)))return 0;return p.reduce((a,n)=>a*60+n,0)};
