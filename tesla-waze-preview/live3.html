@@ -59,6 +59,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
  const RAW='https://raw.githubusercontent.com/lukaslejko-jpg/webstranka/tesla-waze-preview-v1/tesla-waze-preview/';
  const PROD='https://tesla-waze.vercel.app';
  const API='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twapi';
+ const SEARCH_API='https://europrojekty-app.vercel.app/api/tesla/search';
  const nf=window.fetch.bind(window);
  const gpsWatchers=new Map();let gpsSeq=1,lastGps=null;
  const gpsObj=d=>({coords:{latitude:Number(d.lat),longitude:Number(d.lng),accuracy:Number(d.accuracy)||30,speed:Number.isFinite(Number(d.speed))?Number(d.speed):null,heading:Number.isFinite(Number(d.heading))?Number(d.heading):null},timestamp:Date.now()});
@@ -70,7 +71,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
      getCurrentPosition(ok,err,opt){if(lastGps){ok(gpsObj(lastGps));return}const id=gpsSeq++;gpsWatchers.set(id,g=>{gpsWatchers.delete(id);ok(g)});try{parent.postMessage({type:'tesla-gps-request'},'*')}catch{};setTimeout(()=>{if(gpsWatchers.has(id)){gpsWatchers.delete(id);if(err)err({code:3,message:'GPS timeout'})}},10000)}
    }});
  }catch{}
- window.fetch=(i,o)=>{try{const s=typeof i==='string'?i:(i&&i.url)||'',u=new URL(s,location.href);if(u.origin===location.origin&&u.pathname.startsWith('/api/'))return nf(API+'?p='+encodeURIComponent(u.pathname+u.search),o)}catch{}return nf(i,o)};
+ window.fetch=(i,o)=>{try{const s=typeof i==='string'?i:(i&&i.url)||'',u=new URL(s,location.href);if(u.origin===location.origin&&u.pathname==='/api/search')return nf(SEARCH_API+u.search,o);if(u.origin===location.origin&&u.pathname.startsWith('/api/'))return nf(API+'?p='+encodeURIComponent(u.pathname+u.search),o)}catch{}return nf(i,o)};
  const ungBase=b=>new TextDecoder().decode(pako.ungzip(Uint8Array.from(atob(b.trim()),c=>c.charCodeAt(0))));
  const patchRuntime=text=>{
    if(!text.includes('function updateNavigation()'))return text;
@@ -92,7 +93,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
  const st=document.createElement('style');st.textContent=ung(css64);document.head.appendChild(st);const mob=document.createElement('link');mob.rel='stylesheet';mob.href='./mobile-v102.css?v=107';document.head.appendChild(mob);
  const dock=document.createElement('div');dock.id='preSearchDock';document.body.appendChild(dock);const sb=document.querySelector('.searchbox');if(sb)dock.appendChild(sb);
  const blob=new Blob([ung(js64)],{type:'text/javascript'}),url=URL.createObjectURL(blob),sc=document.createElement('script');
- sc.src=url;sc.onload=()=>{URL.revokeObjectURL(url);const ss=document.createElement('script');ss.src=RAW+'search-v148.js?v=148';document.body.appendChild(ss);setTimeout(()=>{
+ sc.src=url;sc.onload=()=>{URL.revokeObjectURL(url);setTimeout(()=>{
    const f=document.getElementById('musicFab'),m=document.getElementById('musicModal');
    const syncFab=()=>{if(!f||!m)return;f.style.setProperty('display',m.classList.contains('hidden')?'flex':'none','important');f.style.position='fixed';f.style.right='24px';f.style.bottom='96px';f.style.zIndex='7000'};
    syncFab();if(m)new MutationObserver(syncFab).observe(m,{attributes:true,attributeFilter:['class']});
