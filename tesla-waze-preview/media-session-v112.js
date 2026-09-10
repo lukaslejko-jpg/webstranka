@@ -123,6 +123,36 @@ try{
   setTimeout(prefetch,1200);
 }catch(e){console.warn('Map tile prefetch unavailable:',e?.message||e)}
 
+/* REROUTE_ROUTE_HOLD_V158
+   During a route refresh keep the existing active blue route visible.
+   The normal drawRoutes() call replaces it only after the new Waze route succeeds. */
+try{
+  let routeRefreshes=0;
+  const previousFetch=window.fetch.bind(window);
+  window.fetch=async(input,init)=>{
+    const raw=typeof input==='string'?input:(input&&input.url)||'';
+    let isRoute=false;
+    try{const u=new URL(raw,location.href);isRoute=u.hostname==='europrojekty-app.vercel.app'&&u.pathname==='/api/tesla/route'}catch{}
+    if(!isRoute)return previousFetch(input,init);
+    routeRefreshes++;
+    try{return await previousFetch(input,init)}finally{routeRefreshes=Math.max(0,routeRefreshes-1)}
+  };
+  const install=()=>{
+    const L=window.L;
+    if(!L?.Polyline?.prototype||L.Polyline.prototype.__teslaRouteHoldV158)return false;
+    const proto=L.Polyline.prototype,original=proto.setLatLngs;
+    proto.setLatLngs=function(latlngs){
+      const empty=Array.isArray(latlngs)&&latlngs.length===0;
+      const activeBlue=String(this?.options?.color||'').toLowerCase()==='#14b8e6';
+      if(routeRefreshes>0&&empty&&activeBlue)return this;
+      return original.call(this,latlngs);
+    };
+    proto.__teslaRouteHoldV158=true;
+    return true;
+  };
+  if(!install()){const t=setInterval(()=>{if(install())clearInterval(t)},250);setTimeout(()=>clearInterval(t),10000)}
+}catch(e){console.warn('Reroute route hold unavailable:',e?.message||e)}
+
 if(!('mediaSession' in navigator)||typeof MediaMetadata==='undefined')return;
 let lastKey='';
 const parseClock=s=>{const p=String(s||'').trim().split(':').map(Number);if(p.some(n=>!Number.isFinite(n)))return 0;return p.reduce((a,n)=>a*60+n,0)};
