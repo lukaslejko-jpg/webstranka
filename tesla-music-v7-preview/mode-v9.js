@@ -36,7 +36,7 @@
   addEventListener('resize',()=>{if(!isMini())applyFullSize()});
 
   /* V17: active tab = playback context + progressively expanding For You feed */
-  const CTX_LIMIT_STEP=48,CTX_FETCH='https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twyoutubesearch';
+  const CTX_LIMIT_STEP=48,CTX_FETCH='/api/youtube-search';
   let ctxSource='foryou',ctxAdvancing=false,ctxExpandBusy=false,ctxSeedCursor=0;
   const ctxLimits={foryou:60,likes:60,recent:60,queue:160};
   const ctxBaseRender=render,ctxBasePlayTrack=playTrack;
