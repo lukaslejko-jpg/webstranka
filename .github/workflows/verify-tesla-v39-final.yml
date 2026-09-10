@@ -1,0 +1,33 @@
+name: Tesla Music V39 final live UI test
+on:
+  push:
+    branches: [tesla-music-v6-preview]
+    paths: ['.github/workflows/verify-tesla-v39-final.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify actual desktop and mobile search plus decoded icons
+        run: |
+          mkdir -p /tmp/tesla-v39-test
+          cd /tmp/tesla-v39-test
+          npm init -y >/dev/null
+          npm install playwright@1.55.0
+          npx playwright install chromium
+          sed -n '/^          const {chromium}/,/^          JS$/p' "$GITHUB_WORKSPACE/.github/workflows/test-tesla-music-production-v39.yml" | sed 's/^          //' | sed '$d' > verify.cjs
+          test -s verify.cjs
+          node verify.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesla-music-v39-final-production-verification
+          path: |
+            /tmp/tesla-v39-test/*-v39.png
+            /tmp/tesla-v39-test/verification-v39.json
