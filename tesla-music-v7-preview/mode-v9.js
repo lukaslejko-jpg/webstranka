@@ -142,3 +142,22 @@
   addEventListener('tesla-music-tick',e=>sendState(e.detail||{}));
   setInterval(()=>sendState({}),1800);
 })();
+
+/* V18_PLAY_BOOTSTRAP: only when Play has no current track yet. */
+(()=>{
+  const pickStartTrack=()=>{
+    const learned=Object.values(profile?.tracks||{}).filter(x=>x?.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed||0)-Date.parse(a.lastPlayed||0));
+    if(learned.length)return item(learned[0]);
+    return queue.find(isAutoMusic)||queue[0]||null;
+  };
+  const bind=id=>{
+    const el=document.getElementById(id);if(!el)return;
+    el.addEventListener('click',e=>{
+      if(current||!ready)return;
+      const first=pickStartTrack();if(!first)return;
+      e.preventDefault();e.stopImmediatePropagation();
+      playTrack(first);
+    },true);
+  };
+  bind('play');bind('bplay');
+})();
