@@ -1,0 +1,48 @@
+name: Fix Tesla Music iOS home icon v37
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-ios-home-icon-v37.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-music-v6-preview
+          fetch-depth: 0
+      - name: Patch iOS home screen icon
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, base64
+          p=Path('tesla-music-v7-preview/account-v8.js')
+          s=p.read_text(encoding='utf-8')
+          m=re.search(r"l\.href='data:image/jpeg;base64,([^']+)'", s)
+          if not m:
+              raise SystemExit('selected icon base64 not found')
+          icon_b64=m.group(1)
+          Path('tesla-music-v7-preview/apple-touch-icon.jpg').write_bytes(base64.b64decode(icon_b64))
+          marker="document.head.appendChild(l)"
+          add="document.head.appendChild(l);const a=document.createElement('link');a.rel='apple-touch-icon';a.sizes='180x180';a.href='https://raw.githubusercontent.com/lukaslejko-jpg/webstranka/tesla-music-v6-preview/tesla-music-v7-preview/apple-touch-icon.jpg?v=37';document.head.appendChild(a);const m=document.createElement('meta');m.name='apple-mobile-web-app-title';m.content='Tesla Music';document.head.appendChild(m)"
+          if "apple-touch-icon.jpg?v=37" not in s:
+              if marker not in s:
+                  raise SystemExit('head marker not found')
+              s=s.replace(marker, add, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Verify
+        run: |
+          test -s tesla-music-v7-preview/apple-touch-icon.jpg
+          grep -q "apple-touch-icon.jpg?v=37" tesla-music-v7-preview/account-v8.js
+          grep -q "SEARCH_FAILSAFE_V35" tesla-music-v7-preview/account-v8.js
+          grep -q "/api/youtube-search" tesla-music-v7-preview/app-v7.js
+      - name: Commit
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add tesla-music-v7-preview/account-v8.js tesla-music-v7-preview/apple-touch-icon.jpg
+          git commit -m "fix(tesla-music): add iOS home screen icon" || exit 0
+          git push origin HEAD:tesla-music-v6-preview
