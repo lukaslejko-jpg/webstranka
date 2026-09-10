@@ -299,3 +299,16 @@ Resolver bol rozšírený bez platených služieb a bez závislosti od Synology/
 Free Music Archive sa nepripája priamo: verejné API bolo ukončené a FMA nepovoľuje hotlinking bez osobitného súhlasu. Freesound sa nepripája ako automatický full-download zdroj: originálny download cez API vyžaduje OAuth používateľa; preview súbory sa v Tesla Music nepovažujú za plnohodnotný offline zdroj.
 
 Pravidlo ostáva nezmenené: kandidát sa uloží do IndexedDB iPhonu iba po úspešnom Rights Gate a po stiahnutí reálneho audio súboru väčšieho než minimálny limit.
+
+
+---
+
+## 15. AirPlay / systémový výstup – V29
+
+Mobilná Tesla Music obsahuje tlačidlo **AirPlay** bez potreby prihlásenia.
+
+Pri lokálnom alebo offline audiu používa natívny iOS/Safari playback-target picker cez `webkitShowPlaybackTargetPicker()` a povoľuje AirPlay na HTML audio elemente cez `x-webkit-airplay=allow`.
+
+Pri online YouTube zostáva prehrávanie výhradne cez oficiálny YouTube IFrame Player. Aplikácia nastaví iframe pre kompatibilné systémové prehrávanie, ale nemá prístup k internému `<video>` elementu vo cross-origin YouTube iframe. Ak Safari neposkytne natívny picker priamo, používateľ vyberie AirPlay cez ovládanie YouTube alebo Ovládacie centrum iPhonu.
+
+V29 nemení YouTube Search, účet, Offline resolver ani Tesla Waze navigáciu.
