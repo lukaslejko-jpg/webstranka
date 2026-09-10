@@ -57,7 +57,16 @@ Tento súbor sa má aktualizovať po každom zásahu. Každá zmena má mať: z�
 7. Fyzicky overiť v Tesle: Next/auto-next nesmie na okamih pustiť FM rádio.
 8. Až po potvrdení označiť ako funkčný nový referenčný stav.
 
+## 2026-09-10 – seamless handoff obnovený v produkčnom V29 assete
+- Referenčný funkčný commit: `35824fabbbb6959d659d687ade37332c8aa25195` – `music: seamless YouTube handoff without radio gap`.
+- Nový úzky port do standalone Tesla Music core: `05c81013ebc4ce0750937dfd92c4a6ba2aaf6b37` – `music: restore proven seamless YouTube handoff before end`.
+- Zmenený iba `tesla-music-v7-preview/app-v7.js`.
+- Prenesené: `gaplessBusy`, jeden trvalý `YT.Player`, `loadVideoById()` na rovnakom playeri, early handoff pri `0 < duration-current <= 0.38 s`, potlačenie fallback `ENDED` počas handoffu, udržanie playback state počas prechodu.
+- Žiadny silent keepalive, druhý player ani zásah do mapy.
+- Produkčný endpoint `https://tesla-waze-piped.vercel.app/api/asset?name=app-v7.js&v=29` bol po synchronizácii overený HTTP 200 a obsahuje `gaplessBusy` aj podmienku `d-t<=0.38`.
+- Fyzické potvrdenie v Tesle: ČAKÁ SA.
+
 ## Povinné pracovné pravidlo odteraz
-`backup -> jedna úzka zmena -> compare diff -> fyzický test -> zápis do CHANGELOGU`
+`backup -> jedna úzka zmena -> compare diff -> produkčné overenie -> fyzický test -> zápis do CHANGELOGU`
 
 Ak niečo zlyhá, okamžite rollback. Nevrstviť ďalšie opravy na neoverenú zmenu.
