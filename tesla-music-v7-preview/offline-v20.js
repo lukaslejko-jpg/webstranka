@@ -2,7 +2,7 @@
 'use strict';
 const qs=new URLSearchParams(location.search);
 if(qs.get('map')==='1'||qs.get('embed')==='1')return;
-if(window.__TESLA_OFFLINE_V29__)return;window.__TESLA_OFFLINE_V29__=true;
+if(window.__TESLA_OFFLINE_V30__)return;window.__TESLA_OFFLINE_V30__=true;
 
 const JAMENDO_CLIENT_ID='709fa152';
 const MIN_AUDIO_BYTES=200000;
@@ -105,27 +105,22 @@ try{if('mediaSession'in navigator){navigator.mediaSession.setActionHandler('play
 window.addEventListener('online',()=>{if(db)refreshStates().then(paintAll)});window.addEventListener('focus',()=>{if(db)refreshStates().then(paintAll)});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&db)refreshStates().then(paintAll)});
 openDB().then(async()=>{await refreshStates();try{await navigator.storage?.persist?.()}catch{};setTimeout(paintAll,300);setInterval(()=>{if(!offlineMode)decorate()},1600)}).catch(e=>{console.warn('Offline DB',e);offlineBtn.disabled=true;offlineBtn.title='Offline úložisko nie je dostupné'});
 
-/* AirPlay / system playback target V29. Mobile-only, no account required. */
+/* AirPlay V30: iPhone-only control in the scrollable mobile tabs. */
 (()=>{
-  if(window.__TESLA_AIRPLAY_V29__)return;window.__TESLA_AIRPLAY_V29__=true;
-  const top=document.querySelector('.top');if(!top)return;
-  const b=document.createElement('button');b.id='airplayBtn';b.type='button';b.className='btn airplay-btn';b.textContent='◉ AirPlay';b.title='Prehrať na AirPlay / systémovom zariadení';top.appendChild(b);
-  const css=document.createElement('style');css.textContent='.airplay-btn{white-space:nowrap;min-width:108px}@media(max-width:600px){.airplay-btn{min-width:96px;height:44px;padding:0 10px;font-size:13px}}';document.head.appendChild(css);
+  if(window.__TESLA_AIRPLAY_V30__)return;window.__TESLA_AIRPLAY_V30__=true;
+  const isiOS=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(!isiOS)return;
+  const tabs=document.querySelector('.tabs');if(!tabs)return;
+  const b=document.createElement('button');b.id='airplayBtn';b.type='button';b.className='chip airplay-btn';b.textContent='◉ AirPlay';b.title='AirPlay';tabs.appendChild(b);
   try{audio.setAttribute('x-webkit-airplay','allow');audio.setAttribute('webkit-playsinline','true')}catch{}
-  function prepYoutube(){try{const f=document.querySelector('#yt iframe,iframe[src*="youtube.com/embed"]');if(!f)return;f.setAttribute('webkit-playsinline','true');f.setAttribute('playsinline','true');const a=String(f.getAttribute('allow')||'');const need=['autoplay','encrypted-media','picture-in-picture'];f.setAttribute('allow',[...new Set(a.split(';').map(x=>x.trim()).filter(Boolean).concat(need))].join('; '))}catch{}}
   function status(t){const e=document.getElementById('status');if(e)e.textContent=t}
   b.addEventListener('click',()=>{
-    prepYoutube();
     try{
-      if(offlineMode&&currentRec&&typeof audio.webkitShowPlaybackTargetPicker==='function'){
-        audio.webkitShowPlaybackTargetPicker();status('Vyber AirPlay zariadenie');return;
-      }
-      const local=[...document.querySelectorAll('video,audio')].find(m=>m!==audio&&typeof m.webkitShowPlaybackTargetPicker==='function'&&!m.closest('iframe'));
-      if(local){local.setAttribute('x-webkit-airplay','allow');local.webkitShowPlaybackTargetPicker();status('Vyber AirPlay zariadenie');return}
       if(typeof audio.webkitShowPlaybackTargetPicker==='function'&&audio.src){audio.webkitShowPlaybackTargetPicker();status('Vyber AirPlay zariadenie');return}
-      status('AirPlay pre online YouTube vyber cez prehrávač alebo Ovládacie centrum iPhonu');
+      if(offlineMode&&!currentRec){status('Najprv spusti offline skladbu, potom AirPlay.');return}
+      status('Online YouTube beží v oficiálnom iframe; iOS nedovolí aplikácii otvoriť jeho AirPlay picker. Použi AirPlay v Ovládacom centre iPhonu počas prehrávania.');
+      alert('Online YouTube: AirPlay vyber v Ovládacom centre iPhonu počas prehrávania. Pri offline skladbe tlačidlo otvorí AirPlay výber priamo.');
     }catch(e){status('AirPlay sa nepodarilo otvoriť: '+String(e?.message||e))}
   });
-  const obs=setInterval(prepYoutube,1500);setTimeout(()=>clearInterval(obs),30000);prepYoutube();
 })();
 })();
