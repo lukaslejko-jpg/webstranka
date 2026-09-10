@@ -1,0 +1,44 @@
+name: Tesla Music mobile cache V29 loader
+
+on:
+  push:
+    branches: [tesla-music-v6-preview]
+    paths:
+      - '.github/workflows/mobile-cache-v29-loader.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-music-v6-preview
+          fetch-depth: 0
+      - name: Patch loader to V29
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tesla-music-v7-preview/account-v8.js')
+          s=p.read_text()
+          old="/api/asset?name=offline-v20.js&v=23"
+          new="/api/asset?name=offline-v20.js&v=29"
+          if old not in s:
+              if new in s:
+                  raise SystemExit(0)
+              raise SystemExit('offline loader anchor not found')
+          p.write_text(s.replace(old,new))
+          PY
+          grep -q 'offline-v20.js&v=29' tesla-music-v7-preview/account-v8.js
+          node --check tesla-music-v7-preview/account-v8.js
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-music-v7-preview/account-v8.js
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'fix(tesla-music): bump offline loader to V29'
+          git push origin HEAD:tesla-music-v6-preview
