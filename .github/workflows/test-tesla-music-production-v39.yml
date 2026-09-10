@@ -1,0 +1,92 @@
+name: Tesla Music V39 production browser verification
+on:
+  push:
+    branches: [tesla-music-v6-preview]
+    paths: ['.github/workflows/test-tesla-music-production-v39.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser test tools
+        run: |
+          mkdir -p /tmp/tesla-v39-test
+          cd /tmp/tesla-v39-test
+          npm init -y >/dev/null
+          npm install playwright@1.55.0
+          npx playwright install chromium
+      - name: Verify canonical production and real search clicks
+        working-directory: /tmp/tesla-v39-test
+        run: |
+          cat > verify.cjs <<'JS'
+          const {chromium}=require('playwright');
+          const fs=require('node:fs/promises');
+          const assert=require('node:assert/strict');
+          const ROOT='https://tesla-waze-piped.vercel.app';
+          (async()=>{
+            let version;
+            for(let i=0;i<24;i++){
+              try{const r=await fetch(ROOT+'/version.json?t='+Date.now());version=await r.json();if(version.release===39)break;}catch{}
+              await new Promise(r=>setTimeout(r,5000));
+            }
+            assert.equal(version?.release,39,'Canonical domain must actually serve V39');
+            const report={production:ROOT,version,checkedAt:new Date().toISOString(),api:[],ui:[]};
+            for(const q of ['mama mia','Karel Gott','abba']){
+              const r=await fetch(ROOT+'/api/youtube-search?q='+encodeURIComponent(q));
+              assert.equal(r.status,200,q+' HTTP status');
+              assert.match(r.headers.get('content-type')||'',/application\/json/);
+              const d=await r.json();assert.equal(d.release,39);assert.ok(d.items.length>=3,q+' real results');
+              assert.ok(d.items.every(x=>/^[A-Za-z0-9_-]{11}$/.test(x.youtubeId)&&x.title));
+              report.api.push({q,status:r.status,count:d.items.length,titles:d.items.slice(0,3).map(x=>x.title)});
+            }
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            try{
+              for(const [device,width,height] of [['desktop',1280,900],['mobile',390,844]]){
+                const context=await browser.newContext({viewport:{width,height},isMobile:device==='mobile',hasTouch:device==='mobile'});
+                const page=await context.newPage();const oldSearch=[];const errors=[];
+                page.on('request',r=>{if(/supabase\.co\/functions\/v1\/(music-search|twyoutubesearch)/.test(r.url()))oldSearch.push(r.url());});
+                page.on('pageerror',e=>errors.push(e.message));
+                await page.goto(ROOT+'/?verify=39',{waitUntil:'domcontentloaded',timeout:30000});
+                await page.locator('#q').waitFor({state:'visible',timeout:30000});
+                const ui={device,searches:[]};
+                for(const q of ['mama mia','Karel Gott']){
+                  await page.locator('#q').fill(q);
+                  const responsePromise=page.waitForResponse(r=>r.url().includes('/api/youtube-search?')&&new URL(r.url()).searchParams.get('q')===q,{timeout:35000});
+                  await page.locator('#go').click();
+                  const r=await responsePromise;assert.equal(r.status(),200);
+                  await page.waitForFunction(()=>document.querySelectorAll('#grid .card').length>=3,{},{timeout:20000});
+                  const titles=await page.locator('#grid .ctitle').allTextContents();
+                  assert.ok(titles.some(t=>q==='Karel Gott'?/gott/i.test(t):/mamma|mama/i.test(t)),device+' correct search results');
+                  ui.searches.push({q,count:titles.length,titles:titles.slice(0,3)});
+                }
+                const icon=await page.locator('head link[rel="apple-touch-icon"]').getAttribute('href');
+                assert.equal(icon,'/icons/music-v39-180.png');
+                ui.icon=await page.evaluate(async src=>{const i=new Image();i.src=src;await i.decode();return {width:i.naturalWidth,height:i.naturalHeight,src:i.src};},icon);
+                assert.equal(ui.icon.width,180);assert.equal(ui.icon.height,180);
+                assert.equal(await page.locator('#shuffle svg').count(),1);
+                assert.equal(await page.locator('[data-tab="queue"]').textContent(),'Poradie');
+                assert.equal(oldSearch.length,0,'No old Supabase search requests');
+                assert.equal(errors.length,0,'No frontend JS exceptions: '+errors.join('; '));
+                ui.oldSearchRequests=oldSearch;ui.javascriptErrors=errors;
+                await page.screenshot({path:device+'-v39.png',fullPage:true});
+                report.ui.push(ui);await context.close();
+              }
+            }finally{await browser.close();}
+            await fs.writeFile('verification-v39.json',JSON.stringify(report,null,2));
+            console.log('VERIFIED_REAL_PRODUCTION_UI '+JSON.stringify(report));
+          })().catch(e=>{console.error(e);process.exit(1);});
+          JS
+          node verify.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesla-music-v39-production-verification
+          path: |
+            /tmp/tesla-v39-test/*-v39.png
+            /tmp/tesla-v39-test/verification-v39.json
