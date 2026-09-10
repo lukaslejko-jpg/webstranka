@@ -17,7 +17,7 @@ jobs:
         with:
           ref: tesla-music-v6-preview
           fetch-depth: 0
-      - name: Apply V26 patch
+      - name: Apply corrected V26 patch
         run: python3 scripts/patch_offline_v25.py
       - name: Verify
         run: |
