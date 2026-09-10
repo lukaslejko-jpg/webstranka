@@ -1,0 +1,63 @@
+name: Tesla Music remove Offline and AirPlay V31
+
+on:
+  push:
+    branches: [tesla-music-v6-preview]
+    paths:
+      - '.github/workflows/mobile-remove-offline-airplay-v31.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-music-v6-preview
+          fetch-depth: 0
+      - name: Remove Offline loader and AirPlay module
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tesla-music-v7-preview/account-v8.js')
+          s=p.read_text()
+          marker='\n\n/* Offline local library V23 loader.'
+          if marker in s:
+              s=s.split(marker,1)[0].rstrip()+"\n"
+              p.write_text(s)
+          PY
+          node --check tesla-music-v7-preview/account-v8.js
+          ! grep -q 'offline-v20' tesla-music-v7-preview/account-v8.js
+          ! grep -q 'off-one' tesla-music-v7-preview/account-v8.js
+          rm -f tesla-music-v7-preview/offline-v20.js
+          rm -f scripts/patch_offline_v25.py
+          rm -f .github/workflows/apply-offline-v24-resolver-fix.yml
+          rm -f .github/workflows/apply-offline-v25-identity-fix.yml
+          rm -f .github/workflows/apply-offline-v26-commons-exact.yml
+          rm -f .github/workflows/mobile-offline-v28-sources.yml
+          rm -f .github/workflows/mobile-airplay-v29.yml
+          rm -f .github/workflows/mobile-cache-v29-loader.yml
+          rm -f .github/workflows/mobile-docs-airplay-v29.yml
+          rm -f .github/workflows/mobile-docs-cache-v29.yml
+          rm -f .github/workflows/mobile-docs-v28-sync.yml
+      - name: Update single source of truth
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('docs/TESLA_MUSIC_MOBILE_SINGLE_SOURCE_OF_TRUTH.md')
+          if p.exists():
+              s=p.read_text()
+              s += '\n\n## V31 – odstránenie Offline a AirPlay (10. 9. 2026)\n- Offline modul bol odstránený z aktívnej Tesla Music PWA.\n- Odstránený je loader `offline-v20.js`, samotný `offline-v20.js` aj súvisiace offline workflowy.\n- AirPlay doplnok V29/V30 bol odstránený spolu s Offline modulom.\n- Aktívny rozsah: anonymné YouTube vyhľadávanie, oficiálny YouTube IFrame Player, Pre teba, Obľúbené, Naposledy prehrané, Poradie a voliteľné YouTube konto.\n- Offline sťahovanie ani vlastný AirPlay ovládač sa ďalej nepovažujú za funkcie projektu.\n'
+              p.write_text(s)
+          PY
+      - name: Commit removal
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'revert(tesla-music): remove offline and AirPlay modules'
+          git push origin HEAD:tesla-music-v6-preview
