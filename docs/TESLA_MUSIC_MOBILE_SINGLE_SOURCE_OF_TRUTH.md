@@ -319,3 +319,11 @@ V29 nemení YouTube Search, účet, Offline resolver ani Tesla Waze navigáciu.
 Produkčný root, Service Worker a asset loadery používajú verziu V29. Service Worker cache je `tesla-music-pwa-v29`; CORE používa assety s `&v=29` a root registruje `/sw.js?v=29`. `account-v8.js` načítava `/api/asset?name=offline-v20.js&v=29`. Tým sa zabraňuje tomu, aby iPhone po nasadení novej mobilnej funkcie ostal na starej V23/V24 cache.
 
 Offline modul V29 pridáva tlačidlo `◉ AirPlay` do hornej lišty mobilnej Tesla Music. Pri lokálnom/offline audiu používa systémový iOS AirPlay picker, ak ho WebKit sprístupní. Funkcia nevyžaduje YouTube konto a nemení Tesla Waze navigáciu.
+
+
+## V31 – odstránenie Offline a AirPlay (10. 9. 2026)
+- Offline modul bol odstránený z aktívnej Tesla Music PWA.
+- Odstránený je loader `offline-v20.js`, samotný `offline-v20.js` aj súvisiace offline workflowy.
+- AirPlay doplnok V29/V30 bol odstránený spolu s Offline modulom.
+- Aktívny rozsah: anonymné YouTube vyhľadávanie, oficiálny YouTube IFrame Player, Pre teba, Obľúbené, Naposledy prehrané, Poradie a voliteľné YouTube konto.
+- Offline sťahovanie ani vlastný AirPlay ovládač sa ďalej nepovažujú za funkcie projektu.
