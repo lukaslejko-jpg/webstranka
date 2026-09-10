@@ -1,0 +1,1 @@
+V158: preserve current route polyline while reroute request is in flight; replace only after new Waze route succeeds.
