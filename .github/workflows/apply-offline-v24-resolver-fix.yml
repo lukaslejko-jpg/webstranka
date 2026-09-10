@@ -1,0 +1,60 @@
+name: Apply Tesla Music Offline V24 resolver fix
+
+on:
+  push:
+    branches: [tesla-music-v6-preview]
+    paths:
+      - '.github/workflows/apply-offline-v24-resolver-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tesla-music-v6-preview
+          fetch-depth: 0
+      - name: Patch offline resolver only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tesla-music-v7-preview/offline-v20.js')
+          s=p.read_text()
+          old="""function sim(a,b){const A=toks(a),B=toks(b);if(!A.size||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return 2*n/(A.size+B.size)}
+function candidateScore(qt,qa,t,a){const ts=sim(qt,t),as=qa?sim(qa,a):1;if(ts<.66)return 0;if(qa&&as<.25)return 0;return ts*.78+as*.22}"""
+          new="""function sim(a,b){const A=toks(a),B=toks(b);if(!A.size||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return 2*n/(A.size+B.size)}
+function dashParts(s){return String(s||'').split(/\\s+[-–—]\\s+/).map(x=>x.trim()).filter(Boolean)}
+function candidateScore(qt,qa,t,a){const ps=dashParts(t);const ts=Math.max(sim(qt,t),...ps.map(x=>sim(qt,x)),0),as=qa?Math.max(sim(qa,a),...ps.map(x=>sim(qa,x)),0):1;if(ts<.66)return 0;if(qa&&as<.25)return 0;return ts*.78+as*.22}
+function genericUploader(a){return /^(audio library|youtube|various artists|music|topic|unknown)$/i.test(fold(a))}
+function requestIdentity(title,artist){let t=String(title||'').replace(/\\([^)]*(no copyright|copyright free|royalty free)[^)]*\\)/ig,'').replace(/\\[[^\\]]*(no copyright|copyright free|royalty free)[^\\]]*\\]/ig,'').replace(/\\s+/g,' ').trim(),a=clean(artist);if(genericUploader(a)){const ps=dashParts(t);if(ps.length>=2){const left=clean(ps[0]),right=clean(ps.slice(1).join(' - '));if(left&&right&&right.split(/\\s+/).length<=6){t=left;a=right}else{a=''}}else a=''}return{title:clean(t),artist:a}}"""
+          if old not in s:
+              raise SystemExit('candidateScore block not found')
+          s=s.replace(old,new,1)
+          old2="""try{const candidates=await resolveCandidates(t.title||'',t.uploader||t.artist||'');if(!candidates.length)throw new Error('not_found');"""
+          new2="""try{const rq=requestIdentity(t.title||'',t.uploader||t.artist||'');const candidates=await resolveCandidates(rq.title,rq.artist);if(!candidates.length)throw new Error('not_found');"""
+          if old2 not in s:
+              raise SystemExit('saveOffline resolver call not found')
+          s=s.replace(old2,new2,1)
+          s=s.replace("if(window.__TESLA_OFFLINE_V24__)return;window.__TESLA_OFFLINE_V24__=true;","if(window.__TESLA_OFFLINE_V25__)return;window.__TESLA_OFFLINE_V25__=true;",1)
+          p.write_text(s)
+          PY
+      - name: Verify narrow patch
+        run: |
+          set -euo pipefail
+          grep -q 'function requestIdentity' tesla-music-v7-preview/offline-v20.js
+          grep -q 'function dashParts' tesla-music-v7-preview/offline-v20.js
+          grep -q '__TESLA_OFFLINE_V25__' tesla-music-v7-preview/offline-v20.js
+          grep -q 'const rq=requestIdentity' tesla-music-v7-preview/offline-v20.js
+          ! grep -q 'twmusic-offline-queue' tesla-music-v7-preview/offline-v20.js
+          node --check tesla-music-v7-preview/offline-v20.js
+      - name: Commit resolver fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-music-v7-preview/offline-v20.js
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'fix(tesla-music): resolve generic uploader and dashed titles offline'
+          git push origin HEAD:tesla-music-v6-preview
