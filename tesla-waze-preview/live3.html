@@ -78,6 +78,8 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
    let out=text;
    out=out.replace("fetch('/api/search?'+u","fetch('https://europrojekty-app.vercel.app/api/tesla/search?'+u");
    out=out.replace("https://dimvegkezslqjtsxdohp.supabase.co/functions/v1/twroute?","https://europrojekty-app.vercel.app/api/tesla/route?");
+   out=out.replace('let voiceContext=null,activeVoiceSource=null,voiceGeneration=0,cloudVoiceUnavailable=false','let voiceContext=null,activeVoiceSource=null,voiceGeneration=0,cloudVoiceUnavailable=true');
+   out=out.replace('active.setLatLngs([n.point,...r.coords.slice(Math.min(r.coords.length,n.index+1))]);','active.setLatLngs([markerPosition,...r.coords.slice(Math.min(r.coords.length,n.index+1))]);');
    out=out.replace("if(!state.car){state.car=state.L.marker(p,{icon:carIcon(),zIndexOffset:1000,rotation:0,rotateWithView:false}).addTo(state.map);state.map.setView(p,16,{animate:false})}\n    else if(!state.navigating){state.car.setLatLng(p);updateFreeDriveHeading(p,moved,sp)}","if(!state.car){state.car=state.L.marker(p,{icon:carIcon(),zIndexOffset:1000,rotation:0,rotateWithView:false}).addTo(state.map);state.map.setView(p,16,{animate:false});if(!state.navigating&&Number.isFinite(state.heading))updateFreeDriveHeading(p,4,sp)}\n    else if(!state.navigating){state.car.setLatLng(p);updateFreeDriveHeading(p,moved,sp)}");
    out=out.replace("stopHeadingUp(true);$('app')","stopHeadingUp(true);const __freeH=Number.isFinite(state.heading)?state.heading:state.gpsHeading;if(Number.isFinite(__freeH)){setHeadingUpBearing(__freeH);state.freeDriveHeading=__freeH;state.freeDriveBearingAt=Date.now()}$('app')");
    out=out.replace('[100,320].forEach(delay=>setTimeout(', '[120].forEach(delay=>setTimeout(');
