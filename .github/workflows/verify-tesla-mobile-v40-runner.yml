@@ -1,0 +1,46 @@
+name: Tesla Music V40 deterministic browser verification
+on:
+  push:
+    branches: [fix/tesla-music-mobile-play-v40]
+    paths: ['.github/workflows/verify-tesla-mobile-v40-runner.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build complete candidate
+        working-directory: tesla-music-production
+        run: npm install && npm run build
+      - name: Run browser regression suite
+        run: |
+          mkdir -p /tmp/tm40-tests && cd /tmp/tm40-tests
+          npm init -y >/dev/null
+          npm install playwright@1.58.2
+          npx playwright install --with-deps chromium webkit
+          sed -n '/^          const {chromium,webkit}/,/^          JS$/p' "$GITHUB_WORKSPACE/.github/workflows/verify-tesla-mobile-v40.yml" | sed 's/^          //' | sed '$d' > verify.cjs
+          node - <<'JS'
+          const fs=require('fs');let s=fs.readFileSync('verify.cjs','utf8');
+          s=s.replace('hasTouch:ios,userAgent:','hasTouch:ios,serviceWorkers:"block",userAgent:');
+          s=s.replace('process.exitCode=1;','process.exit(1);');
+          s=s.replace('report.checks.push({name,passed:true});','report.checks.push({name,passed:true});console.log("PASS "+name);');
+          fs.writeFileSync('verify.cjs',s);
+          JS
+          timeout 180 node verify.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesla-music-v40-browser-proof
+          path: |
+            /tmp/tm40-tests
+            tesla-music-production/public
+            tesla-music-production/*.mjs
+            tesla-music-production/*.js
+            tesla-music-production/*.json
+            tesla-music-production/*.webp
+            tesla-music-production/api
