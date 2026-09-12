@@ -1,0 +1,46 @@
+name: Tesla Music native playlist proof
+on:
+  push:
+    branches: [fix/tesla-music-mobile-play-v40]
+    paths: ['.github/workflows/probe-tesla-native-playlist-v40.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect official embedded playlist actions
+        run: |
+          mkdir -p /tmp/tm-playlist && cd /tmp/tm-playlist
+          npm init -y >/dev/null
+          npm install playwright@1.58.2
+          npx playwright install chromium
+          cat > probe.cjs <<'JS'
+          const {chromium}=require('playwright');
+          const fs=require('node:fs/promises');
+          (async()=>{
+            const b=await chromium.launch({args:['--no-sandbox']});
+            const report=[];
+            try{for(const variant of ['single','playlist']){
+              const c=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+              await c.addInitScript(()=>{window.__actions={};if(navigator.mediaSession){const orig=navigator.mediaSession.setActionHandler.bind(navigator.mediaSession);navigator.mediaSession.setActionHandler=(a,h)=>{window.__actions[a]=!!h;return orig(a,h)}}});
+              const p=await c.newPage();await p.goto('https://tesla-waze-piped.vercel.app/',{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>typeof ready!=='undefined'&&ready);
+              await p.evaluate(v=>{document.getElementById('bplay').onclick=()=>{if(v==='playlist')player.loadPlaylist(['unfzfe8f9NI','XEjLoHdbVeE','xFrGuyw1V8s'],0,0);else player.loadVideoById('unfzfe8f9NI');};window.teslaMusicSetFull?.();window.teslaMusicSetVideo?.(true);},variant);
+              await p.locator('#bplay').click();await p.waitForTimeout(6000);
+              const states=[];for(const f of p.frames()){try{states.push(await f.evaluate(()=>({origin:location.origin,actions:window.__actions,metadata:navigator.mediaSession?.metadata?{title:navigator.mediaSession.metadata.title}:null,videos:[...document.querySelectorAll('video')].map(v=>({paused:v.paused,now:v.currentTime})),error:document.querySelector('.ytp-error-content-wrap')?.textContent})));}catch{}}
+              const playlist=await p.evaluate(()=>({ids:player.getPlaylist?.(),index:player.getPlaylistIndex?.(),state:player.getPlayerState(),url:player.getVideoUrl()}));
+              report.push({variant,states,playlist});console.log('PLAYLIST_PROBE '+JSON.stringify(report[report.length-1]));await c.close();
+            }}finally{await b.close()}
+            await fs.writeFile('playlist-proof.json',JSON.stringify(report,null,2));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node probe.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesla-music-native-playlist-proof
+          path: /tmp/tm-playlist/playlist-proof.json
