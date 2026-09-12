@@ -1,0 +1,46 @@
+name: Tesla Music V40 isolated final verification
+on:
+  push:
+    branches: [tesla-music-v6-preview]
+    paths: ['.github/workflows/finalize-tesla-music-v40.yml']
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Isolate test contexts from live service worker
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tesla-music-production/test-controls-v40.cjs')
+          s=p.read_text()
+          old='browser.newContext({viewport:'
+          assert s.count(old)==1
+          p.write_text(s.replace(old,"browser.newContext({serviceWorkers:'block',viewport:"))
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tesla-music-production/test-controls-v40.cjs
+          git commit -m 'test(tesla-music): prevent live V39 service worker replacing candidate on test reload'
+          git push origin HEAD:tesla-music-v6-preview
+      - name: Build candidate and verify behavior and actual iframe actions
+        working-directory: tesla-music-production
+        run: |
+          npm install
+          npm run build
+          npm install --no-save playwright@1.55.1
+          npx playwright install chromium
+          node test-controls-v40.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesla-music-v40-isolated-verification
+          path: |
+            tesla-music-production/verification-v40.json
+            tesla-music-production/mobile-v40-search.png
