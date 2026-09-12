@@ -1,0 +1,34 @@
+name: Verify Tesla Music V40 candidate
+on:
+  push:
+    branches: [tesla-music-v6-preview]
+    paths: ['.github/workflows/verify-tesla-music-v40.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    defaults:
+      run:
+        working-directory: tesla-music-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build complete candidate and run control tests
+        run: |
+          npm install
+          npm run build
+          node --check public/mobile-controls-v40.js
+          npm install --no-save playwright@1.55.1
+          npx playwright install chromium
+          node test-controls-v40.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesla-music-v40-candidate-verification
+          path: |
+            tesla-music-production/verification-v40.json
+            tesla-music-production/mobile-v40-search.png
