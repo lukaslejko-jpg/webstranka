@@ -26,7 +26,7 @@ window.YT={PlayerState:{ENDED:0,PLAYING:1,PAUSED:2},Player:function(id,options){
 (async()=>{
  const browser=await chromium.launch({args:['--no-sandbox']});
  async function context({mock=true,delay=0,seed=true,mobile=true}={}){
-  const c=await browser.newContext({viewport:{width:mobile?390:1280,height:844},userAgent:mobile?IOS:undefined,isMobile:mobile,hasTouch:mobile});
+  const c=await browser.newContext({serviceWorkers:'block',viewport:{width:mobile?390:1280,height:844},userAgent:mobile?IOS:undefined,isMobile:mobile,hasTouch:mobile});
   await c.addInitScript(({tracks,seed})=>{
    window.__actions={};if(navigator.mediaSession){const original=navigator.mediaSession.setActionHandler.bind(navigator.mediaSession);navigator.mediaSession.setActionHandler=(a,h)=>{window.__actions[a]=h;return original(a,h);};}
    if(seed&&!localStorage.getItem('teslaMusic:queue:v1'))localStorage.setItem('teslaMusic:queue:v1',JSON.stringify(tracks));
