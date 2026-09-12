@@ -57,6 +57,10 @@ window.YT={PlayerState:{ENDED:0,PLAYING:1,PAUSED:2},Player:function(id,options){
   await p.evaluate(()=>window.__actions.nexttrack());assert.equal(await p.evaluate(()=>current.id),tracks[1].id);
   await p.evaluate(()=>window.__actions.previoustrack());assert.equal(await p.evaluate(()=>current.id),tracks[0].id);
   assert.equal(await p.evaluate(()=>window.__actions.seekforward),null);
+  // The For You ranking legitimately changes after skips. Fix the source to
+  // Poradie so this case specifically tests a native non-last track ending.
+  await p.evaluate(()=>{tab='queue';playTrack(queue[0]);});
+  assert.equal(await p.evaluate(()=>player.getPlaylistIndex()),0);
   const before=await p.evaluate(()=>window.__calls.length);await p.evaluate(()=>player.emit(0));assert.equal(await p.evaluate(()=>window.__calls.length),before);
   await p.evaluate(()=>player.nextVideo());assert.equal(await p.evaluate(()=>current.id),tracks[1].id);
   await p.reload({waitUntil:'domcontentloaded'});await p.waitForFunction(()=>ready);await p.evaluate(()=>{discover=()=>{};});
@@ -75,7 +79,7 @@ window.YT={PlayerState:{ENDED:0,PLAYING:1,PAUSED:2},Player:function(id,options){
   }
   const icon=await p.locator('head link[rel="apple-touch-icon"]').getAttribute('href');assert.equal(icon,'/icons/music-v39-180.png');assert.deepEqual(await p.evaluate(async src=>{const i=new Image();i.src=src;await i.decode();return[i.naturalWidth,i.naturalHeight];},icon),[180,180]);assert.equal(await p.locator('#shuffle svg').count(),1);assert.equal(p.errors.length,0,p.errors.join(';'));assert.equal(p.old.length,0);await p.screenshot({path:'mobile-v40-search.png',fullPage:true});report.checks.push('real API/UI: search, PNG decode, SVG shuffle preserved');await c.close();
   c=await context({mock:false});p=await pageIn(c);await p.waitForFunction(()=>ready,{},{timeout:30000});await p.locator('#bplay').click();
-  const frame=await p.waitForEvent('framenavigated',{timeout:1000}).catch(()=>p.frames().find(f=>f.url().includes('youtube.com/embed')));
+  await p.waitForTimeout(500);
   const yt=p.frames().find(f=>f.url().includes('youtube.com/embed'));assert.ok(yt);
   await yt.waitForFunction(()=>typeof window.__actions.nexttrack==='function'&&typeof window.__actions.previoustrack==='function',{},{timeout:15000});
   const actual=await yt.evaluate(()=>({next:typeof window.__actions.nexttrack,previous:typeof window.__actions.previoustrack,video:!!document.querySelector('video')}));
