@@ -1,1 +1,1 @@
-{"name":"tesla-music-production","private":true,"type":"module","scripts":{"build":"node build.mjs"},"dependencies":{"sharp":"0.34.3"}}
+{"name":"tesla-music-production","private":true,"type":"module","scripts":{"build":"node release-v40.mjs"},"dependencies":{"sharp":"0.34.3"}}

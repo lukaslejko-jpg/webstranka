@@ -1,0 +1,84 @@
+name: Tesla Music V40 safe candidate verification
+on:
+  push:
+    branches: [fix/tesla-music-mobile-play-v40]
+    paths: ['tesla-music-production/**', '.github/workflows/verify-tesla-mobile-v40.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build complete candidate, keeping search and selected icon
+        working-directory: tesla-music-production
+        run: |
+          npm install
+          npm run build
+          node --check public/app-v7.js
+          node --check public/mode-v9.js
+          node --check public/playback-v40.js
+      - name: Browser tests in Chromium and WebKit
+        run: |
+          mkdir -p /tmp/tm40-tests
+          cd /tmp/tm40-tests
+          npm init -y >/dev/null
+          npm install playwright@1.58.2
+          npx playwright install --with-deps chromium webkit
+          cat > verify.cjs <<'JS'
+          const {chromium,webkit}=require('playwright');
+          const fs=require('node:fs/promises'),http=require('node:http'),path=require('node:path'),assert=require('node:assert/strict');
+          const dir=path.join(process.env.GITHUB_WORKSPACE,'tesla-music-production/public');
+          const tracks=[{id:'unfzfe8f9NI',title:'ABBA - Mamma Mia',uploader:'ABBA - Topic',duration:200,thumbnail:''},{id:'XEjLoHdbVeE',title:'ABBA - Dancing Queen',uploader:'ABBA - Topic',duration:210,thumbnail:''},{id:'xFrGuyw1V8s',title:'ABBA - Gimme Gimme',uploader:'ABBA - Topic',duration:220,thumbnail:''}];
+          const shim=`window.__calls=[];window.YT={PlayerState:{ENDED:0,PLAYING:1,PAUSED:2},Player:function(id,o){let state=-1,pos=0,ids=null,index=-1,vid=null;const log=(a,...v)=>window.__calls.push({a,v});this.getPlayerState=()=>state;this.getCurrentTime=()=>pos;this.getDuration=()=>200;this.getPlaylist=()=>ids;this.getPlaylistIndex=()=>index;this.getVideoUrl=()=>vid?'https://www.youtube.com/watch?v='+vid:'';const emit=n=>{state=n;o.events.onStateChange({data:n,target:this})};this.loadVideoById=t=>{vid=typeof t==='string'?t:t.videoId;pos=t.startSeconds||0;ids=null;index=-1;log('loadVideo',vid);emit(1)};this.cueVideoById=t=>{vid=typeof t==='string'?t:t.videoId;ids=null;index=-1;pos=t.startSeconds||0;log('cueVideo',vid);emit(5)};this.loadPlaylist=(list,i=0,s=0)=>{ids=[...list];index=i;vid=ids[i];pos=s;log('loadPlaylist',ids,i);emit(1)};this.playVideoAt=i=>{index=i;vid=ids[i];pos=0;log('playVideoAt',i);emit(1)};this.setLoop=b=>log('setLoop',b);this.setShuffle=b=>log('setShuffle',b);this.playVideo=()=>{log('playVideo');if(vid)emit(1)};this.pauseVideo=()=>{log('pauseVideo');emit(2)};this.seekTo=s=>{pos=s;log('seekTo',s)};this.__nativeNext=()=>{index=(index+1)%ids.length;vid=ids[index];pos=0;emit(1)};this.__nativePrevious=()=>{index=(index+ids.length-1)%ids.length;vid=ids[index];pos=0;emit(1)};this.__ended=()=>{emit(0);if(ids&&index<ids.length-1){index++;vid=ids[index];pos=0;emit(1)}};setTimeout(()=>o.events.onReady({target:this}),window.__readyDelay||30)}};window.onYouTubeIframeAPIReady();`;
+          const report={scope:'Built V40 candidate; mocked playback transport in Chromium and WebKit, real production search API, PNG decode. Not a physical locked-iPhone test.',checks:[]};
+          function check(name,value){assert.ok(value,name);report.checks.push({name,passed:true});}
+          const server=http.createServer(async(req,res)=>{try{const u=new URL(req.url,'http://localhost');if(u.pathname==='/api/youtube-search'){const r=await fetch('https://tesla-waze-piped.vercel.app'+req.url);res.writeHead(r.status,{'Content-Type':'application/json'});return res.end(await r.text());}const f=path.join(dir,u.pathname==='/'?'index.html':u.pathname);const ext=path.extname(f);res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.json':'application/json','.webmanifest':'application/manifest+json'})[ext]||'application/octet-stream');res.end(await fs.readFile(f));}catch{res.writeHead(404);res.end();}});
+          (async()=>{
+            await new Promise(r=>server.listen(0,'127.0.0.1',r));const root='http://127.0.0.1:'+server.address().port;
+            for(const engine of [chromium,webkit]){
+              const browser=await engine.launch({headless:true});
+              async function open({seed=true,ios=true,delay=0,auto=true,throwMedia=false,realSearch=false}={}){
+                const context=await browser.newContext({viewport:{width:ios?390:1280,height:844},isMobile:ios,hasTouch:ios,userAgent:ios?'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Version/26.0 Mobile Safari/604.1':'Mozilla/5.0 Chrome/145.0'});
+                await context.addInitScript(({seed,tracks,delay,auto,throwMedia})=>{
+                  window.__mediaHandlers={};Object.defineProperty(navigator,'mediaSession',{value:{setActionHandler:(a,h)=>{if(throwMedia&&a==='seekbackward')throw Error('unsupported');window.__mediaHandlers[a]=h;},metadata:null,playbackState:'none'},configurable:true});window.__readyDelay=delay;
+                  if(seed){const profile={tracks:{},artists:{},events:[]};tracks.forEach((t,i)=>profile.tracks['yt:'+t.id]={id:'yt:'+t.id,youtubeId:t.id,title:t.title,artist:t.uploader,duration:t.duration,thumbnail:'',score:3-i,plays:2,liked:true,lastPlayed:i===1?'2026-09-11T12:00:00Z':null});localStorage.setItem('teslaMusic:brain:v1',JSON.stringify(profile));localStorage.setItem('teslaMusic:queue:v1',JSON.stringify(tracks));}localStorage.setItem('teslaMusic:settings:v1',JSON.stringify({shuffle:false,auto}));
+                },{seed,tracks,delay,auto,throwMedia});
+                const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+                await page.route('https://www.youtube.com/iframe_api',r=>r.fulfill({contentType:'text/javascript',body:shim}));
+                if(!realSearch)await page.route('**/api/youtube-search?*',r=>r.fulfill({contentType:'application/json',body:'{"items":[]}'}));
+                await page.goto(root,{waitUntil:'domcontentloaded'});return{context,page,errors};
+              }
+              let {context,page,errors}=await open();await page.waitForFunction(()=>ready);
+              check(engine.name()+' no unsolicited autoplay',await page.evaluate(()=>current===null&&__calls.length===0));
+              await page.locator('#bplay').click();check(engine.name()+' first Play selects recent song',await page.evaluate(()=>current.id==='XEjLoHdbVeE'));
+              check('iOS official playlist',await page.evaluate(()=>player.getPlaylist().length===3&&player.getPlayerState()===1));
+              await page.locator('#bplay').click();check('Pause',await page.evaluate(()=>player.getPlayerState()===2));await page.locator('#bplay').click();check('Resume no reload',await page.evaluate(()=>player.getPlayerState()===1&&__calls.filter(x=>x.a==='loadPlaylist').length===1));
+              await page.locator('[data-tab="queue"]').click();await page.evaluate(()=>__mediaHandlers.nexttrack());check('Next track',await page.evaluate(()=>current.id==='xFrGuyw1V8s'));await page.evaluate(()=>__mediaHandlers.previoustrack());check('Previous track',await page.evaluate(()=>current.id==='XEjLoHdbVeE'));
+              const count=await page.evaluate(()=>__calls.length);await page.evaluate(()=>player.__nativeNext());check('Native next updates UI without double load',await page.evaluate(n=>current.id==='xFrGuyw1V8s'&&__calls.length===n,count));await page.evaluate(()=>player.__nativePrevious());check('Native previous updates UI',await page.evaluate(()=>current.id==='XEjLoHdbVeE'));
+              await page.evaluate(()=>player.playVideoAt(0));const completed=await page.evaluate(()=>profile.tracks['yt:unfzfe8f9NI'].completed||0);await page.evaluate(()=>player.__ended());check('Native auto no double skip or complete',await page.evaluate(n=>current.id==='XEjLoHdbVeE'&&profile.tracks['yt:unfzfe8f9NI'].completed===n+1,completed));
+              check('Parent skip-seconds actions disabled',await page.evaluate(()=>__mediaHandlers.seekforward===null&&__mediaHandlers.seekbackward===null));await page.evaluate(()=>__mediaHandlers.seekto({seekTime:50}));check('Seek retained',await page.evaluate(()=>player.getCurrentTime()===50));await page.locator('#restore').click();await page.locator('#auto').click();check('AUTO off preserves position and single-track mode',await page.evaluate(()=>!teslaMusicPlaybackV40.diagnostics().nativePlaylist&&player.getPlaylist()===null&&player.getCurrentTime()===50&&player.getPlayerState()===1));check('No JS errors',errors.length===0);await context.close();
+              ({context,page}=await open({seed:false}));await page.waitForFunction(()=>ready);await page.locator('#bplay').click();check('Empty profile asks for search',await page.evaluate(()=>current===null&&document.getElementById('status').textContent.includes('vyhľadaj')));await page.evaluate(ts=>{queue=ts;tab='queue';render(ts);},tracks);await page.locator('#bplay').click();check('Play first available search result',await page.evaluate(()=>current.id==='unfzfe8f9NI'));await context.close();
+              ({context,page}=await open({delay:1400}));await page.locator('#bplay').click();await page.waitForFunction(()=>current!==null);check('Early Play request is honored',await page.evaluate(()=>current.id==='XEjLoHdbVeE'));await context.close();
+              ({context,page}=await open({delay:1400}));await page.locator('#bplay').click();await page.locator('#bplay').click();await page.waitForFunction(()=>ready);check('Pending Play can be cancelled',await page.evaluate(()=>current===null));await context.close();
+              ({context,page}=await open({ios:false,throwMedia:true}));await page.waitForFunction(()=>ready);await page.locator('#bplay').click();check('Desktop engine unchanged and unsupported action isolated',await page.evaluate(()=>__calls[0].a==='loadVideo'&&player.getPlaylist()===null&&typeof __mediaHandlers.nexttrack==='function'));await context.close();
+              ({context,page,errors}=await open({seed:false,realSearch:true}));await page.waitForFunction(()=>ready);for(const q of ['mama mia','Karel Gott']){await page.locator('#q').fill(q);const response=page.waitForResponse(r=>r.url().includes('/api/youtube-search?')&&new URL(r.url()).searchParams.get('q')===q);await page.locator('#go').click();assert.equal((await response).status(),200);await page.waitForFunction(()=>document.querySelectorAll('#grid .card').length>=3);check(engine.name()+' real search '+q,await page.locator('#grid .ctitle').count()>=3);}
+              check('Approved icon decodes 180x180',await page.evaluate(async()=>{const img=new Image();img.src=document.querySelector('link[rel="apple-touch-icon"]').href;await img.decode();return img.naturalWidth===180&&img.naturalHeight===180}));check('SVG shuffle retained',await page.locator('#shuffle svg').count()===1);check('Real search no JS exceptions',errors.length===0);await page.screenshot({path:engine.name()+'-candidate-v40.png',fullPage:true});await context.close();await browser.close();
+            }
+            await fs.writeFile('verification-v40.json',JSON.stringify(report,null,2));console.log('VERIFIED_V40_CANDIDATE '+JSON.stringify(report));
+          })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>server.close());
+          JS
+          node verify.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesla-music-v40-candidate-proof
+          path: |
+            /tmp/tm40-tests/verification-v40.json
+            /tmp/tm40-tests/*-candidate-v40.png
+            /tmp/tm40-tests/verify.cjs
+            tesla-music-production
