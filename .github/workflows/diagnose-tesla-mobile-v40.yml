@@ -1,0 +1,64 @@
+name: Tesla Music V40 isolated baseline
+on:
+  push:
+    branches: [fix/tesla-music-mobile-play-v40]
+    paths: ['.github/workflows/diagnose-tesla-mobile-v40.yml']
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check configured deployment capability without exposing credentials
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: node -e 'console.log("VERCEL_DEPLOY_CREDENTIAL_CONFIGURED=" + Boolean(process.env.VERCEL_TOKEN))'
+      - name: Capture canonical production and immutable sources
+        run: |
+          mkdir -p /tmp/tm40/baseline
+          cd /tmp/tm40
+          npm init -y >/dev/null
+          npm install playwright@1.58.2
+          npx playwright install --with-deps chromium webkit
+          cat > inspect.cjs <<'JS'
+          const fs=require('node:fs/promises');
+          const {chromium}=require('playwright');
+          (async()=>{
+            const root='https://tesla-waze-piped.vercel.app';
+            for(const f of ['index.html','app-v7.js','mini-v7.js','mode-v9.js','account-v8.js','style-v7.css','mode-v9.css','manifest.webmanifest','sw.js','version.json']){
+              const r=await fetch(root+'/'+(f==='index.html'?'':f));if(!r.ok)throw Error(f+' '+r.status);await fs.writeFile('baseline/'+f,await r.text());
+            }
+            const b=await chromium.launch({args:['--no-sandbox']});
+            const p=await b.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+            await p.addInitScript(()=>{
+              window.__mediaActions=[];
+              if(navigator.mediaSession){const original=navigator.mediaSession.setActionHandler.bind(navigator.mediaSession);navigator.mediaSession.setActionHandler=(action,handler)=>{window.__mediaActions.push({action,enabled:!!handler});return original(action,handler);};}
+            });
+            const errors=[];p.on('pageerror',e=>errors.push(e.message));
+            await p.goto(root,{waitUntil:'domcontentloaded'});await p.locator('#q').fill('ABBA Mamma Mia');
+            const rp=p.waitForResponse(r=>r.url().includes('/api/youtube-search?')&&new URL(r.url()).searchParams.get('q')==='ABBA Mamma Mia');await p.locator('#go').click();await rp;
+            await p.locator('#grid .card').first().waitFor();
+            await p.waitForTimeout(2000);
+            const before=await p.evaluate(()=>({ready,current,actions:window.__mediaActions}));
+            await p.locator('#bplay').click();await p.waitForTimeout(800);
+            const afterPlay=await p.evaluate(()=>({ready,current,state:player?.getPlayerState?.()}));
+            await p.locator('#grid .card').first().click();await p.waitForTimeout(5000);
+            const frames=[];for(const f of p.frames()){try{frames.push(await f.evaluate(()=>({url:location.origin,actions:window.__mediaActions,media:navigator.mediaSession?.metadata?{title:navigator.mediaSession.metadata.title,album:navigator.mediaSession.metadata.album}:null,videos:[...document.querySelectorAll('video')].map(v=>({paused:v.paused,time:v.currentTime,error:v.error?.code}))})));}catch{}}
+            const report={before,afterPlay,frames,errors};await fs.writeFile('baseline/browser.json',JSON.stringify(report,null,2));console.log('BASELINE '+JSON.stringify(report));
+            await b.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node inspect.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesla-music-v40-baseline
+          path: |
+            /tmp/tm40/baseline
+            tesla-music-production
+            tesla-music-v7-preview/mini-v7.js
