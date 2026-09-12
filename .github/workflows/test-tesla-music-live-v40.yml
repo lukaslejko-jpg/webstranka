@@ -1,0 +1,44 @@
+name: Tesla Music V40 production controls verification
+on:
+  push:
+    branches: [tesla-music-v6-preview]
+    paths: ['.github/workflows/test-tesla-music-live-v40.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    defaults:
+      run:
+        working-directory: tesla-music-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm canonical domain has actually switched to V40
+        run: |
+          node --input-type=module <<'JS'
+          let ok=false;
+          for(let i=0;i<24;i++){
+            const r=await fetch('https://tesla-waze-piped.vercel.app/version.json?t='+Date.now());
+            const d=await r.json();if(d.release===40){console.log('ACTUAL_PRODUCTION_VERSION',JSON.stringify(d));ok=true;break;}
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          if(!ok)throw Error('Canonical production is not V40');
+          JS
+      - name: Test delivered code and actual search and iframe actions
+        env:
+          TEST_LIVE: '1'
+        run: |
+          npm install --no-save playwright@1.55.1
+          npx playwright install chromium
+          node test-controls-v40.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesla-music-v40-production-controls-verification
+          path: |
+            tesla-music-production/verification-v40.json
+            tesla-music-production/mobile-v40-search.png
