@@ -2,7 +2,7 @@ name: Verify Tesla Music V40 candidate
 on:
   push:
     branches: [tesla-music-v6-preview]
-    paths: ['.github/workflows/verify-tesla-music-v40.yml']
+    paths: ['.github/workflows/verify-tesla-music-v40.yml', 'tesla-music-production/mobile-controls-v40.js', 'tesla-music-production/test-controls-v40.cjs']
 permissions:
   contents: read
 jobs:
