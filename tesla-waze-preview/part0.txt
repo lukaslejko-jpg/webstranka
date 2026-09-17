@@ -7,11 +7,12 @@
 <title>Tesla Waze 2.0</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.css" />
+<style>.music-fold,.music-fab,.music-modal{display:none!important}</style>
 </head>
 <body>
 <main id="app" class="app">
   <aside id="panel" class="panel">
-    <header><div><div class="sub">Waze mapa · Waze trasa · Smart Music</div><h1>Tesla Waze</h1></div><button id="hidePanel" class="btn">Skryť</button></header>
+    <header><div><div class="sub">Waze mapa · Waze trasa</div><h1>Tesla Waze</h1></div><button id="hidePanel" class="btn">Skryť</button></header>
     <div class="quickbar"><button id="pairBtn" class="btn">Prepojiť mobil</button><button id="homeBtn" class="btn" disabled>Domov</button><button id="workBtn" class="btn" disabled>Práca</button></div>
     <div class="searchbox"><div class="row"><input id="searchInput" placeholder="Adresa, mesto, firma alebo bod záujmu"/><button id="searchBtn" class="btn">Hľadať</button></div><small id="searchStatus"></small><div id="searchResults" class="results"></div></div>
     <div id="gpsNotice" class="gpsnotice"><b>GPS</b><span>Získavam GPS polohu…</span></div>
