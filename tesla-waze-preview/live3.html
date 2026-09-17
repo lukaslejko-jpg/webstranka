@@ -14,14 +14,14 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
 #app{grid-template-columns:1fr!important;height:100vh!important;width:100vw!important}
 .topbar #panelBtn{display:none!important}
 #preSearchDock{position:fixed!important;top:18px!important;left:18px!important;right:auto!important;transform:none!important;width:min(520px,calc(100vw - 180px))!important;z-index:5500!important}
-.music-fab{display:flex!important;position:fixed!important;right:24px!important;bottom:96px!important;z-index:7000!important;opacity:.78!important;width:54px!important;height:54px!important;border-radius:50%!important;align-items:center!important;justify-content:center!important;font-size:26px!important}
+.music-fold,.music-fab,.music-modal{display:none!important}
 #map{width:100%!important;height:100%!important}
 </style>
 </head>
 <body>
 <main id="app" class="app">
   <aside id="panel" class="panel">
-    <header><div><div class="sub">Waze mapa · Waze trasa · Smart Music</div><h1>Tesla Waze</h1></div><button id="hidePanel" class="btn">Skryť</button></header>
+    <header><div><div class="sub">Waze mapa · Waze trasa</div><h1>Tesla Waze</h1></div><button id="hidePanel" class="btn">Skryť</button></header>
     <div class="quickbar"><button id="pairBtn" class="btn">Prepojiť mobil</button><button id="homeBtn" class="btn" disabled>Domov</button><button id="workBtn" class="btn" disabled>Práca</button></div>
     <div class="searchbox"><div class="row"><input id="searchInput" placeholder="Adresa, mesto, firma alebo bod záujmu"/><button id="searchBtn" class="btn">Hľadať</button></div><small id="searchStatus"></small><div id="searchResults" class="results"></div></div>
     <div id="gpsNotice" class="gpsnotice"><b>GPS</b><span>Získavam GPS polohu…</span></div>
@@ -107,5 +107,4 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
  },250)};document.body.appendChild(sc);
 }catch(e){document.body.innerHTML='<div style="padding:24px;color:white;background:#111">Tesla Waze chyba: '+String(e.message||e)+'</div>'}})();
 </script>
-<script src="./media-session-v112.js?v=112"></script>
 </body></html>
