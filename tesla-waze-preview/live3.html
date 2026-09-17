@@ -41,15 +41,12 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
       <button id="chargerToggle" class="btn wide">Nabíjačky vyp.</button>
       <div id="chargerControls" class="hidden"><div class="chips" id="chargerFilters"></div><button id="chargerSearch" class="btn wide">Hľadať v tejto oblasti</button><small id="chargerMsg"></small></div>
     </div></details>
-    <details class="fold music-fold"><summary><span class="foldtitle"><b>🎵 Hudba</b><small>Smart Music</small></span><span class="foldchev">›</span></summary><div class="foldbody"><button id="openMusic" class="btn wide primary">Otvoriť prehrávač</button><small id="musicMiniStatus">lukaslejko@gmail.com · YouTube nepripojený</small></div></details>
     <details class="fold"><summary><span class="foldtitle"><b>Obľúbené miesta</b><small id="favCount">0</small></span><span class="foldchev">›</span></summary><div id="favorites" class="foldbody"></div></details>
     <details class="fold"><summary><span class="foldtitle"><b>Posledné ciele</b><small id="recentCount">0</small></span><span class="foldchev">›</span></summary><div id="recents" class="foldbody"></div></details>
   </aside>
   <section class="mapwrap"><div id="map" class="map"></div><div class="topbar"><button id="panelBtn" class="btn">Skryť panel</button><button id="routeModeBtn" class="btn hidden">Celá trasa</button><div id="speed" class="badge">— km/h</div><button id="fullscreenBtn" class="btn">Celá obrazovka</button></div><div id="routeBox" class="routebox hidden"></div><div id="alertBox" class="alertbox hidden"></div></section>
 </main>
 <div id="pairModal" class="modal hidden"><div class="modalbox"><h2>Prepojenie mobilu</h2><div id="pairBody"></div><button class="btn" data-close="pairModal">Zavrieť</button></div></div>
-<button id="musicFab" class="music-fab" aria-label="Otvoriť hudbu" title="Hudba">🎵</button>
-<div id="musicModal" class="music-modal hidden"><section class="music-shell"><div class="music-head"><div class="music-icon">🎵</div><div><h2>Smart Music</h2><small id="musicStatus">Učím sa tvoju hudbu</small></div><div class="spacer"></div><button id="closeMusic" class="btn">Späť na mapu</button></div><div class="music-body"><div class="music-card"><div id="musicAccount" class="music-account"></div><button id="youtubeSync" class="btn primary wide">Prepojiť / synchronizovať YouTube</button><small>YouTube „Páči sa mi“ používame ako profil preferencií. Google heslo sa v aplikácii neukladá.</small></div><div class="music-card"><div class="row"><input id="musicSearch" placeholder="Skladba alebo interpret"><button id="musicSearchBtn" class="btn primary">Hľadať</button></div><div id="musicSearchResults"></div></div><div class="music-tabs"><button class="chip active" data-mtab="forYou">✨ Pre teba</button><button class="chip" data-mtab="likes">♥ Obľúbené</button><button class="chip" data-mtab="recent">🕘 Nedávno</button></div><div id="musicList"></div><div id="musicSources"></div></div><div id="musicPlayer" class="music-player"></div></section></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
 
@@ -92,6 +89,8 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
    out=out.replace('const isOffRoute=!arrived&&confirmedOffRoute(n.distance,state.accuracy);','const isOffRoute=!arrived&&((Number(state.speed)||0)*3.6>=5)&&confirmedOffRoute(n.distance,state.accuracy);');
    out=out.replace('if(state.wrongTurnHits>=1&&!state.routeLoading', 'if(state.wrongTurnHits>=2&&!state.routeLoading');
    out=out.replace('if(state.offRouteHits>=1&&!state.routeLoading', 'if(state.offRouteHits>=2&&!state.routeLoading');
+   out=out.replace("state.map.panTo(center,{animate:false})","state.map.panTo(center,{animate:true,duration:.45,easeLinearity:.5,noMoveStart:true})");
+   out=out.replace("$('alertBox').textContent=`${label} · ${fmtD(Math.max(0,best.ahead))} pred vozidlom`;$('alertBox').classList.remove('hidden')}","$('alertBox').textContent=`${label} · ${fmtD(Math.max(0,best.ahead))} pred vozidlom`;$('alertBox').classList.remove('hidden');if(type==='POLICE'&&best.ahead>=0&&best.ahead<=3000){const id=String(best.a.id||best.a.uuid||`${type}:${Number(best.a.lat??best.a.location?.y??best.a.location?.lat).toFixed(4)}:${Number(best.a.lng??best.a.location?.x??best.a.location?.lng).toFixed(4)}`);state.spokenPoliceAlerts=state.spokenPoliceAlerts||new Set();if(!state.spokenPoliceAlerts.has(id)){state.spokenPoliceAlerts.add(id);speak(`Policajná hliadka o ${fmtSpeechD(Math.max(0,best.ahead))}.`)}}}");
    out=out.replace("  const key=`${p.stepIdx}:${bucket}`;\n  if(key===state.lastVoice)return;\n  state.lastVoice=key;","  const sig=voiceManeuverSignature(step),rank=({step:1,3000:2,2000:3,1000:4,500:5,200:6,now:7})[bucket]||1,seen=voiceManeuverHistory.get(sig)||0;\n  if(rank<=seen)return;\n  voiceManeuverHistory.set(sig,rank);\n  const key=`${sig}:${bucket}`;\n  if(key===state.lastVoice)return;\n  state.lastVoice=key;");
    return out;
  };
@@ -106,4 +105,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#0b1118}
  sc.src=url;sc.onload=()=>{URL.revokeObjectURL(url);const f=document.getElementById('musicFab');if(f)f.style.setProperty('display','none','important')};document.body.appendChild(sc);
 }catch(e){document.body.innerHTML='<div style="padding:24px;color:white;background:#111">Tesla Waze chyba: '+String(e.message||e)+'</div>'}})();
 </script>
+<script src="./map-prefetch-v159.js?v=163"></script>
+<script src="./map-transition-v160.js?v=163"></script>
+<script src="./map-manual-zoom-v161.js?v=163"></script>
 </body></html>
