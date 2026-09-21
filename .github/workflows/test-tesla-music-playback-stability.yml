@@ -1,0 +1,47 @@
+name: Tesla Music playback stability test
+
+on:
+  push:
+    branches: [fix/tesla-music-playback-stability-20260921]
+    paths:
+      - 'tesla-music-production/mobile-controls-v40.js'
+      - 'tesla-music-production/mobile-v128-music-logic.js'
+      - 'tesla-music-production/desktop-silence-v63.js'
+      - 'tesla-music-production/test-current-production-playback-fix.cjs'
+      - '.github/workflows/test-tesla-music-playback-stability.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/tesla-music-playback-stability-20260921
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static syntax checks
+        run: |
+          node --check tesla-music-production/mobile-controls-v40.js
+          node --check tesla-music-production/mobile-v128-music-logic.js
+          node --check tesla-music-production/desktop-silence-v63.js
+          node --check tesla-music-production/test-current-production-playback-fix.cjs
+          grep -q "nativeEnabled=.*desktop" tesla-music-production/mobile-controls-v40.js
+          grep -q "player.nextVideo" tesla-music-production/mobile-controls-v40.js
+          grep -q "player?.nextVideo" tesla-music-production/mobile-v128-music-logic.js
+          ! grep -q "count>20" tesla-music-production/desktop-silence-v63.js
+      - name: Install browser test runtime
+        run: |
+          npm install --no-save playwright@1.55.1
+          npx playwright install chromium
+      - name: Test patched scripts against current live production shell
+        run: node tesla-music-production/test-current-production-playback-fix.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tesla-music-playback-stability-report
+          path: tesla-music-playback-fix-report.json
