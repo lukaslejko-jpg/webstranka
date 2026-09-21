@@ -92,6 +92,8 @@ async function prepare(page,url){
    throw new Error('BOOT_DIAGNOSTIC '+JSON.stringify({diag,pageErrors:page.errors})+' :: '+error.message);
  }
  await page.waitForFunction(()=>!document.getElementById('musicGate'),{timeout:10000}).catch(()=>{});
+ await page.addScriptTag({path:path.resolve('tesla-music-production/player-visibility-guard-v129.js')});
+ await page.waitForFunction(()=>!!window.teslaMusicVisibilityV129,{timeout:5000});
  await page.locator('#q').fill('Kali');
  const response=page.waitForResponse(r=>r.url().includes('/api/youtube-search?')&&new URL(r.url()).searchParams.get('q')==='Kali');
  await page.locator('#go').click();
@@ -109,6 +111,8 @@ async function mobileTest(browser){
   const firstTitle=await p.locator('#grid .ctitle').first().textContent();
   await p.locator('#grid .card').first().click();
   await p.waitForFunction(()=>typeof current!=='undefined'&&!!current?.id,{timeout:10000});
+  await p.waitForTimeout(50);
+  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'mobile track selection must stay on the bottom bar');
   const initial=await p.evaluate(()=>({id:current.id,calls:window.__ytCalls.slice(),playlist:player.getPlaylist(),index:player.getPlaylistIndex(),playback:window.teslaMusicPlaybackV40.state(),auto:settings.auto,tab}));
   assert.equal(initial.playback.nativeActive,true,'mobile native background playlist must be active: '+JSON.stringify(initial));
   assert.equal(initial.calls.filter(x=>x[0]==='playlist').length,1,'mobile should create one native playlist');
@@ -119,6 +123,8 @@ async function mobileTest(browser){
   const beforeId=await p.evaluate(()=>current.id);
   await p.locator('#bnext').click();
   await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,beforeId);
+  await p.waitForTimeout(50);
+  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'mobile Next must not open the mini player');
   const after=await p.evaluate(()=>({id:current.id,calls:window.__ytCalls.slice(),playlistLoads:window.__ytCalls.filter(x=>x[0]==='playlist').length,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length}));
   assert.notEqual(after.id,beforeId);
   assert.equal(after.playlistLoads,1,'manual mobile Next must not rebuild playlist');
@@ -130,6 +136,7 @@ async function mobileTest(browser){
   assert.equal(await p.evaluate(()=>window.__ytCalls.length),autoBefore,'ENDED must not trigger a second JS load while native playlist owns AUTO');
   await p.evaluate(()=>player.nextVideo());
   await p.waitForTimeout(80);
+  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'mobile AUTO must not open the mini player');
 
   const ytHandle2=await p.locator('#yt').elementHandle();
   assert.ok(await ytHandle.evaluate((a,b)=>a===b,ytHandle2).catch(()=>true));
@@ -147,6 +154,8 @@ async function desktopTest(browser){
   const ytNode=await p.locator('#yt').evaluate(el=>el);
   await p.locator('#grid .card').first().click();
   await p.waitForFunction(()=>(typeof current!=='undefined'&&current?.id));
+  await p.waitForTimeout(50);
+  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'desktop track selection must stay on the bottom bar');
   const start=await p.evaluate(()=>({id:current.id,calls:window.__ytCalls.slice(),native:window.teslaMusicPlaybackV40.state().nativeActive}));
   assert.equal(start.native,false,'desktop must never enable native YouTube playlist');
   assert.equal(start.calls.filter(x=>x[0]==='playlist').length,0,'desktop must not call loadPlaylist');
@@ -157,6 +166,7 @@ async function desktopTest(browser){
   await p.locator('#bnext').click();
   await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,beforeId);
   await p.waitForTimeout(100);
+  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'desktop Next must not open the mini player');
   const manual=await p.evaluate(()=>({id:current.id,singles:window.__ytCalls.filter(x=>x[0]==='single').length,playCalls:window.__ytCalls.filter(x=>x[0]==='play').length,playlist:window.__ytCalls.filter(x=>x[0]==='playlist').length}));
   assert.equal(manual.singles,beforeSingles+1,'desktop Next must load exactly one next track');
   assert.equal(manual.playlist,0);
@@ -167,6 +177,7 @@ async function desktopTest(browser){
   await p.evaluate(()=>player.emit(YT.PlayerState.ENDED));
   await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,beforeAutoId,{timeout:5000});
   await p.waitForTimeout(100);
+  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'desktop AUTO must not open the mini player');
   const auto=await p.evaluate(()=>({id:current.id,singles:window.__ytCalls.filter(x=>x[0]==='single').length,playlist:window.__ytCalls.filter(x=>x[0]==='playlist').length,playCalls:window.__ytCalls.filter(x=>x[0]==='play').length}));
   assert.equal(auto.singles,autoSingles+1,'desktop AUTO must load exactly one next track');
   assert.equal(auto.playlist,0);
