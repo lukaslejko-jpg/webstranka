@@ -75,7 +75,22 @@ async function prepare(page,url){
  await page.goto(url,{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>typeof window.onYouTubeIframeAPIReady==='function'&&window.YT?.Player,{timeout:15000});
  await page.evaluate(()=>{if(!window.player)window.onYouTubeIframeAPIReady();});
- await page.waitForFunction(()=>window.teslaMusicPlaybackV40&&window.player&&window.ready===true,{timeout:30000});
+ try{
+   await page.waitForFunction(()=>window.teslaMusicPlaybackV40&&window.player&&window.ready===true,{timeout:8000});
+ }catch(error){
+   const diag=await page.evaluate(()=>({
+     playback:!!window.teslaMusicPlaybackV40,
+     player:!!window.player,
+     ready:window.ready,
+     onReady:typeof window.onYouTubeIframeAPIReady,
+     yt:typeof window.YT?.Player,
+     playTrack:typeof window.playTrack,
+     next:typeof window.next,
+     path:location.pathname,
+     scripts:[...document.scripts].map(s=>s.src).filter(Boolean)
+   }));
+   throw new Error('BOOT_DIAGNOSTIC '+JSON.stringify({diag,pageErrors:page.errors})+' :: '+error.message);
+ }
  await page.waitForFunction(()=>!document.getElementById('musicGate'),{timeout:10000}).catch(()=>{});
  await page.locator('#q').fill('Kali');
  const response=page.waitForResponse(r=>r.url().includes('/api/youtube-search?')&&new URL(r.url()).searchParams.get('q')==='Kali');
