@@ -108,7 +108,7 @@ async function mobileTest(browser){
   const ytHandle=await p.locator('#yt').elementHandle();
   const firstTitle=await p.locator('#grid .ctitle').first().textContent();
   await p.locator('#grid .card').first().click();
-  await p.waitForFunction(()=>window.current?.id&&window.teslaMusicPlaybackV40.state().nativeActive);
+  await p.waitForFunction(()=>(typeof current!=='undefined'&&current?.id)&&window.teslaMusicPlaybackV40.state().nativeActive);
   const initial=await p.evaluate(()=>({id:current.id,calls:window.__ytCalls.slice(),playlist:player.getPlaylist(),index:player.getPlaylistIndex()}));
   assert.equal(initial.calls.filter(x=>x[0]==='playlist').length,1,'mobile should create one native playlist');
   assert.equal(initial.calls.filter(x=>x[0]==='single').length,0,'mobile AUTO should not also load a single video');
@@ -117,7 +117,7 @@ async function mobileTest(browser){
   const beforeCalls=await p.evaluate(()=>window.__ytCalls.length);
   const beforeId=await p.evaluate(()=>current.id);
   await p.locator('#bnext').click();
-  await p.waitForFunction(id=>window.current?.id&&window.current.id!==id,beforeId);
+  await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,beforeId);
   const after=await p.evaluate(()=>({id:current.id,calls:window.__ytCalls.slice(),playlistLoads:window.__ytCalls.filter(x=>x[0]==='playlist').length,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length}));
   assert.notEqual(after.id,beforeId);
   assert.equal(after.playlistLoads,1,'manual mobile Next must not rebuild playlist');
@@ -145,7 +145,7 @@ async function desktopTest(browser){
   await prepare(p,ROOT+'/desktop');
   const ytNode=await p.locator('#yt').evaluate(el=>el);
   await p.locator('#grid .card').first().click();
-  await p.waitForFunction(()=>window.current?.id);
+  await p.waitForFunction(()=>(typeof current!=='undefined'&&current?.id));
   const start=await p.evaluate(()=>({id:current.id,calls:window.__ytCalls.slice(),native:window.teslaMusicPlaybackV40.state().nativeActive}));
   assert.equal(start.native,false,'desktop must never enable native YouTube playlist');
   assert.equal(start.calls.filter(x=>x[0]==='playlist').length,0,'desktop must not call loadPlaylist');
@@ -154,7 +154,7 @@ async function desktopTest(browser){
   const beforeId=await p.evaluate(()=>current.id);
   const beforeSingles=await p.evaluate(()=>window.__ytCalls.filter(x=>x[0]==='single').length);
   await p.locator('#bnext').click();
-  await p.waitForFunction(id=>window.current?.id&&window.current.id!==id,beforeId);
+  await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,beforeId);
   await p.waitForTimeout(100);
   const manual=await p.evaluate(()=>({id:current.id,singles:window.__ytCalls.filter(x=>x[0]==='single').length,playCalls:window.__ytCalls.filter(x=>x[0]==='play').length,playlist:window.__ytCalls.filter(x=>x[0]==='playlist').length}));
   assert.equal(manual.singles,beforeSingles+1,'desktop Next must load exactly one next track');
@@ -164,7 +164,7 @@ async function desktopTest(browser){
   const beforeAutoId=manual.id;
   const autoSingles=manual.singles;
   await p.evaluate(()=>player.emit(YT.PlayerState.ENDED));
-  await p.waitForFunction(id=>window.current?.id&&window.current.id!==id,beforeAutoId,{timeout:5000});
+  await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,beforeAutoId,{timeout:5000});
   await p.waitForTimeout(100);
   const auto=await p.evaluate(()=>({id:current.id,singles:window.__ytCalls.filter(x=>x[0]==='single').length,playlist:window.__ytCalls.filter(x=>x[0]==='playlist').length,playCalls:window.__ytCalls.filter(x=>x[0]==='play').length}));
   assert.equal(auto.singles,autoSingles+1,'desktop AUTO must load exactly one next track');
