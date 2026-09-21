@@ -1,0 +1,187 @@
+name: Tesla Music playback fix preview
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-tesla-music-playback-fix.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      VERCEL_PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      BASE_DEPLOYMENT: dpl_6WCouRsQB3kAyjf2xNhA16nAYYqn
+    steps:
+      - name: Require deployment token
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}" || { echo "VERCEL_TOKEN secret is missing"; exit 2; }
+
+      - name: Snapshot exact production deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          python3 - <<'PY'
+          import os, json, base64, urllib.request, pathlib
+
+          token=os.environ['VERCEL_TOKEN']
+          team=os.environ['VERCEL_TEAM_ID']
+          dep=os.environ['BASE_DEPLOYMENT']
+          root=pathlib.Path('work')
+          headers={'Authorization':f'Bearer {token}'}
+
+          def get_json(url):
+              req=urllib.request.Request(url,headers=headers)
+              with urllib.request.urlopen(req,timeout=60) as r:
+                  return json.loads(r.read().decode())
+
+          tree=get_json(f'https://api.vercel.com/v6/deployments/{dep}/files?teamId={team}')
+
+          def walk(nodes,prefix=''):
+              for node in nodes:
+                  name=node.get('name','')
+                  path=f'{prefix}/{name}'.lstrip('/')
+                  if node.get('type')=='directory':
+                      walk(node.get('children') or [],path)
+                      continue
+                  uid=node.get('uid') or node.get('id')
+                  if not uid:
+                      raise RuntimeError(f'missing file uid for {path}: {node}')
+                  url=f'https://api.vercel.com/v8/deployments/{dep}/files/{uid}?teamId={team}'
+                  req=urllib.request.Request(url,headers=headers)
+                  with urllib.request.urlopen(req,timeout=60) as r:
+                      raw=r.read()
+                      ctype=r.headers.get('content-type','')
+                  data=raw
+                  if 'json' in ctype:
+                      obj=json.loads(raw.decode())
+                      value=obj.get('data',obj.get('content'))
+                      if value is None:
+                          raise RuntimeError(f'no content payload for {path}')
+                      try: data=base64.b64decode(value,validate=True)
+                      except Exception: data=value.encode()
+                  out=root/path
+                  out.parent.mkdir(parents=True,exist_ok=True)
+                  out.write_bytes(data)
+
+          walk(tree if isinstance(tree,list) else tree.get('files',[]))
+          print('snapshot files:',sum(1 for p in root.rglob('*') if p.is_file()))
+          PY
+          test -f work/mobile-controls-v40.js
+          test -f work/mobile-v128-music-logic.js
+          test -f work/desktop-silence-v63.js
+          test -f work/desktop-v127-youtube-search.js
+          test -f work/app-v7.js
+
+      - name: Apply only playback ownership fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('work/mobile-controls-v40.js')
+          s=p.read_text()
+          old="const nativeEnabled=params.get('map')!=='1'&&params.get('embed')!=='1';"
+          new="const nativeEnabled=params.get('map')!=='1'&&params.get('embed')!=='1'&&!/^\\/desktop\\/?$/.test(location.pathname);"
+          assert old in s, 'nativeEnabled marker missing'
+          s=s.replace(old,new,1)
+
+          old="""next=function(manual=true){
+    // YouTube advances its native playlist itself. Do not also advance in JS.
+    if(!manual&&nativeActive)return;
+    if(advancing)return;
+    advancing=true;
+    try{const result=baseNext(manual);if(result?.then)return result.finally(()=>{advancing=false;});advancing=false;return result;}
+    catch(e){advancing=false;throw e;}
+  };"""
+          new="""next=function(manual=true){
+    // Native mobile playlist owns background AUTO transitions.
+    if(nativeActive){
+      if(!manual)return;
+      if(advancing)return;
+      try{
+        const list=player?.getPlaylist?.()||[],index=player?.getPlaylistIndex?.();
+        if(index>=0&&index+1<list.length){
+          advancing=true;
+          player.nextVideo();
+          setTimeout(()=>{advancing=false},250);
+          return;
+        }
+      }catch{}
+    }
+    if(advancing)return;
+    advancing=true;
+    try{const result=baseNext(manual);if(result?.then)return result.finally(()=>{advancing=false;});advancing=false;return result;}
+    catch(e){advancing=false;throw e;}
+  };"""
+          assert old in s, 'mobile-controls next marker missing'
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('work/mobile-v128-music-logic.js')
+          s=p.read_text()
+          old="""const mobileEndlessNext=endlessNext;next=async function(manual=true){if(!manual&&window.teslaMusicPlaybackV40?.state?.().nativeActive){try{const list=player?.getPlaylist?.()||[],index=player?.getPlaylistIndex?.();if(index>=0&&index+1<list.length)return}catch{}}return mobileEndlessNext(manual)};"""
+          new="""const mobileEndlessNext=endlessNext;next=async function(manual=true){if(window.teslaMusicPlaybackV40?.state?.().nativeActive){try{const list=player?.getPlaylist?.()||[],index=player?.getPlaylistIndex?.();if(index>=0&&index+1<list.length){if(!manual)return;player?.nextVideo?.();return}}catch{}}return mobileEndlessNext(manual)};"""
+          assert old in s, 'mobile-v128 next marker missing'
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('work/desktop-silence-v63.js')
+          s=p.read_text()
+          old="""window.addEventListener('tesla-music-trackchange',()=>{hold();let count=0;const timer=setInterval(()=>{count++;try{(window.player||window.ytPlayer)?.playVideo?.()}catch{}if(count>20)clearInterval(timer)},150)});"""
+          new="""window.addEventListener('tesla-music-trackchange',()=>{hold()});"""
+          assert old in s, 'desktop silence marker missing'
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+
+          node --check work/mobile-controls-v40.js
+          node --check work/mobile-v128-music-logic.js
+          node --check work/desktop-silence-v63.js
+          node --check work/desktop-v127-youtube-search.js
+          node --check work/app-v7.js
+
+          grep -q "nativeEnabled=.*desktop" work/mobile-controls-v40.js
+          grep -q "player.nextVideo" work/mobile-controls-v40.js
+          grep -q "player?.nextVideo" work/mobile-v128-music-logic.js
+          ! grep -q "count>20" work/desktop-silence-v63.js
+
+      - name: Link exact Vercel project
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work/.vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_TEAM_ID" "$VERCEL_PROJECT_ID" > work/.vercel/project.json
+          cd work
+          npx vercel@59.16.0 pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
+      - name: Deploy preview only
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd work
+          url="$(npx vercel@59.16.0 deploy --yes --token="$VERCEL_TOKEN")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "### Tesla Music playback-fix preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "$url" >> "$GITHUB_STEP_SUMMARY"
+          echo "PREVIEW_URL=$url"
+
+      - name: Server smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd work
+          url="${{ steps.deploy.outputs.url }}"
+          npx vercel@59.16.0 inspect "$url" --token="$VERCEL_TOKEN" >/tmp/inspect.txt
+          grep -E "READY|Ready" /tmp/inspect.txt || cat /tmp/inspect.txt
+          echo "Preview created; production was not changed."
