@@ -59,17 +59,37 @@ Pred produkciou sa testuje minimálne:
 - existujúce API stále odpovedajú,
 - nesúvisiace funkcie ostali funkčné.
 
-### Tesla Music
-- skladba sa spustí,
-- prehrávanie pokračuje,
-- Next funguje bez preskakovania viacerých skladieb,
-- Previous funguje,
-- prehrávanie sa nezastaví po približne minúte,
-- rádio nepreberie prehrávanie,
-- AUTO/shuffle ostávajú podľa schváleného stavu,
-- minimalizácia/obnovenie prehrávača nezastaví skladbu,
-- background playback sa nezlomí,
-- vyhľadávanie a „Pre teba“ ostanú funkčné.
+### Tesla Music — minimálna akceptačná hranica
+Nasledujúce body sú **povinné minimum**. Ak ktorýkoľvek z nich zlyhá, verzia sa nesmie označiť ako funkčná ani nasadiť do produkcie:
+
+- sekcia **Vyhľadané** musí fungovať, zobrazovať správne výsledky a zostať použiteľná po prehratí skladby,
+- skladba sa musí spustiť bez chyby,
+- prechod zo skladby na ďalšiu skladbu musí byť plynulý,
+- **rádio nesmie prebrať prehrávanie** pri automatickom pokračovaní ani po stlačení Next,
+- Next musí prejsť presne na jednu ďalšiu skladbu,
+- Previous musí fungovať korektne,
+- nesmie dochádzať k preskakovaniu viacerých skladieb naraz,
+- pri prepínaní skladby nesmie blikať celá aplikácia, prehrávač ani hudobné okno,
+- pri načítavaní novej skladby nesmie byť viditeľné opakované preblikávanie alebo opakované reloadovanie prehrávača,
+- prehrávač nesmie počas prechodu zbytočne zaniknúť a znovu sa vytvoriť,
+- prehrávanie sa nesmie samovoľne zastaviť po približne minúte,
+- AUTO/shuffle musia zostať podľa schváleného stavu,
+- minimalizácia/obnovenie prehrávača nesmie zastaviť skladbu,
+- background playback sa nesmie zlomiť,
+- vyhľadávanie a „Pre teba“ musia zostať funkčné.
+
+### Tesla Music — povinný test prechodu skladieb
+Pred každým produkčným nasadením sa musí reálne vykonať minimálne tento scenár:
+
+1. Spustiť skladbu z **Vyhľadané**.
+2. Nechať ju načítať a hrať.
+3. Stlačiť **Next**.
+4. Overiť, že sa spustila presne jedna ďalšia skladba.
+5. Overiť, že sa nespustilo rádio.
+6. Overiť, že aplikácia ani prehrávač nepreblikli.
+7. Zopakovať prechod ešte aspoň raz.
+8. Overiť aj automatický prechod na ďalšiu skladbu, ak je dostupný.
+9. Ak sa objaví rádio, bliknutie, viacnásobný preskok alebo reload prehrávača, test je neúspešný a produkčné nasadenie je zakázané.
 
 ### Tesla Waze
 - mapa sa načíta bez bliknutia,
