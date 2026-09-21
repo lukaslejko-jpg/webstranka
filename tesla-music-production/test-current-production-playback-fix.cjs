@@ -108,8 +108,9 @@ async function mobileTest(browser){
   const ytHandle=await p.locator('#yt').elementHandle();
   const firstTitle=await p.locator('#grid .ctitle').first().textContent();
   await p.locator('#grid .card').first().click();
-  await p.waitForFunction(()=>(typeof current!=='undefined'&&current?.id)&&window.teslaMusicPlaybackV40.state().nativeActive);
-  const initial=await p.evaluate(()=>({id:current.id,calls:window.__ytCalls.slice(),playlist:player.getPlaylist(),index:player.getPlaylistIndex()}));
+  await p.waitForFunction(()=>typeof current!=='undefined'&&!!current?.id,{timeout:10000});
+  const initial=await p.evaluate(()=>({id:current.id,calls:window.__ytCalls.slice(),playlist:player.getPlaylist(),index:player.getPlaylistIndex(),playback:window.teslaMusicPlaybackV40.state(),auto:settings.auto,tab}));
+  assert.equal(initial.playback.nativeActive,true,'mobile native background playlist must be active: '+JSON.stringify(initial));
   assert.equal(initial.calls.filter(x=>x[0]==='playlist').length,1,'mobile should create one native playlist');
   assert.equal(initial.calls.filter(x=>x[0]==='single').length,0,'mobile AUTO should not also load a single video');
   assert.ok(initial.playlist.length>=2,'mobile native playlist should contain next tracks');
