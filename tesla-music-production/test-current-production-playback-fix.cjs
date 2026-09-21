@@ -74,14 +74,14 @@ async function prepare(page,url){
  page.on('request',r=>page.requests.push(r.url()));
  await page.goto(url,{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>typeof window.onYouTubeIframeAPIReady==='function'&&window.YT?.Player,{timeout:15000});
- await page.evaluate(()=>{if(!window.player)window.onYouTubeIframeAPIReady();});
+ await page.evaluate(()=>{if(typeof player==='undefined'||!player)window.onYouTubeIframeAPIReady();});
  try{
-   await page.waitForFunction(()=>window.teslaMusicPlaybackV40&&window.player&&window.ready===true,{timeout:8000});
+   await page.waitForFunction(()=>window.teslaMusicPlaybackV40&&typeof player!=='undefined'&&!!player&&typeof ready!=='undefined'&&ready===true,{timeout:8000});
  }catch(error){
    const diag=await page.evaluate(()=>({
      playback:!!window.teslaMusicPlaybackV40,
-     player:!!window.player,
-     ready:window.ready,
+     player:(typeof player!=='undefined'&&!!player),
+     ready:(typeof ready!=='undefined'?ready:null),
      onReady:typeof window.onYouTubeIframeAPIReady,
      yt:typeof window.YT?.Player,
      playTrack:typeof window.playTrack,
