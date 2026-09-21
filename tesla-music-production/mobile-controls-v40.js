@@ -62,9 +62,9 @@
     if(which==='likes')return all.filter(t=>t.liked).sort((a,b)=>score(b)-score(a)).map(item);
     if(which==='recent')return all.filter(t=>t.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed)-Date.parse(a.lastPlayed)).map(item);
     if(which==='queue'){
-      const searched=typeof searchResults!=='undefined'&&Array.isArray(searchResults)?searchResults:[];
-      const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
-      return searched.length?searched:recommended;
+      // Search/discovery logic lives in an isolated script scope. The base renderer
+      // always exposes the currently visible "Vyhľadané" list through global items.
+      return Array.isArray(items)&&items.length?items:queue;
     }
     const ranked=all.filter(t=>isAutoMusic(item(t))).sort((a,b)=>score(b)-score(a)).map(item);
     const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
