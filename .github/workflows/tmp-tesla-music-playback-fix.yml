@@ -95,50 +95,24 @@ jobs:
           assert old in s, 'nativeEnabled marker missing'
           s=s.replace(old,new,1)
 
-          old="""next=function(manual=true){
-    // YouTube advances its native playlist itself. Do not also advance in JS.
-    if(!manual&&nativeActive)return;
-    if(advancing)return;
-    advancing=true;
-    try{const result=baseNext(manual);if(result?.then)return result.finally(()=>{advancing=false;});advancing=false;return result;}
-    catch(e){advancing=false;throw e;}
-  };"""
-          new="""next=function(manual=true){
-    // Native mobile playlist owns background AUTO transitions.
-    if(nativeActive){
-      if(!manual)return;
-      if(advancing)return;
-      try{
-        const list=player?.getPlaylist?.()||[],index=player?.getPlaylistIndex?.();
-        if(index>=0&&index+1<list.length){
-          advancing=true;
-          player.nextVideo();
-          setTimeout(()=>{advancing=false},250);
-          return;
-        }
-      }catch{}
-    }
-    if(advancing)return;
-    advancing=true;
-    try{const result=baseNext(manual);if(result?.then)return result.finally(()=>{advancing=false;});advancing=false;return result;}
-    catch(e){advancing=false;throw e;}
-  };"""
+          old="next=function(manual=true){\\n    // YouTube advances its native playlist itself. Do not also advance in JS.\\n    if(!manual&&nativeActive)return;\\n    if(advancing)return;\\n    advancing=true;\\n    try{const result=baseNext(manual);if(result?.then)return result.finally(()=>{advancing=false;});advancing=false;return result;}\\n    catch(e){advancing=false;throw e;}\\n  };"
+          new="next=function(manual=true){\\n    // Native mobile playlist owns background AUTO transitions.\\n    if(nativeActive){\\n      if(!manual)return;\\n      if(advancing)return;\\n      try{\\n        const list=player?.getPlaylist?.()||[],index=player?.getPlaylistIndex?.();\\n        if(index>=0&&index+1<list.length){\\n          advancing=true;\\n          player.nextVideo();\\n          setTimeout(()=>{advancing=false},250);\\n          return;\\n        }\\n      }catch{}\\n    }\\n    if(advancing)return;\\n    advancing=true;\\n    try{const result=baseNext(manual);if(result?.then)return result.finally(()=>{advancing=false;});advancing=false;return result;}\\n    catch(e){advancing=false;throw e;}\\n  };"
           assert old in s, 'mobile-controls next marker missing'
           s=s.replace(old,new,1)
           p.write_text(s)
 
           p=Path('work/mobile-v128-music-logic.js')
           s=p.read_text()
-          old="""const mobileEndlessNext=endlessNext;next=async function(manual=true){if(!manual&&window.teslaMusicPlaybackV40?.state?.().nativeActive){try{const list=player?.getPlaylist?.()||[],index=player?.getPlaylistIndex?.();if(index>=0&&index+1<list.length)return}catch{}}return mobileEndlessNext(manual)};"""
-          new="""const mobileEndlessNext=endlessNext;next=async function(manual=true){if(window.teslaMusicPlaybackV40?.state?.().nativeActive){try{const list=player?.getPlaylist?.()||[],index=player?.getPlaylistIndex?.();if(index>=0&&index+1<list.length){if(!manual)return;player?.nextVideo?.();return}}catch{}}return mobileEndlessNext(manual)};"""
+          old="const mobileEndlessNext=endlessNext;next=async function(manual=true){if(!manual&&window.teslaMusicPlaybackV40?.state?.().nativeActive){try{const list=player?.getPlaylist?.()||[],index=player?.getPlaylistIndex?.();if(index>=0&&index+1<list.length)return}catch{}}return mobileEndlessNext(manual)};"
+          new="const mobileEndlessNext=endlessNext;next=async function(manual=true){if(window.teslaMusicPlaybackV40?.state?.().nativeActive){try{const list=player?.getPlaylist?.()||[],index=player?.getPlaylistIndex?.();if(index>=0&&index+1<list.length){if(!manual)return;player?.nextVideo?.();return}}catch{}}return mobileEndlessNext(manual)};"
           assert old in s, 'mobile-v128 next marker missing'
           s=s.replace(old,new,1)
           p.write_text(s)
 
           p=Path('work/desktop-silence-v63.js')
           s=p.read_text()
-          old="""window.addEventListener('tesla-music-trackchange',()=>{hold();let count=0;const timer=setInterval(()=>{count++;try{(window.player||window.ytPlayer)?.playVideo?.()}catch{}if(count>20)clearInterval(timer)},150)});"""
-          new="""window.addEventListener('tesla-music-trackchange',()=>{hold()});"""
+          old="window.addEventListener('tesla-music-trackchange',()=>{hold();let count=0;const timer=setInterval(()=>{count++;try{(window.player||window.ytPlayer)?.playVideo?.()}catch{}if(count>20)clearInterval(timer)},150)});"
+          new="window.addEventListener('tesla-music-trackchange',()=>{hold()});"
           assert old in s, 'desktop silence marker missing'
           s=s.replace(old,new,1)
           p.write_text(s)
