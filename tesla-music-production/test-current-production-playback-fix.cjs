@@ -73,6 +73,8 @@ async function prepare(page,url){
  page.on('pageerror',e=>page.errors.push(e.message));
  page.on('request',r=>page.requests.push(r.url()));
  await page.goto(url,{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>typeof window.onYouTubeIframeAPIReady==='function'&&window.YT?.Player,{timeout:15000});
+ await page.evaluate(()=>{if(!window.player)window.onYouTubeIframeAPIReady();});
  await page.waitForFunction(()=>window.teslaMusicPlaybackV40&&window.player&&window.ready===true,{timeout:30000});
  await page.waitForFunction(()=>!document.getElementById('musicGate'),{timeout:10000}).catch(()=>{});
  await page.locator('#q').fill('Kali');
