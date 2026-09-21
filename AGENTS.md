@@ -24,6 +24,19 @@ Pred akoukoľvek zmenou musí agent/AI najprv prečítať:
 14. Produkčné dáta, tajné údaje, tokeny a heslá sa nesmú vypisovať do chatu ani ukladať do verejnej zálohy.
 15. Projekt Europrojekty sa nesmie použiť ako technický most alebo dočasné úložisko pre inú aplikáciu bez výslovného súhlasu používateľa.
 
+## Minimálna hranica funkčnosti Tesla Music
+
+Verzia Tesla Music sa **nesmie považovať za funkčnú ani nasadiť do produkcie**, ak neprejde minimálne týmito testami:
+
+- sekcia **Vyhľadané** musí fungovať a zobrazovať výsledky korektne,
+- prechod zo skladby na skladbu musí byť plynulý a bez prepnutia do rádia,
+- pri Next / automatickom prechode sa nesmie samovoľne spustiť rádio,
+- pri prepínaní alebo načítavaní skladby nesmie obrazovka ani prehrávač preblikávať,
+- nesmie dôjsť k preskakovaniu viacerých skladieb naraz,
+- prehrávač musí zostať stabilný pri načítaní ďalšej skladby.
+
+Ak čo i len jeden z týchto bodov zlyhá, deployment je neúspešný a nesmie byť produkčný.
+
 ## Zásada
 
 **Najprv záloha → potom preview → potom test → až potom produkcia → rollback musí byť pripravený.**
