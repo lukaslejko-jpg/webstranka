@@ -1,4 +1,4 @@
-/* Tesla Music V40: user-initiated start + native YouTube queue for iPhone.
+/* Tesla Music V40: user-initiated start + native YouTube queue for background playback.
  * No audio extraction, hidden audio, background polling or account dependency.
  * iOS owns the final lock-screen UI; real-device verification remains necessary.
  */
@@ -7,8 +7,7 @@
   if(window.teslaMusicPlaybackV40)return;
   const LAST='teslaMusic:lastTrack:v1';
   const params=new URLSearchParams(location.search);
-  const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-  const nativeEnabled=ios&&params.get('map')!=='1'&&params.get('embed')!=='1';
+  const nativeEnabled=params.get('map')!=='1'&&params.get('embed')!=='1'&&!/^\/desktop\/?$/.test(location.pathname);
   const basePlay=playTrack,baseNext=next,basePrev=prev,baseReady=window.onYouTubeIframeAPIReady;
   let pending=null,pendingTimer=0,installed=false,nativeActive=false,nativeTracks=new Map(),nativeContext='foryou',advancing=false,lastSaved='',lastMetadata='';
   let originalLoad=null,originalCue=null;
@@ -62,21 +61,25 @@
     const all=Object.values(profile.tracks||{});
     if(which==='likes')return all.filter(t=>t.liked).sort((a,b)=>score(b)-score(a)).map(item);
     if(which==='recent')return all.filter(t=>t.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed)-Date.parse(a.lastPlayed)).map(item);
-    if(which==='queue')return queue;
+    if(which==='queue'){
+      const searched=typeof searchResults!=='undefined'&&Array.isArray(searchResults)?searchResults:[];
+      const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
+      return searched.length?searched:recommended;
+    }
     const ranked=all.filter(t=>isAutoMusic(item(t))).sort((a,b)=>score(b)-score(a)).map(item);
-    return [...ranked,...queue.filter(isAutoMusic)];
+    const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
+    return recommended.length?recommended:ranked;
   }
   function makePlaylist(selected){
     const seen=new Set(),tracks=[];
     for(const raw of contextTracks(nativeContext)){
-      const t=normal(raw);if(!t||seen.has(t.id)||(!isAutoMusic(t)&&t.id!==selected.id))continue;
+      const t=normal(raw),music=typeof strictMusic==='function'?strictMusic(raw):isAutoMusic(t);if(!t||seen.has(t.id)||(!music&&t.id!==selected.id))continue;
       seen.add(t.id);tracks.push(t);
     }
-    let index=tracks.findIndex(t=>t.id===selected.id);
-    if(index<0){tracks.unshift(selected);index=0;}
-    // Keep the selected item in a bounded native queue, including previous tracks.
-    const offset=Math.max(0,index-80),list=tracks.slice(offset,offset+200);
-    return {list,index:index-offset};
+    // Start the native queue with the chosen track. Every remaining item is
+    // therefore available after it even when Safari suspends page JavaScript.
+    const list=[selected,...tracks.filter(t=>t.id!==selected.id)].slice(0,200);
+    return {list,index:0};
   }
   function loadWithQueue(input,startSeconds=0){
     const id=typeof input==='string'?input:input?.videoId;
@@ -88,21 +91,47 @@
     if(list.length<2){nativeActive=false;nativeTracks.clear();return originalLoad(input,startSeconds);}
     nativeTracks=new Map(list.map(t=>[t.id,t]));nativeActive=true;
     player.loadPlaylist(list.map(t=>t.id),index,Math.max(0,seconds));
-    player.setLoop(false);player.setShuffle(!!settings.shuffle);
+    player.setLoop(true);player.setShuffle(!!settings.shuffle);
   }
   function hasNativeNext(){
     if(!nativeActive)return false;
     try{const list=player.getPlaylist()||[],i=player.getPlaylistIndex();return i>=0&&i+1<list.length;}catch{return false;}
   }
   next=function(manual=true){
-    // YouTube advances its native playlist itself. Do not also advance in JS.
-    if(!manual&&hasNativeNext())return;
+    // Native mobile playlist owns AUTO/background transitions.
+    if(nativeActive){
+      if(!manual)return;
+      if(advancing)return;
+      try{
+        const list=player?.getPlaylist?.()||[],index=player?.getPlaylistIndex?.();
+        if(index>=0&&index+1<list.length){
+          advancing=true;
+          player.nextVideo();
+          setTimeout(()=>{advancing=false},250);
+          return;
+        }
+      }catch{}
+    }
     if(advancing)return;
     advancing=true;
     try{const result=baseNext(manual);if(result?.then)return result.finally(()=>{advancing=false;});advancing=false;return result;}
     catch(e){advancing=false;throw e;}
   };
-  prev=function(){if(advancing)return;advancing=true;try{return basePrev();}finally{advancing=false;}};
+  prev=function(){
+    if(nativeActive){
+      if(advancing)return;
+      try{
+        const index=player?.getPlaylistIndex?.();
+        if(index>0){
+          advancing=true;
+          player.previousVideo?.();
+          setTimeout(()=>{advancing=false},250);
+          return;
+        }
+      }catch{}
+    }
+    if(advancing)return;advancing=true;try{return basePrev();}finally{advancing=false;}
+  };
   for(const id of ['next','bnext'])if($(id))$(id).onclick=()=>next(true);
   for(const id of ['prev','bprev'])if($(id))$(id).onclick=()=>prev();
   function syncNativeTrack(){
