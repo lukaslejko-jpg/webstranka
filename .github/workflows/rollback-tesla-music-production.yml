@@ -1,0 +1,44 @@
+name: Rollback Tesla Music production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rollback-tesla-music-production.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VERCEL_ORG_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      VERCEL_PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      ROLLBACK_DEPLOYMENT: dpl_H1L29ngkfBrrntSX4d1needeTGnA
+      PROD_URL: https://tesla-waze-piped.vercel.app
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@59.25.4
+
+      - name: Authenticate Vercel CLI
+        run: |
+          echo "Authorize this CLI session in Vercel."
+          timeout 300 vercel login --github
+
+      - name: Verify CLI identity
+        run: vercel whoami
+
+      - name: Roll back production to last known good deployment
+        run: vercel rollback "$ROLLBACK_DEPLOYMENT" --yes --scope lukaslejko-9932s-projects
+
+      - name: Verify production points to rollback deployment
+        run: |
+          sleep 5
+          vercel inspect "$PROD_URL" --scope lukaslejko-9932s-projects
