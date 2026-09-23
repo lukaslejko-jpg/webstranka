@@ -1,0 +1,135 @@
+name: Clone exact prod, patch one file, preview Tesla Music
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/clone-prod-patch-preview-tesla-music.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clone-patch-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      BASE_DPL: dpl_H1L29ngkfBrrntSX4d1needeTGnA
+      HOTFIX_BRANCH: fix/tesla-music-mobile-endless-20260923
+    steps:
+      - name: Checkout hotfix source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HOTFIX_BRANCH }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@59.25.4
+
+      - name: Authenticate Vercel CLI
+        run: timeout 300 vercel login --github
+
+      - name: Verify identity
+        run: vercel whoami
+
+      - name: Download exact source file tree from last known good deployment
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/exact-prod
+          mkdir -p /tmp/exact-prod
+          vercel api "/v6/deployments/$BASE_DPL/files?teamId=$TEAM_ID" > /tmp/tree.json
+          node <<'NODE'
+          const fs=require('fs'),cp=require('child_process'),path=require('path');
+          const tree=JSON.parse(fs.readFileSync('/tmp/tree.json','utf8'));
+          const out='/tmp/exact-prod';
+          let files=[];
+          function walk(nodes,prefix=''){
+            for(const n of nodes||[]){
+              const p=prefix?prefix+'/'+n.name:n.name;
+              if(n.type==='directory') walk(n.children,p);
+              else if(n.type==='file') files.push({path:p,uid:n.uid});
+            }
+          }
+          walk(Array.isArray(tree)?tree:tree.files||tree.children||[]);
+          if(!files.length) throw new Error('No files returned from production deployment');
+          for(const f of files){
+            fs.mkdirSync(path.dirname(path.join(out,f.path)),{recursive:true});
+            const endpoint='/v8/deployments/'+process.env.BASE_DPL+'/files/'+f.uid+'?teamId='+process.env.TEAM_ID;
+            const raw=cp.execFileSync('vercel',['api',endpoint],{encoding:'utf8',maxBuffer:20*1024*1024});
+            let data=JSON.parse(raw);
+            let b64=data.data ?? data.content ?? data;
+            if(typeof b64!=='string') throw new Error('Unexpected file payload for '+f.path);
+            fs.writeFileSync(path.join(out,f.path),Buffer.from(b64,'base64'));
+          }
+          fs.writeFileSync('/tmp/files.json',JSON.stringify(files,null,2));
+          console.log('CLONED_FILES='+files.length);
+          console.log(files.map(x=>x.path).join('\n'));
+          NODE
+
+      - name: Assert exact expected production structure
+        run: |
+          set -euo pipefail
+          test -f /tmp/exact-prod/mobile-controls-v40.js
+          test -f /tmp/exact-prod/index.html
+          grep -q 'mobile-controls-v40.js' /tmp/exact-prod/index.html
+          grep -q 'tesla-music-build' /tmp/exact-prod/index.html
+          echo "EXACT_PROD_STRUCTURE_OK"
+
+      - name: Record base hashes and patch only mobile-controls-v40.js
+        run: |
+          set -euo pipefail
+          cd /tmp/exact-prod
+          find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/before.sha256
+          cp "$GITHUB_WORKSPACE/tesla-music-production/mobile-controls-v40.js" ./mobile-controls-v40.js
+          node --check ./mobile-controls-v40.js
+          grep -Fq 'scheduleNativeEndFallback' ./mobile-controls-v40.js
+          grep -Fq 'const visible=' ./mobile-controls-v40.js
+          find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/after.sha256
+          node <<'NODE'
+          const fs=require('fs');
+          const parse=p=>new Map(fs.readFileSync(p,'utf8').trim().split('\n').filter(Boolean).map(l=>[l.slice(66),l.slice(0,64)]));
+          const a=parse('/tmp/before.sha256'),b=parse('/tmp/after.sha256');
+          const changed=[...new Set([...a.keys(),...b.keys()])].filter(k=>a.get(k)!==b.get(k));
+          console.log('CHANGED_FILES='+changed.join(','));
+          if(changed.length!==1 || changed[0]!=='./mobile-controls-v40.js') throw new Error('More than one file changed');
+          NODE
+
+      - name: Link exact existing Vercel project
+        working-directory: /tmp/exact-prod
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$PROJECT_ID" > .vercel/project.json
+
+      - name: Deploy preview from exact production source plus one patched file
+        id: preview
+        working-directory: /tmp/exact-prod
+        run: |
+          set -euo pipefail
+          URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
+          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "PREVIEW=$URL"
+
+      - name: Verify preview is healthy and patch is present
+        working-directory: /tmp/exact-prod
+        run: |
+          set -euo pipefail
+          vercel inspect "$PREVIEW_URL" --scope "$TEAM_SLUG"
+          vercel curl "/?mobile=1&device=mobile" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/preview-root.html
+          vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/preview-mobile.js
+          test "$(wc -c < /tmp/preview-root.html)" -gt 5000
+          grep -q 'mobile-controls-v40.js' /tmp/preview-root.html
+          grep -Fq 'scheduleNativeEndFallback' /tmp/preview-mobile.js
+          cmp -s ./mobile-controls-v40.js /tmp/preview-mobile.js
+          echo "PREVIEW_EXACT_PATCH_OK"
+
+      - name: STOP before production promotion
+        run: |
+          echo "Preview verified. Production is intentionally NOT promoted by this workflow."
