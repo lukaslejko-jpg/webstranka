@@ -48,7 +48,8 @@ async function context(browser,{mobile}){
  const replacements={
    '/mobile-controls-v40.js':path.join(dir,'mobile-controls-v40.js'),
    '/mobile-v128-music-logic.js':path.join(dir,'mobile-v128-music-logic.js'),
-   '/desktop-silence-v63.js':path.join(dir,'desktop-silence-v63.js')
+   '/desktop-silence-v63.js':path.join(dir,'desktop-silence-v63.js'),
+   '/rescue-v135.js':path.join(dir,'rescue-v135.js')
  };
  await c.route('https://tesla-waze-piped.vercel.app/**',async route=>{
    const u=new URL(route.request().url());
