@@ -36,11 +36,15 @@ jobs:
           node --check tesla-music-production/desktop-v97-youtube-search.js
           node --check tesla-music-production/member-v49-search-layout.js
           node --check tesla-music-production/member-v50-foryou.js
+          node --check tesla-music-production/mobile-v106-player-parity.js
 
       - name: Architectural guards
         run: |
           node <<'NODE'
           const fs=require('fs');
+          const mobileUi=fs.readFileSync('tesla-music-production/mobile-v106-player-parity.js','utf8');
+          const mobileUiGuard=mobileUi.split('\n').find(line=>line.includes("location.pathname"))||'';
+          if(!mobileUiGuard.includes("if(!/^\\/(?:index\\.html)?$/.test(location.pathname))return")) throw new Error('mobile-v106 route guard is not root-only: '+mobileUiGuard);
           const mobile=fs.readFileSync('tesla-music-production/mobile-v128-music-logic.js','utf8');
           const firstCode=mobile.split('\n').find(line=>line.includes("location.pathname"))||'';
           if(!firstCode.includes("if(!/^\\/(?:index\\.html)?$/.test(location.pathname))return")) throw new Error('mobile-v128 route guard is not root-only: '+firstCode);
