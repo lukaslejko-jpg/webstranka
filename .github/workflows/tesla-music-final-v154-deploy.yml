@@ -1,0 +1,198 @@
+name: Tesla Music V154 final deploy
+
+on:
+  push:
+    branches:
+      - refactor/tesla-music-playback-core-20260923
+    paths:
+      - '.github/workflows/tesla-music-final-v154-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      BASE_DPL: dpl_D1B68ws6JGYcqXhvjxXGBor4iuwN
+      PROD_ALIAS: tesla-waze-piped.vercel.app
+    steps:
+      - name: Checkout accepted refactor
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/tesla-music-playback-core-20260923
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@59.25.4
+
+      - name: Authenticate once
+        run: timeout 300 vercel login --github
+
+      - name: Verify identity
+        run: vercel whoami
+
+      - name: Clone exact accepted production source tree
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/exact-prod
+          mkdir -p /tmp/exact-prod
+          vercel api "/v6/deployments/$BASE_DPL/files?teamId=$TEAM_ID" > /tmp/tree.json
+          node <<'NODE'
+          const fs=require('fs'),cp=require('child_process'),path=require('path');
+          const tree=JSON.parse(fs.readFileSync('/tmp/tree.json','utf8'));
+          const out='/tmp/exact-prod';
+          let files=[];
+          function walk(nodes,prefix=''){
+            for(const n of nodes||[]){
+              const p=prefix?prefix+'/'+n.name:n.name;
+              if(n.type==='directory')walk(n.children,p);
+              else if(n.type==='file')files.push({path:p,uid:n.uid});
+            }
+          }
+          walk(Array.isArray(tree)?tree:tree.files||tree.children||[]);
+          if(!files.length)throw new Error('No files returned from base deployment');
+          for(const f of files){
+            fs.mkdirSync(path.dirname(path.join(out,f.path)),{recursive:true});
+            const ep='/v8/deployments/'+process.env.BASE_DPL+'/files/'+f.uid+'?teamId='+process.env.TEAM_ID;
+            const raw=cp.execFileSync('vercel',['api',ep],{encoding:'utf8',maxBuffer:20*1024*1024});
+            const data=JSON.parse(raw),b64=data.data??data.content??data;
+            if(typeof b64!=='string')throw new Error('Unexpected payload '+f.path);
+            fs.writeFileSync(path.join(out,f.path),Buffer.from(b64,'base64'));
+          }
+          console.log('CLONED_FILES='+files.length);
+          NODE
+          test -f /tmp/exact-prod/src/index.html
+          test -f /tmp/exact-prod/src/vercel.json
+
+      - name: Snapshot base hashes
+        run: |
+          cd /tmp/exact-prod/src
+          find . -type f ! -path './.vercel/*' -print0 | sort -z | xargs -0 sha256sum > /tmp/before.sha256
+
+      - name: Overlay only accepted V154 files
+        run: |
+          set -euo pipefail
+          SRC="$GITHUB_WORKSPACE/tesla-music-production"
+          DST="/tmp/exact-prod/src"
+          for f in             app-v7.js             mobile-controls-v40.js             mobile-v128-music-logic.js             mobile-v106-player-parity.js             mode-v9.js             desktop-v97-youtube-search.js             desktop-silence-v63.js             rescue-v135.js             member-v49-search-layout.js             member-v50-foryou.js             vercel.json
+          do
+            cp "$SRC/$f" "$DST/$f"
+          done
+          node "$SRC/normalize-build-v154.mjs" "$DST"
+
+      - name: Verify exact change set
+        run: |
+          set -euo pipefail
+          cd /tmp/exact-prod/src
+          find . -type f ! -path './.vercel/*' -print0 | sort -z | xargs -0 sha256sum > /tmp/after.sha256
+          node <<'NODE'
+          const fs=require('fs');
+          const parse=p=>new Map(fs.readFileSync(p,'utf8').trim().split('\n').filter(Boolean).map(l=>[l.slice(66),l.slice(0,64)]));
+          const a=parse('/tmp/before.sha256'),b=parse('/tmp/after.sha256');
+          const changed=[...new Set([...a.keys(),...b.keys()])].filter(k=>a.get(k)!==b.get(k)).sort();
+          const allowed=new Set([
+            './app-v7.js',
+            './mobile-controls-v40.js',
+            './mobile-v128-music-logic.js',
+            './mobile-v106-player-parity.js',
+            './mode-v9.js',
+            './desktop-v97-youtube-search.js',
+            './desktop-silence-v63.js',
+            './rescue-v135.js',
+            './member-v49-search-layout.js',
+            './member-v50-foryou.js',
+            './vercel.json',
+            './index.html',
+            './desktop/index.html',
+            './version.json'
+          ]);
+          console.log('CHANGED_FILES='+changed.join(','));
+          const bad=changed.filter(x=>!allowed.has(x));
+          if(bad.length)throw new Error('Unexpected changed files: '+bad.join(','));
+          for(const required of ['./app-v7.js','./mobile-controls-v40.js','./mobile-v128-music-logic.js','./desktop-v97-youtube-search.js','./vercel.json','./index.html']){
+            if(!changed.includes(required))throw new Error('Expected file not changed: '+required);
+          }
+          NODE
+
+      - name: Verify V154 source structure
+        working-directory: /tmp/exact-prod/src
+        run: |
+          set -euo pipefail
+          node --check app-v7.js
+          node --check mobile-controls-v40.js
+          node --check mobile-v128-music-logic.js
+          node --check desktop-v97-youtube-search.js
+          grep -q 'tesla-music-build" content="154' index.html
+          ! grep -Eq '\?v=(128|153)' index.html
+          grep -Fq 'scheduleNativeEndFallback' mobile-controls-v40.js
+          grep -Fq 'loadPlaylist' mobile-controls-v40.js
+          grep -Fq 'setLoop(true)' mobile-controls-v40.js
+
+      - name: Link exact Vercel project
+        working-directory: /tmp/exact-prod/src
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$PROJECT_ID" > .vercel/project.json
+
+      - name: Deploy preview
+        id: preview
+        working-directory: /tmp/exact-prod/src
+        run: |
+          set -euo pipefail
+          URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
+          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "PREVIEW=$URL"
+
+      - name: Preview smoke test
+        working-directory: /tmp/exact-prod/src
+        run: |
+          set -euo pipefail
+          vercel inspect "$PREVIEW_URL" --scope "$TEAM_SLUG"
+          vercel curl "/?mobile=1&device=mobile&pair=447337&pt=2RSuRR7mA87txiLAdLdTdRZv" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/mobile-root.html
+          vercel curl "/desktop" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/desktop-root.html
+          vercel curl "/desktop/" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/desktop-slash.html
+          vercel curl "/mobile-controls-v40.js?v=154" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/playback.js
+          vercel curl "/api/youtube-search?q=Kali" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/search.json
+          test "$(wc -c < /tmp/mobile-root.html)" -gt 5000
+          test "$(wc -c < /tmp/desktop-root.html)" -gt 5000
+          grep -q 'tesla-music-build" content="154' /tmp/mobile-root.html
+          grep -q 'tesla-music-build" content="154' /tmp/desktop-root.html
+          ! grep -Eq '\?v=(128|153)' /tmp/mobile-root.html
+          grep -Fq 'scheduleNativeEndFallback' /tmp/playback.js
+          grep -Fq 'loadPlaylist' /tmp/playback.js
+          grep -q '"items"' /tmp/search.json
+          echo "PREVIEW_SMOKE_OK"
+
+      - name: Point production alias to exact verified preview
+        run: |
+          set -euo pipefail
+          vercel alias set "$PREVIEW_URL" "$PROD_ALIAS" --scope "$TEAM_SLUG"
+          echo "ALIAS_SET_OK"
+
+      - name: Production smoke test
+        working-directory: /tmp/exact-prod/src
+        run: |
+          set -euo pipefail
+          sleep 5
+          vercel inspect "https://$PROD_ALIAS" --scope "$TEAM_SLUG"
+          vercel curl "/?mobile=1&device=mobile&pair=447337&pt=2RSuRR7mA87txiLAdLdTdRZv" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-mobile.html
+          vercel curl "/desktop" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-desktop.html
+          vercel curl "/desktop/" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-desktop-slash.html
+          vercel curl "/mobile-controls-v40.js?v=154" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-playback.js
+          vercel curl "/api/youtube-search?q=Kali" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-search.json
+          grep -q 'tesla-music-build" content="154' /tmp/prod-mobile.html
+          grep -q 'tesla-music-build" content="154' /tmp/prod-desktop.html
+          ! grep -Eq '\?v=(128|153)' /tmp/prod-mobile.html
+          grep -Fq 'scheduleNativeEndFallback' /tmp/prod-playback.js
+          grep -q '"items"' /tmp/prod-search.json
+          echo "PRODUCTION_V154_OK"
