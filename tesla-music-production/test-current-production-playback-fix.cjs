@@ -130,20 +130,29 @@ async function mobileTest(browser){
   assert.equal(after.playlistLoads,1,'manual mobile Next must not rebuild playlist');
   assert.equal(after.nextCalls,1,'manual mobile Next must advance exactly once');
 
-  const autoBefore=await p.evaluate(()=>window.__ytCalls.length);
+  const autoBefore=await p.evaluate(()=>({id:current.id,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length}));
   await p.evaluate(()=>player.emit(YT.PlayerState.ENDED));
-  await p.waitForTimeout(150);
-  assert.equal(await p.evaluate(()=>window.__ytCalls.length),autoBefore,'ENDED must not trigger a second JS load while native playlist owns AUTO');
-  await p.evaluate(()=>player.nextVideo());
-  await p.waitForTimeout(80);
-  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'mobile AUTO must not open the mini player');
+  await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,autoBefore.id,{timeout:2000});
+  await p.waitForTimeout(450);
+  const autoAfter=await p.evaluate(()=>({id:current.id,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length,playlistLoads:window.__ytCalls.filter(x=>x[0]==='playlist').length}));
+  assert.notEqual(autoAfter.id,autoBefore.id,'stalled native playlist must advance after ENDED fallback');
+  assert.equal(autoAfter.nextCalls,autoBefore.nextCalls+1,'ENDED fallback must advance exactly once');
+  assert.equal(autoAfter.playlistLoads,1,'ENDED fallback must not rebuild the native playlist');
+  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'mobile AUTO fallback must not open the mini player');
+
+  const nativeBefore=await p.evaluate(()=>({id:current.id,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length}));
+  await p.evaluate(()=>{player.emit(YT.PlayerState.ENDED);setTimeout(()=>player.nextVideo(),50);});
+  await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,nativeBefore.id,{timeout:2000});
+  await p.waitForTimeout(450);
+  const nativeAfter=await p.evaluate(()=>({id:current.id,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length}));
+  assert.equal(nativeAfter.nextCalls,nativeBefore.nextCalls+1,'native YouTube advance must cancel fallback and avoid a double skip');
 
   const ytHandle2=await p.locator('#yt').elementHandle();
   assert.ok(await ytHandle.evaluate((a,b)=>a===b,ytHandle2).catch(()=>true));
   const radio=p.requests.filter(u=>/radio|listType=radio|start_radio/i.test(u));
   assert.equal(radio.length,0,'no radio request is allowed');
   assert.equal(p.errors.length,0,p.errors.join('; '));
-  report.checks.push({mobile:true,search:firstTitle,nextSingleAdvance:true,playlistLoads:after.playlistLoads,noRadio:true,noJsErrors:true});
+  report.checks.push({mobile:true,search:firstTitle,nextSingleAdvance:true,autoFallbackSingleAdvance:true,nativeAdvanceNoDoubleSkip:true,playlistLoads:after.playlistLoads,noRadio:true,noJsErrors:true});
  }finally{await c.close();}
 }
 
