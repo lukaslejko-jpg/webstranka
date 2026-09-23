@@ -73,9 +73,9 @@ jobs:
           if(playCalls>1) throw new Error('rescue playVideo spam still active: '+playCalls);
           NODE
 
-      - name: Mobile playback regression
+      - name: Mobile and Tesla playback regression
         env:
-          TESLA_MOBILE_ONLY: '1'
+          TESLA_MOBILE_ONLY: '0'
         run: node tesla-music-production/test-current-production-playback-fix.cjs
 
       - name: Desktop boot smoke without mobile playback layer
