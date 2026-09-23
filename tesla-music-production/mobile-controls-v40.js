@@ -65,8 +65,9 @@
       const visible=!/^\/desktop\/?$/.test(location.pathname)&&typeof items!=='undefined'&&Array.isArray(items)?items:[];
       if(visible.length)return visible;
       const searched=typeof searchResults!=='undefined'&&Array.isArray(searchResults)?searchResults:[];
+      const queued=typeof queue!=='undefined'&&Array.isArray(queue)?queue:[];
       const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
-      return searched.length?searched:recommended;
+      return searched.length?searched:(queued.length?queued:recommended);
     }
     const ranked=all.filter(t=>isAutoMusic(item(t))).sort((a,b)=>score(b)-score(a)).map(item);
     const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
@@ -194,5 +195,28 @@
   window.addEventListener('pageshow',()=>{initialHint();registerMediaActions();});
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',initialHint));
   window.teslaMusicPlaybackV40=Object.freeze({version:40,start,state:()=>({nativeEnabled,nativeActive,nativeContext,pending:pending?.id||null,current:current?.id||null,playlist:nativeActive?(player?.getPlaylist?.()||[]):[]})});
+  // This script loads before mobile-v128-music-logic.js. Re-assert the final
+  // native AUTO/Next bridge after all synchronous scripts have loaded so a
+  // later next() override cannot turn AUTO into a no-op.
+  setTimeout(()=>{
+    if(/^\/desktop\/?$/.test(location.pathname)||window.teslaMusicFinalNextV40)return;
+    const downstreamNext=next;
+    next=function(manual=true){
+      if(nativeActive&&player){
+        try{
+          const list=player.getPlaylist?.()||[],i=player.getPlaylistIndex?.();
+          if(i>=0&&i+1<list.length){
+            if(advancing)return;
+            advancing=true;
+            player.nextVideo?.();
+            setTimeout(()=>{advancing=false},500);
+            return;
+          }
+        }catch{}
+      }
+      return downstreamNext(manual);
+    };
+    window.teslaMusicFinalNextV40=true;
+  },0);
   registerMediaActions();initialHint();if(ready)window.teslaMusicReadyV40();
 })();
