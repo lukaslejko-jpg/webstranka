@@ -27,3 +27,4 @@ await fs.copyFile('mode-v9.js','public/mode-v9.js');
 await fs.copyFile('desktop-v97-youtube-search.js','public/desktop-v97-youtube-search.js');
 await fs.copyFile('member-v50-foryou.js','public/member-v50-foryou.js');
 await fs.copyFile('member-v49-search-layout.js','public/member-v49-search-layout.js');
+await fs.copyFile('mobile-v106-player-parity.js','public/mobile-v106-player-parity.js');
