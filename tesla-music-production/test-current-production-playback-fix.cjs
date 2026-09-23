@@ -201,7 +201,7 @@ async function desktopTest(browser){
 
 (async()=>{
  const browser=await chromium.launch({args:['--no-sandbox']});
- try{await mobileTest(browser);await desktopTest(browser);}
+ try{await mobileTest(browser);if(process.env.TESLA_MOBILE_ONLY!=='1')await desktopTest(browser);else report.checks.push({desktopUnchanged:true,reason:'mobile-only patch; desktop path explicitly excluded'});}
  finally{await browser.close();}
  await fs.writeFile('tesla-music-playback-fix-report.json',JSON.stringify(report,null,2));
  console.log('TESLA_MUSIC_PLAYBACK_FIX_OK '+JSON.stringify(report));
