@@ -37,7 +37,8 @@ jobs:
           node <<'NODE'
           const fs=require('fs');
           const mobile=fs.readFileSync('tesla-music-production/mobile-v128-music-logic.js','utf8');
-          if(/desktop/.test(mobile.split('\n').slice(0,3).join('\n'))) throw new Error('mobile-v128 must not run on /desktop');
+          const firstCode=mobile.split('\n').find(line=>line.includes("location.pathname"))||'';
+          if(!firstCode.includes("if(!/^\\/(?:index\\.html)?$/.test(location.pathname))return")) throw new Error('mobile-v128 route guard is not root-only: '+firstCode);
           NODE
 
       - name: Playback regression
