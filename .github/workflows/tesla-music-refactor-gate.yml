@@ -32,6 +32,8 @@ jobs:
           node --check tesla-music-production/mobile-v128-music-logic.js
           node --check tesla-music-production/desktop-silence-v63.js
           node --check tesla-music-production/desktop-route-v52.js
+          node --check tesla-music-production/mode-v9.js
+          node --check tesla-music-production/desktop-v97-youtube-search.js
 
       - name: Architectural guards
         run: |
@@ -45,6 +47,16 @@ jobs:
           const app=fs.readFileSync('tesla-music-production/app-v7.js','utf8');
           if(/c>=d-1\.1/.test(app)||/autoEndedKey===k\)next\(false\)/.test(app)) throw new Error('base app still contains duplicate AUTO transition');
           if(/ENDED\)\{if\(current\)ev\('complete',current\);if\(settings\.auto\)next\(false\)/.test(app)) throw new Error('base app ENDED still advances playback');
+          const ownershipFiles=[
+            'tesla-music-production/mode-v9.js',
+            'tesla-music-production/mobile-v128-music-logic.js',
+            'tesla-music-production/desktop-v97-youtube-search.js'
+          ];
+          for(const file of ownershipFiles){
+            const code=fs.readFileSync(file,'utf8');
+            if(/\bnext\s*=/.test(code)||/\bprev\s*=/.test(code)||/\bplayTrack\s*=/.test(code)) throw new Error('unexpected playback override in '+file);
+            if(/setActionHandler\(['"]nexttrack/.test(code)||/setActionHandler\(['"]previoustrack/.test(code)) throw new Error('unexpected media-session playback override in '+file);
+          }
           const rescue=fs.readFileSync('tesla-music-production/rescue-v135.js','utf8');
           if(/setInterval\s*\(/.test(rescue)) throw new Error('rescue polling still active');
           const playCalls=(rescue.match(/\.playVideo\s*\(/g)||[]).length;
