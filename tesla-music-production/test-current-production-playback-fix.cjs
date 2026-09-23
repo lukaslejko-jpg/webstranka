@@ -46,6 +46,7 @@ async function context(browser,{mobile}){
  });
  const dir=path.resolve('tesla-music-production');
  const replacements={
+   '/app-v7.js':path.join(dir,'app-v7.js'),
    '/mobile-controls-v40.js':path.join(dir,'mobile-controls-v40.js'),
    '/mobile-v128-music-logic.js':path.join(dir,'mobile-v128-music-logic.js'),
    '/desktop-silence-v63.js':path.join(dir,'desktop-silence-v63.js'),
