@@ -7,9 +7,9 @@
   if(window.teslaMusicPlaybackV40)return;
   const LAST='teslaMusic:lastTrack:v1';
   const params=new URLSearchParams(location.search);
-  const nativeEnabled=params.get('map')!=='1'&&params.get('embed')!=='1'&&!/^\/desktop\/?$/.test(location.pathname);
+  const nativeEnabled=params.get('map')!=='1'&&params.get('embed')!=='1';
   const basePlay=playTrack,baseNext=next,basePrev=prev,baseReady=window.onYouTubeIframeAPIReady;
-  let pending=null,pendingTimer=0,installed=false,nativeActive=false,nativeTracks=new Map(),nativeContext='foryou',advancing=false,lastSaved='',lastMetadata='';
+  let pending=null,pendingTimer=0,nativeEndTimer=0,installed=false,nativeActive=false,nativeTracks=new Map(),nativeContext='foryou',advancing=false,lastSaved='',lastMetadata='';
   let originalLoad=null,originalCue=null;
   const status=text=>{const e=$('status');if(e)e.textContent=text;};
   function normal(t){
@@ -62,9 +62,9 @@
     if(which==='likes')return all.filter(t=>t.liked).sort((a,b)=>score(b)-score(a)).map(item);
     if(which==='recent')return all.filter(t=>t.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed)-Date.parse(a.lastPlayed)).map(item);
     if(which==='queue'){
-      // Search/discovery logic lives in an isolated script scope. The base renderer
-      // always exposes the currently visible "Vyhľadané" list through global items.
-      return Array.isArray(items)&&items.length?items:queue;
+      const searched=typeof searchResults!=='undefined'&&Array.isArray(searchResults)?searchResults:[];
+      const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
+      return searched.length?searched:recommended;
     }
     const ranked=all.filter(t=>isAutoMusic(item(t))).sort((a,b)=>score(b)-score(a)).map(item);
     const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
@@ -98,40 +98,14 @@
     try{const list=player.getPlaylist()||[],i=player.getPlaylistIndex();return i>=0&&i+1<list.length;}catch{return false;}
   }
   next=function(manual=true){
-    // Native mobile playlist owns AUTO/background transitions.
-    if(nativeActive){
-      if(!manual)return;
-      if(advancing)return;
-      try{
-        const list=player?.getPlaylist?.()||[],index=player?.getPlaylistIndex?.();
-        if(index>=0&&index+1<list.length){
-          advancing=true;
-          player.nextVideo();
-          setTimeout(()=>{advancing=false},250);
-          return;
-        }
-      }catch{}
-    }
+    // YouTube advances its native playlist itself. Do not also advance in JS.
+    if(!manual&&nativeActive)return;
     if(advancing)return;
     advancing=true;
     try{const result=baseNext(manual);if(result?.then)return result.finally(()=>{advancing=false;});advancing=false;return result;}
     catch(e){advancing=false;throw e;}
   };
-  prev=function(){
-    if(nativeActive){
-      if(advancing)return;
-      try{
-        const index=player?.getPlaylistIndex?.();
-        if(index>0){
-          advancing=true;
-          player.previousVideo?.();
-          setTimeout(()=>{advancing=false},250);
-          return;
-        }
-      }catch{}
-    }
-    if(advancing)return;advancing=true;try{return basePrev();}finally{advancing=false;}
-  };
+  prev=function(){if(advancing)return;advancing=true;try{return basePrev();}finally{advancing=false;}};
   for(const id of ['next','bnext'])if($(id))$(id).onclick=()=>next(true);
   for(const id of ['prev','bprev'])if($(id))$(id).onclick=()=>prev();
   function syncNativeTrack(){
@@ -143,8 +117,26 @@
     ev('play',t);paint(t);now();rememberTrack(t);media();discover(t);
     window.dispatchEvent(new CustomEvent('tesla-music-trackchange',{detail:t}));
   }
+  function scheduleNativeEndFallback(){
+    if(!nativeActive||!settings.auto||advancing||!hasNativeNext())return;
+    let beforeId='',beforeIndex=-1;
+    try{beforeId=player.getVideoData?.().video_id||'';beforeIndex=player.getPlaylistIndex?.();}catch{return;}
+    clearTimeout(nativeEndTimer);
+    nativeEndTimer=setTimeout(()=>{
+      nativeEndTimer=0;
+      if(!nativeActive||!settings.auto||advancing)return;
+      try{
+        const nowId=player.getVideoData?.().video_id||'',nowIndex=player.getPlaylistIndex?.(),list=player.getPlaylist?.()||[];
+        if(nowId!==beforeId||nowIndex!==beforeIndex||nowIndex<0||nowIndex+1>=list.length)return;
+        advancing=true;
+        player.nextVideo?.();
+        setTimeout(()=>{advancing=false},250);
+      }catch{}
+    },350);
+  }
   function onState(e){
-    if(e.data===1)syncNativeTrack();
+    if(e.data===1){clearTimeout(nativeEndTimer);nativeEndTimer=0;syncNativeTrack();}
+    else if(e.data===0)scheduleNativeEndFallback();
     registerMediaActions();media();
   }
   function installPlayer(){
