@@ -138,7 +138,7 @@
     },350);
   }
   function onState(e){
-    if(e.data===1){clearTimeout(nativeEndTimer);nativeEndTimer=0;syncNativeTrack();}
+    if(e.data===1){advancing=false;clearTimeout(nativeEndTimer);nativeEndTimer=0;syncNativeTrack();}
     else if(e.data===0)scheduleNativeEndFallback();
     registerMediaActions();media();
   }
