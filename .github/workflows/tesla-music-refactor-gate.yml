@@ -27,12 +27,10 @@ jobs:
 
       - name: Syntax checks
         run: |
-          node --check tesla-music-production/app-v7.js
           node --check tesla-music-production/mobile-controls-v40.js
           node --check tesla-music-production/mobile-v128-music-logic.js
-          node --check tesla-music-production/desktop-v97-youtube-search.js
-          node --check tesla-music-production/rescue-v135.js
           node --check tesla-music-production/desktop-silence-v63.js
+          node --check tesla-music-production/desktop-route-v52.js
 
       - name: Architectural guards
         run: |
