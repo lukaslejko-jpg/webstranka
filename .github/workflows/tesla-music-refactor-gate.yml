@@ -37,6 +37,7 @@ jobs:
           node --check tesla-music-production/member-v49-search-layout.js
           node --check tesla-music-production/member-v50-foryou.js
           node --check tesla-music-production/mobile-v106-player-parity.js
+          node --check tesla-music-production/normalize-build-v154.mjs
 
       - name: Architectural guards
         run: |
