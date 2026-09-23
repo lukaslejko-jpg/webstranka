@@ -25,3 +25,4 @@ console.log('TESLA_MUSIC_HOTFIX: immutable production snapshot + one mobile play
 
 await fs.copyFile('mode-v9.js','public/mode-v9.js');
 await fs.copyFile('desktop-v97-youtube-search.js','public/desktop-v97-youtube-search.js');
+await fs.copyFile('member-v50-foryou.js','public/member-v50-foryou.js');
