@@ -1,0 +1,51 @@
+name: Alias verified Tesla Music production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/alias-verified-tesla-music-production.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  alias:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TEAM_SLUG: lukaslejko-9932s-projects
+      VERIFIED_DPL_URL: https://tesla-waze-piped-m6ek41ab0-lukaslejko-9932s-projects.vercel.app
+      PROD_ALIAS: tesla-waze-piped.vercel.app
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@59.25.4
+
+      - name: Authenticate Vercel CLI
+        run: timeout 300 vercel login --github
+
+      - name: Verify identity
+        run: vercel whoami
+
+      - name: Point production alias to verified READY deployment
+        run: |
+          set -euo pipefail
+          vercel alias set "$VERIFIED_DPL_URL" "$PROD_ALIAS" --scope "$TEAM_SLUG"
+          echo "ALIAS_SET_OK"
+
+      - name: Verify alias target
+        run: |
+          set -euo pipefail
+          sleep 3
+          vercel inspect "https://$PROD_ALIAS" --scope "$TEAM_SLUG"
+          vercel curl "/?mobile=1&device=mobile" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/root.html
+          vercel curl "/mobile-controls-v40.js" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/mobile.js
+          test "$(wc -c < /tmp/root.html)" -gt 5000
+          grep -q 'mobile-controls-v40.js' /tmp/root.html
+          grep -Fq 'scheduleNativeEndFallback' /tmp/mobile.js
+          echo "PRODUCTION_ALIAS_VERIFY_OK"
