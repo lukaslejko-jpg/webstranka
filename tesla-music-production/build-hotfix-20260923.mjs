@@ -16,6 +16,7 @@ async function copy(urlPath,outPath=urlPath){
 await fs.rm('public',{recursive:true,force:true}); await fs.mkdir('public/desktop',{recursive:true});
 await copy('/','/index.html'); await copy('/desktop/','/desktop/index.html');
 for(const p of paths)await copy(p);
+await fs.copyFile('app-v7.js','public/app-v7.js');
 await fs.copyFile('mobile-controls-v40.js','public/mobile-controls-v40.js');
 await fs.copyFile('rescue-v135.js','public/rescue-v135.js');
 await fs.copyFile('desktop-silence-v63.js','public/desktop-silence-v63.js');
