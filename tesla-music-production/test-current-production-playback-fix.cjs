@@ -117,6 +117,10 @@ async function prepare(page,url){
  await page.waitForFunction(()=>document.getElementById('sectionTitle')?.textContent?.startsWith('Vyhľadané · Kali'),{timeout:15000});
  assert.match(await page.locator('[data-tab="queue"]').textContent(),/Vyhľadané/);
  await page.waitForSelector('#grid .card',{timeout:15000});
+ const stableBefore=await page.locator('#grid .card').evaluateAll(nodes=>nodes.slice(0,8).map(n=>n.querySelector('img')?.src+'|'+n.querySelector('.ctitle')?.textContent));
+ await page.waitForTimeout(1200);
+ const stableAfter=await page.locator('#grid .card').evaluateAll(nodes=>nodes.slice(0,8).map(n=>n.querySelector('img')?.src+'|'+n.querySelector('.ctitle')?.textContent));
+ assert.deepEqual(stableAfter,stableBefore,'rendered search cards must not reorder/flicker after paint');
 }
 
 async function mobileTest(browser){
@@ -247,6 +251,31 @@ async function desktopTest(browser){
   assert.equal(auto.playlistLoads,1,'desktop AUTO must not rebuild playlist');
   assert.equal(auto.singleLoads,0,'desktop AUTO must not call loadVideoById');
   assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'desktop AUTO must stay on bottom bar');
+
+  for(let n=0;n<10;n++){
+    const before=await p.evaluate(()=>({
+      id:current.id,
+      nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length,
+      playlistLoads:window.__ytCalls.filter(x=>x[0]==='playlist').length,
+      singleLoads:window.__ytCalls.filter(x=>x[0]==='single').length
+    }));
+    const searchBefore=p.requests.filter(u=>u.includes('/api/youtube-search?')).length;
+    await p.evaluate(()=>{player.emit(YT.PlayerState.ENDED);setTimeout(()=>player.nextVideo(),50);});
+    await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,before.id,{timeout:3000});
+    await p.waitForTimeout(500);
+    const afterStress=await p.evaluate(()=>({
+      id:current.id,
+      nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length,
+      playlistLoads:window.__ytCalls.filter(x=>x[0]==='playlist').length,
+      singleLoads:window.__ytCalls.filter(x=>x[0]==='single').length
+    }));
+    const searchAfter=p.requests.filter(u=>u.includes('/api/youtube-search?')).length;
+    assert.equal(afterStress.nextCalls,before.nextCalls+1,'Tesla AUTO transition '+n+' must advance exactly once');
+    assert.equal(afterStress.playlistLoads,before.playlistLoads,'Tesla AUTO transition '+n+' must not rebuild playlist');
+    assert.equal(afterStress.singleLoads,0,'Tesla AUTO transition '+n+' must not call loadVideoById');
+    assert.equal(searchAfter,searchBefore,'Tesla AUTO transition '+n+' must not fetch search API in critical window');
+    assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'Tesla AUTO transition '+n+' must stay on bottom bar');
+  }
 
   const radio=p.requests.filter(u=>/radio|listType=radio|start_radio/i.test(u));
   assert.equal(radio.length,0,'no radio request is allowed');
