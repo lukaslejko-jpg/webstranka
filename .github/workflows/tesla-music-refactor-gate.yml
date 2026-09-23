@@ -41,7 +41,30 @@ jobs:
           if(!firstCode.includes("if(!/^\\/(?:index\\.html)?$/.test(location.pathname))return")) throw new Error('mobile-v128 route guard is not root-only: '+firstCode);
           NODE
 
-      - name: Playback regression
+      - name: Mobile playback regression
         env:
-          TESLA_MOBILE_ONLY: '0'
+          TESLA_MOBILE_ONLY: '1'
         run: node tesla-music-production/test-current-production-playback-fix.cjs
+
+      - name: Desktop boot smoke without mobile playback layer
+        run: |
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({args:['--no-sandbox']});
+            const ctx=await browser.newContext({serviceWorkers:'block',viewport:{width:1280,height:800}});
+            const page=await ctx.newPage();
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('https://tesla-waze-piped.vercel.app/desktop',{waitUntil:'domcontentloaded'});
+            await page.waitForSelector('#q',{timeout:15000});
+            await page.waitForSelector('#go',{timeout:15000});
+            await page.waitForSelector('[data-tab="queue"]',{timeout:15000});
+            const title=await page.title();
+            const queueLabel=(await page.locator('[data-tab="queue"]').textContent()||'').trim();
+            if(!/Music/i.test(title))throw new Error('desktop title missing');
+            if(!/Vyhľadané|Poradie/.test(queueLabel))throw new Error('desktop queue label missing: '+queueLabel);
+            if(errors.length)throw new Error('desktop page errors: '+errors.join('; '));
+            await browser.close();
+            console.log('DESKTOP_BOOT_SMOKE_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
