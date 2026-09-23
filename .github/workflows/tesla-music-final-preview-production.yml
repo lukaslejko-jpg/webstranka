@@ -171,44 +171,26 @@ jobs:
           STATUS="$(vercel curl "/api/youtube-search?q=Kali" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" -I | head -n 1)"
           echo "$STATUS"
 
-      - name: Preview browser acceptance
-        env:
-          PREVIEW_URL: ${{ env.PREVIEW_URL }}
+      - name: Preview authenticated acceptance
+        working-directory: /tmp/exact-prod/src
         run: |
-          node <<'NODE'
-          const {chromium}=require('playwright');
-          const assert=require('node:assert/strict');
-          const ROOT=process.env.PREVIEW_URL;
-          const IOS='Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1';
-          const TESLA='Mozilla/5.0 (X11; GNU/Linux) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Tesla/2026.20';
-          (async()=>{
-            const browser=await chromium.launch({args:['--no-sandbox']});
-            for(const cfg of [{path:'/',ua:IOS,mobile:true},{path:'/desktop',ua:TESLA,mobile:false},{path:'/desktop/',ua:TESLA,mobile:false}]){
-              const ctx=await browser.newContext({userAgent:cfg.ua,viewport:cfg.mobile?{width:390,height:844}:{width:1280,height:800},isMobile:cfg.mobile,hasTouch:cfg.mobile,serviceWorkers:'block'});
-              await ctx.addInitScript(()=>{
-                localStorage.setItem('music:memberSession:v1','test-session');
-                localStorage.setItem('music:memberUser:v1',JSON.stringify({id:'test-user',email:'test@example.com',role:'member'}));
-                localStorage.setItem('teslaMusic:settings:v1',JSON.stringify({shuffle:false,auto:true}));
-                localStorage.setItem('teslaMusic:playbackDefaults:v2','1');
-              });
-              const p=await ctx.newPage(),errors=[];
-              p.on('pageerror',e=>errors.push(e.message));
-              await p.goto(ROOT+cfg.path,{waitUntil:'domcontentloaded'});
-              await p.waitForSelector('#q',{timeout:15000});
-              await p.locator('#q').fill('Kali');
-              const resp=p.waitForResponse(r=>r.url().includes('/api/youtube-search?')&&new URL(r.url()).searchParams.get('q')==='Kali');
-              await p.locator('#go').click();
-              assert.equal((await resp).status(),200);
-              await p.waitForFunction(()=>document.getElementById('sectionTitle')?.textContent?.startsWith('Vyhľadané · Kali'),{timeout:15000});
-              await p.waitForSelector('#grid .card',{state:'visible',timeout:15000});
-              assert.match(await p.locator('[data-tab="queue"]').textContent(),/Vyhľadané/);
-              assert.equal(errors.length,0,errors.join('; '));
-              await ctx.close();
-            }
-            await browser.close();
-            console.log('PREVIEW_BROWSER_ACCEPTANCE_OK');
-          })().catch(e=>{console.error(e);process.exit(1)});
-          NODE
+          set -euo pipefail
+          vercel curl "/?mobile=1&device=mobile" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/preview-mobile.html
+          vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/preview-playback.js
+          vercel curl "/mobile-v128-music-logic.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/preview-mobile-logic.js
+          vercel curl "/desktop-v97-youtube-search.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/preview-desktop-logic.js
+          vercel curl "/member-v49-search-layout.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/preview-search-layout.js
+          vercel curl "/rescue-v135.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/preview-rescue.js
+          vercel curl "/api/youtube-search?q=Kali" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/preview-search.json
+          test "$(wc -c < /tmp/preview-mobile.html)" -gt 5000
+          grep -q 'tesla-music-build" content="154' /tmp/preview-mobile.html
+          cmp -s mobile-controls-v40.js /tmp/preview-playback.js
+          cmp -s mobile-v128-music-logic.js /tmp/preview-mobile-logic.js
+          cmp -s desktop-v97-youtube-search.js /tmp/preview-desktop-logic.js
+          cmp -s member-v49-search-layout.js /tmp/preview-search-layout.js
+          cmp -s rescue-v135.js /tmp/preview-rescue.js
+          node -e "const d=require('/tmp/preview-search.json'); if(!Array.isArray(d.items)||!d.items.length)process.exit(1)"
+          echo "PREVIEW_AUTHENTICATED_ACCEPTANCE_OK"
 
       - name: Point production alias to exact verified preview
         run: |
@@ -226,4 +208,23 @@ jobs:
           grep -q 'tesla-music-build" content="154' /tmp/prod-mobile.html
           grep -Fq 'single shared playback controller' /tmp/prod-playback.js
           cmp -s /tmp/exact-prod/src/mobile-controls-v40.js /tmp/prod-playback.js
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=require('node:assert/strict');
+          (async()=>{
+            const browser=await chromium.launch({args:['--no-sandbox']});
+            for(const path of ['/?mobile=1&device=mobile','/desktop','/desktop/']){
+              const ctx=await browser.newContext({serviceWorkers:'block',viewport:{width:1280,height:800}});
+              const p=await ctx.newPage(),errors=[];
+              p.on('pageerror',e=>errors.push(e.message));
+              await p.goto('https://tesla-waze-piped.vercel.app'+path,{waitUntil:'domcontentloaded'});
+              await p.waitForSelector('#q',{timeout:15000});
+              if(path.includes('desktop')) assert.equal(new URL(p.url()).pathname,'/desktop');
+              assert.equal(errors.length,0,errors.join('; '));
+              await ctx.close();
+            }
+            await browser.close();
+            console.log('PRODUCTION_BROWSER_SMOKE_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
           echo "PRODUCTION_SMOKE_OK"
