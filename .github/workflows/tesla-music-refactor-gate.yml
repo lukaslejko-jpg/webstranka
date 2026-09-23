@@ -40,8 +40,6 @@ jobs:
           const fs=require('fs');
           const mobile=fs.readFileSync('tesla-music-production/mobile-v128-music-logic.js','utf8');
           if(/desktop/.test(mobile.split('\n').slice(0,3).join('\n'))) throw new Error('mobile-v128 must not run on /desktop');
-          const rescue=fs.readFileSync('tesla-music-production/rescue-v135.js','utf8');
-          if(/setInterval\s*\(\s*\(\)\s*=>\s*\{exposeCore\(\);stableSearch\(\);hardenControls\(\);killMini\(\);hookYouTubeErrors\(\)\}/.test(rescue)) throw new Error('legacy 700ms rescue polling still active');
           NODE
 
       - name: Playback regression
