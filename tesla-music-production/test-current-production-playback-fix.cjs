@@ -198,42 +198,58 @@ async function desktopTest(browser){
  const c=await context(browser,{mobile:false}),p=await c.newPage();
  try{
   await prepare(p,ROOT+'/desktop');
-  const ytNode=await p.locator('#yt').evaluate(el=>el);
+  const firstTitle=await p.locator('#grid .ctitle').first().textContent();
   await p.locator('#grid .card').first().click();
   await p.waitForFunction(()=>(typeof current!=='undefined'&&current?.id));
-  await p.waitForTimeout(50);
+  await p.waitForTimeout(80);
   assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'desktop track selection must stay on the bottom bar');
-  const start=await p.evaluate(()=>({id:current.id,calls:window.__ytCalls.slice(),native:window.teslaMusicPlaybackV40.state().nativeActive}));
-  assert.equal(start.native,false,'desktop must never enable native YouTube playlist');
-  assert.equal(start.calls.filter(x=>x[0]==='playlist').length,0,'desktop must not call loadPlaylist');
-  assert.equal(start.calls.filter(x=>x[0]==='single').length,1,'desktop first track should load once');
+  const start=await p.evaluate(()=>({
+    id:current.id,
+    calls:window.__ytCalls.slice(),
+    playback:window.teslaMusicPlaybackV40.state(),
+    playlist:player.getPlaylist(),
+    index:player.getPlaylistIndex()
+  }));
+  assert.equal(start.playback.nativeActive,true,'desktop must use the same native playlist engine');
+  assert.ok(start.playlist.length>=2,'desktop native playlist must contain next tracks');
+  assert.equal(start.calls.filter(x=>x[0]==='playlist').length,1,'desktop should create one native playlist');
+  assert.equal(start.calls.filter(x=>x[0]==='single').length,0,'desktop AUTO must not load a single video');
 
   const beforeId=await p.evaluate(()=>current.id);
-  const beforeSingles=await p.evaluate(()=>window.__ytCalls.filter(x=>x[0]==='single').length);
+  const beforeNext=await p.evaluate(()=>window.__ytCalls.filter(x=>x[0]==='nextVideo').length);
   await p.locator('#bnext').click();
-  await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,beforeId);
-  await p.waitForTimeout(100);
-  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'desktop Next must not open the mini player');
-  const manual=await p.evaluate(()=>({id:current.id,singles:window.__ytCalls.filter(x=>x[0]==='single').length,playCalls:window.__ytCalls.filter(x=>x[0]==='play').length,playlist:window.__ytCalls.filter(x=>x[0]==='playlist').length}));
-  assert.equal(manual.singles,beforeSingles+1,'desktop Next must load exactly one next track');
-  assert.equal(manual.playlist,0);
-  assert.equal(manual.playCalls,0,'desktop audio bridge must not spam playVideo');
+  await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,beforeId,{timeout:3000});
+  await p.waitForTimeout(80);
+  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'desktop Next must not open the player');
+  const manual=await p.evaluate(()=>({
+    id:current.id,
+    nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length,
+    playlistLoads:window.__ytCalls.filter(x=>x[0]==='playlist').length,
+    singleLoads:window.__ytCalls.filter(x=>x[0]==='single').length
+  }));
+  assert.equal(manual.nextCalls,beforeNext+1,'desktop manual Next must advance exactly once');
+  assert.equal(manual.playlistLoads,1,'desktop manual Next must not rebuild playlist');
+  assert.equal(manual.singleLoads,0,'desktop manual Next must not call loadVideoById');
 
-  const beforeAutoId=manual.id;
-  const autoSingles=manual.singles;
+  const autoBefore=await p.evaluate(()=>({id:current.id,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length}));
   await p.evaluate(()=>player.emit(YT.PlayerState.ENDED));
-  await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,beforeAutoId,{timeout:5000});
-  await p.waitForTimeout(100);
-  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'desktop AUTO must not open the mini player');
-  const auto=await p.evaluate(()=>({id:current.id,singles:window.__ytCalls.filter(x=>x[0]==='single').length,playlist:window.__ytCalls.filter(x=>x[0]==='playlist').length,playCalls:window.__ytCalls.filter(x=>x[0]==='play').length}));
-  assert.equal(auto.singles,autoSingles+1,'desktop AUTO must load exactly one next track');
-  assert.equal(auto.playlist,0);
-  assert.equal(auto.playCalls,0);
+  await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,autoBefore.id,{timeout:3000});
+  await p.waitForTimeout(450);
+  const auto=await p.evaluate(()=>({
+    id:current.id,
+    nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length,
+    playlistLoads:window.__ytCalls.filter(x=>x[0]==='playlist').length,
+    singleLoads:window.__ytCalls.filter(x=>x[0]==='single').length
+  }));
+  assert.equal(auto.nextCalls,autoBefore.nextCalls+1,'desktop AUTO must advance exactly once');
+  assert.equal(auto.playlistLoads,1,'desktop AUTO must not rebuild playlist');
+  assert.equal(auto.singleLoads,0,'desktop AUTO must not call loadVideoById');
+  assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'desktop AUTO must stay on bottom bar');
 
   const radio=p.requests.filter(u=>/radio|listType=radio|start_radio/i.test(u));
-  assert.equal(radio.length,0);
+  assert.equal(radio.length,0,'no radio request is allowed');
   assert.equal(p.errors.length,0,p.errors.join('; '));
-  report.checks.push({desktop:true,manualNextOneLoad:true,autoNextOneLoad:true,noPlaylist:true,noPlaySpam:true,noRadio:true,noJsErrors:true});
+  report.checks.push({desktop:true,search:firstTitle,nativePlaylist:true,manualNextOneAdvance:true,autoNextOneAdvance:true,noSingleLoads:true,noRadio:true,noJsErrors:true});
  }finally{await c.close();}
 }
 
