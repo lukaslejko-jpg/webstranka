@@ -1,0 +1,108 @@
+name: Deploy Tesla Music mobile hotfix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_ORG_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      VERCEL_PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      HOTFIX_BRANCH: fix/tesla-music-mobile-endless-20260923
+      PROD_URL: https://tesla-waze-piped.vercel.app
+    steps:
+      - name: Checkout tested hotfix
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HOTFIX_BRANCH }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify required token
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          test -n "$VERCEL_TOKEN" || { echo "Missing repository secret VERCEL_TOKEN"; exit 2; }
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Link exact existing Vercel project
+        working-directory: tesla-music-production
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
+      - name: Pull preview environment
+        working-directory: tesla-music-production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
+      - name: Build preview artifact
+        working-directory: tesla-music-production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --token="$VERCEL_TOKEN"
+
+      - name: Deploy preview
+        id: preview
+        working-directory: tesla-music-production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          URL="$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
+
+      - name: Inspect preview
+        working-directory: tesla-music-production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          vercel inspect "$PREVIEW_URL" --token="$VERCEL_TOKEN"
+          vercel curl "/?mobile=1&device=mobile" --deployment "$PREVIEW_URL" --token="$VERCEL_TOKEN" > /tmp/root.html
+          vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" --token="$VERCEL_TOKEN" > /tmp/mobile.js
+          grep -q 'mobile-controls-v40.js' /tmp/root.html
+          grep -q 'scheduleNativeEndFallback' /tmp/mobile.js
+          grep -q "visible=!/^\\/desktop" /tmp/mobile.js
+          grep -q 'TESLA_MUSIC_HOTFIX' tesla-music-production/build-hotfix-20260923.mjs
+
+      - name: Verify tested mobile acceptance commit
+        run: |
+          node --check tesla-music-production/mobile-controls-v40.js
+          node --check tesla-music-production/mobile-v128-music-logic.js
+          grep -q 'scheduleNativeEndFallback' tesla-music-production/mobile-controls-v40.js
+          grep -q "visible=!/^\\/desktop" tesla-music-production/mobile-controls-v40.js
+
+      - name: Promote exact preview to production
+        working-directory: tesla-music-production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel promote "$PREVIEW_URL" --yes --token="$VERCEL_TOKEN"
+
+      - name: Production smoke test
+        working-directory: tesla-music-production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          sleep 5
+          curl -fsS "$PROD_URL/?mobile=1&device=mobile" -o /tmp/prod-root.html
+          curl -fsS "$PROD_URL/mobile-controls-v40.js" -o /tmp/prod-mobile.js
+          grep -q 'mobile-controls-v40.js' /tmp/prod-root.html
+          grep -q 'scheduleNativeEndFallback' /tmp/prod-mobile.js
+          grep -q "visible=!/^\\/desktop" /tmp/prod-mobile.js
+          echo "PRODUCTION_SMOKE_OK"
+
+      - name: Show final deployment
+        working-directory: tesla-music-production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel inspect "$PROD_URL" --token="$VERCEL_TOKEN"
