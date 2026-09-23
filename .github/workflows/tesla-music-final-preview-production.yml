@@ -1,0 +1,208 @@
+name: Tesla Music final preview and production
+
+on:
+  push:
+    branches:
+      - refactor/tesla-music-playback-core-20260923
+    paths:
+      - '.github/workflows/tesla-music-final-preview-production.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      BASE_DPL: dpl_D1B68ws6JGYcqXhvjxXGBor4iuwN
+      BUILD: "154"
+      PROD_ALIAS: tesla-waze-piped.vercel.app
+    steps:
+      - name: Checkout refactor
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install tools
+        run: |
+          npm install --global vercel@59.25.4
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Authenticate Vercel CLI
+        run: timeout 300 vercel login --github
+
+      - name: Verify identity
+        run: vercel whoami
+
+      - name: Clone exact verified Vercel source tree
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/exact-prod
+          mkdir -p /tmp/exact-prod
+          vercel api "/v6/deployments/$BASE_DPL/files?teamId=$TEAM_ID" > /tmp/tree.json
+          node <<'NODE'
+          const fs=require('fs'),cp=require('child_process'),path=require('path');
+          const tree=JSON.parse(fs.readFileSync('/tmp/tree.json','utf8'));
+          const out='/tmp/exact-prod';
+          let files=[];
+          function walk(nodes,prefix=''){
+            for(const n of nodes||[]){
+              const p=prefix?prefix+'/'+n.name:n.name;
+              if(n.type==='directory') walk(n.children,p);
+              else if(n.type==='file') files.push({path:p,uid:n.uid});
+            }
+          }
+          walk(Array.isArray(tree)?tree:tree.files||tree.children||[]);
+          if(!files.length) throw new Error('No source files returned from verified deployment');
+          for(const f of files){
+            fs.mkdirSync(path.dirname(path.join(out,f.path)),{recursive:true});
+            const endpoint='/v8/deployments/'+process.env.BASE_DPL+'/files/'+f.uid+'?teamId='+process.env.TEAM_ID;
+            const raw=cp.execFileSync('vercel',['api',endpoint],{encoding:'utf8',maxBuffer:20*1024*1024});
+            const data=JSON.parse(raw),b64=data.data??data.content??data;
+            if(typeof b64!=='string')throw new Error('Unexpected payload for '+f.path);
+            fs.writeFileSync(path.join(out,f.path),Buffer.from(b64,'base64'));
+          }
+          console.log('CLONED_FILES='+files.length);
+          NODE
+          test -f /tmp/exact-prod/src/index.html
+          test -f /tmp/exact-prod/src/vercel.json
+
+      - name: Overlay only tested refactor files
+        run: |
+          set -euo pipefail
+          SRC=/tmp/exact-prod/src
+          for f in             app-v7.js             mobile-controls-v40.js             rescue-v135.js             desktop-silence-v63.js             mobile-v128-music-logic.js             mode-v9.js             desktop-v97-youtube-search.js             member-v50-foryou.js             member-v49-search-layout.js             mobile-v106-player-parity.js             vercel.json
+          do
+            cp "tesla-music-production/$f" "$SRC/$f"
+          done
+
+      - name: Normalize one build version
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs'),path=require('path');
+          const build=process.env.BUILD;
+          for(const p of ['/tmp/exact-prod/src/index.html','/tmp/exact-prod/src/upstream/piped/index.html']){
+            if(!fs.existsSync(p))continue;
+            let s=fs.readFileSync(p,'utf8');
+            s=s.replace(/(<meta name="tesla-music-build" content=")[^"]+(")/g,'$1'+build+'$2');
+            s=s.replace(/((?:src|href)="\/[^"]+?)(?:\?v=\d+)?(")/g,(m,a,b)=>{
+              if(/youtube\.com/.test(a)||/manifest\.webmanifest/.test(a))return m;
+              return a+'?v='+build+b;
+            });
+            fs.writeFileSync(p,s);
+          }
+          NODE
+
+      - name: Validate source invariants
+        run: |
+          set -euo pipefail
+          SRC=/tmp/exact-prod/src
+          node --check "$SRC/app-v7.js"
+          node --check "$SRC/mobile-controls-v40.js"
+          node --check "$SRC/mobile-v128-music-logic.js"
+          node --check "$SRC/desktop-v97-youtube-search.js"
+          node --check "$SRC/rescue-v135.js"
+          grep -q 'tesla-music-build" content="154' "$SRC/index.html"
+          ! grep -Eq '\?v=(128|153)' "$SRC/index.html"
+          grep -Fq "if(!/^\/(?:index\.html)?$/.test(location.pathname))return" "$SRC/mobile-v128-music-logic.js"
+          grep -Fq "if(!/^\/desktop\/?$/.test(location.pathname))return" "$SRC/desktop-v97-youtube-search.js"
+          ! grep -Eq 'new[[:space:]]+Audio|silence\.wav' "$SRC/desktop-silence-v63.js"
+          ! grep -Eq 'setInterval[[:space:]]*\(' "$SRC/rescue-v135.js"
+
+      - name: Link exact project
+        working-directory: /tmp/exact-prod/src
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$PROJECT_ID" > .vercel/project.json
+
+      - name: Deploy preview
+        working-directory: /tmp/exact-prod/src
+        run: |
+          set -euo pipefail
+          URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
+          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
+          echo "PREVIEW=$URL"
+
+      - name: Verify preview files and routes
+        working-directory: /tmp/exact-prod/src
+        run: |
+          set -euo pipefail
+          vercel inspect "$PREVIEW_URL" --scope "$TEAM_SLUG"
+          vercel curl "/?mobile=1&device=mobile" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/mobile-root.html
+          vercel curl "/desktop" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/desktop-root.html
+          vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/playback.js
+          test "$(wc -c < /tmp/mobile-root.html)" -gt 5000
+          test "$(wc -c < /tmp/desktop-root.html)" -gt 5000
+          grep -q 'tesla-music-build" content="154' /tmp/mobile-root.html
+          grep -Fq 'single shared playback controller' /tmp/playback.js
+          cmp -s mobile-controls-v40.js /tmp/playback.js
+          STATUS="$(vercel curl "/api/youtube-search?q=Kali" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" -I | head -n 1)"
+          echo "$STATUS"
+
+      - name: Preview browser acceptance
+        env:
+          PREVIEW_URL: ${{ env.PREVIEW_URL }}
+        run: |
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          const assert=require('node:assert/strict');
+          const ROOT=process.env.PREVIEW_URL;
+          const IOS='Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1';
+          const TESLA='Mozilla/5.0 (X11; GNU/Linux) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Tesla/2026.20';
+          (async()=>{
+            const browser=await chromium.launch({args:['--no-sandbox']});
+            for(const cfg of [{path:'/',ua:IOS,mobile:true},{path:'/desktop',ua:TESLA,mobile:false}]){
+              const ctx=await browser.newContext({userAgent:cfg.ua,viewport:cfg.mobile?{width:390,height:844}:{width:1280,height:800},isMobile:cfg.mobile,hasTouch:cfg.mobile,serviceWorkers:'block'});
+              await ctx.addInitScript(()=>{
+                localStorage.setItem('music:memberSession:v1','test-session');
+                localStorage.setItem('music:memberUser:v1',JSON.stringify({id:'test-user',email:'test@example.com',role:'member'}));
+                localStorage.setItem('teslaMusic:settings:v1',JSON.stringify({shuffle:false,auto:true}));
+                localStorage.setItem('teslaMusic:playbackDefaults:v2','1');
+              });
+              const p=await ctx.newPage(),errors=[];
+              p.on('pageerror',e=>errors.push(e.message));
+              await p.goto(ROOT+cfg.path,{waitUntil:'domcontentloaded'});
+              await p.waitForSelector('#q',{timeout:15000});
+              await p.locator('#q').fill('Kali');
+              const resp=p.waitForResponse(r=>r.url().includes('/api/youtube-search?')&&new URL(r.url()).searchParams.get('q')==='Kali');
+              await p.locator('#go').click();
+              assert.equal((await resp).status(),200);
+              await p.waitForFunction(()=>document.getElementById('sectionTitle')?.textContent?.startsWith('Vyhľadané · Kali'),{timeout:15000});
+              await p.waitForSelector('#grid .card',{state:'visible',timeout:15000});
+              assert.match(await p.locator('[data-tab="queue"]').textContent(),/Vyhľadané/);
+              assert.equal(errors.length,0,errors.join('; '));
+              await ctx.close();
+            }
+            await browser.close();
+            console.log('PREVIEW_BROWSER_ACCEPTANCE_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Point production alias to exact verified preview
+        run: |
+          set -euo pipefail
+          vercel alias set "$PREVIEW_URL" "$PROD_ALIAS" --scope "$TEAM_SLUG"
+          echo "PRODUCTION_ALIAS_SET_OK"
+
+      - name: Production smoke
+        run: |
+          set -euo pipefail
+          sleep 5
+          vercel inspect "https://$PROD_ALIAS" --scope "$TEAM_SLUG"
+          vercel curl "/?mobile=1&device=mobile" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-mobile.html
+          vercel curl "/desktop" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-desktop.html
+          vercel curl "/mobile-controls-v40.js" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-playback.js
+          grep -q 'tesla-music-build" content="154' /tmp/prod-mobile.html
+          test "$(wc -c < /tmp/prod-desktop.html)" -gt 5000
+          grep -Fq 'single shared playback controller' /tmp/prod-playback.js
+          cmp -s /tmp/exact-prod/src/mobile-controls-v40.js /tmp/prod-playback.js
+          echo "PRODUCTION_SMOKE_OK"
