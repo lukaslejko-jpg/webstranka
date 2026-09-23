@@ -12,7 +12,7 @@ function fakeYoutube(){
 return `
 window.__ytCalls=[];
 window.YT={PlayerState:{UNSTARTED:-1,ENDED:0,PLAYING:1,PAUSED:2,BUFFERING:3,CUED:5},Player:function(id,options){
- this.list=[];this.index=-1;this.state=-1;this.time=0;this.id='';this.listeners={};
+ this.list=[];this.index=-1;this.state=-1;this.time=0;this.id='';this.listeners={};this.loop=false;
  this.emit=s=>{this.state=s;options.events.onStateChange?.({data:s,target:this});for(const h of this.listeners.onStateChange||[]){const fn=typeof h==='string'?window[h]:h;fn?.({data:s,target:this});}};
  this.getPlayerState=()=>this.state;this.getCurrentTime=()=>this.time;this.getDuration=()=>220;
  this.getVideoData=()=>({video_id:this.id});this.getPlaylist=()=>this.list.slice();this.getPlaylistIndex=()=>this.index;
@@ -23,8 +23,8 @@ window.YT={PlayerState:{UNSTARTED:-1,ENDED:0,PLAYING:1,PAUSED:2,BUFFERING:3,CUED
  this.playVideo=()=>{window.__ytCalls.push(['play']);this.emit(1);};
  this.pauseVideo=()=>{window.__ytCalls.push(['pause']);this.emit(2);};
  this.seekTo=t=>{this.time=t;window.__ytCalls.push(['seek',t]);};
- this.setLoop=v=>window.__ytCalls.push(['loop',!!v]);this.setShuffle=v=>window.__ytCalls.push(['shuffle',!!v]);
- this.nextVideo=()=>{window.__ytCalls.push(['nextVideo']);if(this.list.length&&this.index+1<this.list.length){this.index++;this.id=this.list[this.index];this.emit(1);}};
+ this.setLoop=v=>{this.loop=!!v;window.__ytCalls.push(['loop',!!v]);};this.setShuffle=v=>window.__ytCalls.push(['shuffle',!!v]);
+ this.nextVideo=()=>{window.__ytCalls.push(['nextVideo']);if(!this.list.length)return;if(this.index+1<this.list.length)this.index++;else if(this.loop)this.index=0;else return;this.id=this.list[this.index];this.emit(1);};
  this.previousVideo=()=>{window.__ytCalls.push(['previousVideo']);if(this.list.length&&this.index>0){this.index--;this.id=this.list[this.index];this.emit(1);}};
  setTimeout(()=>{options.events.onReady?.({target:this});for(const h of this.listeners.onReady||[]){const fn=typeof h==='string'?window[h]:h;fn?.({target:this});}},10);
 }};setTimeout(()=>window.onYouTubeIframeAPIReady?.(),0);
@@ -43,6 +43,15 @@ async function context(browser,{mobile}){
    localStorage.setItem('music:memberUser:v1',JSON.stringify({id:'test-user',email:'test@example.com',role:'member'}));
    localStorage.setItem('teslaMusic:settings:v1',JSON.stringify({shuffle:false,auto:true}));
    localStorage.setItem('teslaMusic:playbackDefaults:v2','1');
+   const tracks={},queue=[];
+   for(let i=1;i<=32;i++){
+     const id='seed'+String(i).padStart(7,'0');
+     const t={id:'yt:'+id,youtubeId:id,title:'Seed Song '+i+' - Topic',artist:'Seed Topic',duration:210,thumbnail:'',score:1,plays:0,completed:0,skips:0,liked:false,lastPlayed:null};
+     tracks['yt:'+id]=t;
+     queue.push({id,title:t.title,uploader:t.artist,duration:t.duration,thumbnail:''});
+   }
+   localStorage.setItem('teslaMusic:brain:v1',JSON.stringify({tracks,artists:{},events:[]}));
+   localStorage.setItem('teslaMusic:queue:v1',JSON.stringify(queue));
  });
  const dir=path.resolve('tesla-music-production');
  const replacements={
@@ -122,7 +131,7 @@ async function mobileTest(browser){
   assert.equal(initial.playback.nativeActive,true,'mobile native background playlist must be active: '+JSON.stringify(initial));
   assert.equal(initial.calls.filter(x=>x[0]==='playlist').length,1,'mobile should create one native playlist');
   assert.equal(initial.calls.filter(x=>x[0]==='single').length,0,'mobile AUTO should not also load a single video');
-  assert.ok(initial.playlist.length>=2,'mobile native playlist should contain next tracks');
+  assert.ok(initial.playlist.length>20,'mobile native playlist must buffer more than 20 tracks: '+initial.playlist.length);
 
   const beforeCalls=await p.evaluate(()=>window.__ytCalls.length);
   const beforeId=await p.evaluate(()=>current.id);
@@ -152,12 +161,36 @@ async function mobileTest(browser){
   const nativeAfter=await p.evaluate(()=>({id:current.id,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length}));
   assert.equal(nativeAfter.nextCalls,nativeBefore.nextCalls+1,'native YouTube advance must cancel fallback and avoid a double skip');
 
+  // Stress ten native AUTO transitions. No search request may be needed in the
+  // critical transition window and every transition must advance exactly once.
+  for(let n=0;n<10;n++){
+    const before=await p.evaluate(()=>({
+      id:current.id,
+      nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length,
+      playlistLoads:window.__ytCalls.filter(x=>x[0]==='playlist').length
+    }));
+    const searchBefore=p.requests.filter(u=>u.includes('/api/youtube-search?')).length;
+    await p.evaluate(()=>{player.emit(YT.PlayerState.ENDED);setTimeout(()=>player.nextVideo(),50);});
+    await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,before.id,{timeout:2000});
+    await p.waitForTimeout(500);
+    const afterStress=await p.evaluate(()=>({
+      id:current.id,
+      nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length,
+      playlistLoads:window.__ytCalls.filter(x=>x[0]==='playlist').length
+    }));
+    const searchAfter=p.requests.filter(u=>u.includes('/api/youtube-search?')).length;
+    assert.equal(afterStress.nextCalls,before.nextCalls+1,'AUTO transition '+n+' must advance exactly once');
+    assert.equal(afterStress.playlistLoads,before.playlistLoads,'AUTO transition '+n+' must not rebuild playlist');
+    assert.equal(searchAfter,searchBefore,'AUTO transition '+n+' must not fetch search API in critical window');
+    assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'AUTO transition '+n+' must stay on bottom bar');
+  }
+
   const ytHandle2=await p.locator('#yt').elementHandle();
   assert.ok(await ytHandle.evaluate((a,b)=>a===b,ytHandle2).catch(()=>true));
   const radio=p.requests.filter(u=>/radio|listType=radio|start_radio/i.test(u));
   assert.equal(radio.length,0,'no radio request is allowed');
   assert.equal(p.errors.length,0,p.errors.join('; '));
-  report.checks.push({mobile:true,search:firstTitle,nextSingleAdvance:true,autoFallbackSingleAdvance:true,nativeAdvanceNoDoubleSkip:true,playlistLoads:after.playlistLoads,noRadio:true,noJsErrors:true});
+  report.checks.push({mobile:true,search:firstTitle,nextSingleAdvance:true,autoFallbackSingleAdvance:true,nativeAdvanceNoDoubleSkip:true,tenAutoTransitions:true,playlistBuffer:initial.playlist.length,playlistLoads:after.playlistLoads,noTransitionSearch:true,noRadio:true,noJsErrors:true});
  }finally{await c.close();}
 }
 
