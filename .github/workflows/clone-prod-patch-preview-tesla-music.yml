@@ -101,15 +101,21 @@ jobs:
           if(changed.length!==1 || changed[0]!=='./src/mobile-controls-v40.js') throw new Error('More than one file changed');
           NODE
 
+      - name: Show exact production build config
+        working-directory: /tmp/exact-prod/src
+        run: |
+          echo "=== vercel.json ==="
+          cat vercel.json
+
       - name: Link exact existing Vercel project
-        working-directory: /tmp/exact-prod
+        working-directory: /tmp/exact-prod/src
         run: |
           mkdir -p .vercel
           printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$PROJECT_ID" > .vercel/project.json
 
       - name: Deploy preview from exact production source plus one patched file
         id: preview
-        working-directory: /tmp/exact-prod
+        working-directory: /tmp/exact-prod/src
         run: |
           set -euo pipefail
           URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
@@ -118,7 +124,7 @@ jobs:
           echo "PREVIEW=$URL"
 
       - name: Verify preview is healthy and patch is present
-        working-directory: /tmp/exact-prod
+        working-directory: /tmp/exact-prod/src
         run: |
           set -euo pipefail
           vercel inspect "$PREVIEW_URL" --scope "$TEAM_SLUG"
@@ -127,9 +133,26 @@ jobs:
           test "$(wc -c < /tmp/preview-root.html)" -gt 5000
           grep -q 'mobile-controls-v40.js' /tmp/preview-root.html
           grep -Fq 'scheduleNativeEndFallback' /tmp/preview-mobile.js
-          cmp -s ./src/mobile-controls-v40.js /tmp/preview-mobile.js
+          cmp -s ./mobile-controls-v40.js /tmp/preview-mobile.js
           echo "PREVIEW_EXACT_PATCH_OK"
 
-      - name: STOP before production promotion
+      - name: Promote exact verified preview to production
+        working-directory: /tmp/exact-prod/src
         run: |
-          echo "Preview verified. Production is intentionally NOT promoted by this workflow."
+          set -euo pipefail
+          vercel promote "$PREVIEW_URL" --yes --scope "$TEAM_SLUG"
+          echo "PROMOTION_OK"
+
+      - name: Verify production after promotion
+        working-directory: /tmp/exact-prod/src
+        run: |
+          set -euo pipefail
+          sleep 8
+          vercel inspect "https://tesla-waze-piped.vercel.app" --scope "$TEAM_SLUG"
+          vercel curl "/?mobile=1&device=mobile" --deployment "https://tesla-waze-piped.vercel.app" --scope "$TEAM_SLUG" > /tmp/prod-root.html
+          vercel curl "/mobile-controls-v40.js" --deployment "https://tesla-waze-piped.vercel.app" --scope "$TEAM_SLUG" > /tmp/prod-mobile.js
+          test "$(wc -c < /tmp/prod-root.html)" -gt 5000
+          grep -q 'mobile-controls-v40.js' /tmp/prod-root.html
+          grep -Fq 'scheduleNativeEndFallback' /tmp/prod-mobile.js
+          cmp -s ./mobile-controls-v40.js /tmp/prod-mobile.js
+          echo "PRODUCTION_EXACT_PATCH_OK"
