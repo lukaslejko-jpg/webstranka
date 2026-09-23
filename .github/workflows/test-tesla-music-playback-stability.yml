@@ -2,7 +2,7 @@ name: Tesla Music playback stability test
 
 on:
   push:
-    branches: [fix/tesla-music-playback-stability-20260921]
+    branches: [fix/tesla-music-playback-stability-20260921, fix/tesla-music-mobile-endless-20260923]
     paths:
       - 'tesla-music-production/mobile-controls-v40.js'
       - 'tesla-music-production/mobile-v128-music-logic.js'
@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: fix/tesla-music-playback-stability-20260921
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
