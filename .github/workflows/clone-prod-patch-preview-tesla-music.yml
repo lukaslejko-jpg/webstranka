@@ -18,7 +18,7 @@ jobs:
       TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
       TEAM_SLUG: lukaslejko-9932s-projects
       PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
-      BASE_DPL: dpl_H1L29ngkfBrrntSX4d1needeTGnA
+      BASE_DPL: dpl_4xCrtViJbuyWYdY2QwBEDyVVHw6P
       HOTFIX_BRANCH: fix/tesla-music-mobile-endless-20260923
     steps:
       - name: Checkout hotfix source
@@ -136,12 +136,12 @@ jobs:
           cmp -s ./mobile-controls-v40.js /tmp/preview-mobile.js
           echo "PREVIEW_EXACT_PATCH_OK"
 
-      - name: Promote exact verified preview to production
+      - name: Point main production alias to exact verified preview
         working-directory: /tmp/exact-prod/src
         run: |
           set -euo pipefail
-          vercel promote "$PREVIEW_URL" --yes --scope "$TEAM_SLUG"
-          echo "PROMOTION_OK"
+          vercel alias set "$PREVIEW_URL" "tesla-waze-piped.vercel.app" --scope "$TEAM_SLUG"
+          echo "ALIAS_SET_OK"
 
       - name: Verify production after promotion
         working-directory: /tmp/exact-prod/src
