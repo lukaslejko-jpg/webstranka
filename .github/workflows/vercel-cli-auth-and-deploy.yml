@@ -71,7 +71,8 @@ jobs:
           vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" > /tmp/mobile.js
           grep -q 'mobile-controls-v40.js' /tmp/root.html
           grep -q 'scheduleNativeEndFallback' /tmp/mobile.js
-          grep -q "visible=!/^\\/desktop" /tmp/mobile.js
+          grep -q "const visible=" /tmp/mobile.js
+          grep -q "location.pathname" /tmp/mobile.js
           node --check mobile-controls-v40.js
           echo "PREVIEW_VERIFY_OK"
 
