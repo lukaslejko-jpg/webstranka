@@ -17,4 +17,7 @@ await fs.rm('public',{recursive:true,force:true}); await fs.mkdir('public/deskto
 await copy('/','/index.html'); await copy('/desktop/','/desktop/index.html');
 for(const p of paths)await copy(p);
 await fs.copyFile('mobile-controls-v40.js','public/mobile-controls-v40.js');
+await fs.copyFile('rescue-v135.js','public/rescue-v135.js');
+await fs.copyFile('desktop-silence-v63.js','public/desktop-silence-v63.js');
+await fs.copyFile('mobile-v128-music-logic.js','public/mobile-v128-music-logic.js');
 console.log('TESLA_MUSIC_HOTFIX: immutable production snapshot + one mobile playback file');
