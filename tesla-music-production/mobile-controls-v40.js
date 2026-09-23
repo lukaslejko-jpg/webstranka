@@ -62,6 +62,8 @@
     if(which==='likes')return all.filter(t=>t.liked).sort((a,b)=>score(b)-score(a)).map(item);
     if(which==='recent')return all.filter(t=>t.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed)-Date.parse(a.lastPlayed)).map(item);
     if(which==='queue'){
+      const visible=typeof items!=='undefined'&&Array.isArray(items)?items:[];
+      if(visible.length)return visible;
       const searched=typeof searchResults!=='undefined'&&Array.isArray(searchResults)?searchResults:[];
       const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
       return searched.length?searched:recommended;
