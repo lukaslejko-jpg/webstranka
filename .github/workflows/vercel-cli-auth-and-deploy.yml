@@ -1,0 +1,89 @@
+name: Vercel CLI auth and deploy Tesla Music hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/vercel-cli-auth-and-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_ORG_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      VERCEL_PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      HOTFIX_BRANCH: fix/tesla-music-mobile-endless-20260923
+      PROD_URL: https://tesla-waze-piped.vercel.app
+    steps:
+      - name: Checkout tested hotfix
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.HOTFIX_BRANCH }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Authenticate Vercel CLI
+        run: |
+          echo "Starting Vercel GitHub login flow..."
+          timeout 300 vercel login --github
+
+      - name: Verify CLI identity
+        run: vercel whoami
+
+      - name: Link exact project
+        working-directory: tesla-music-production
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+
+      - name: Pull preview environment
+        working-directory: tesla-music-production
+        run: vercel pull --yes --environment=preview
+
+      - name: Build preview
+        working-directory: tesla-music-production
+        run: vercel build
+
+      - name: Deploy preview
+        id: preview
+        working-directory: tesla-music-production
+        run: |
+          URL="$(vercel deploy --prebuilt)"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
+          echo "PREVIEW=$URL"
+
+      - name: Verify preview hotfix
+        working-directory: tesla-music-production
+        run: |
+          vercel inspect "$PREVIEW_URL"
+          vercel curl "/?mobile=1&device=mobile" --deployment "$PREVIEW_URL" > /tmp/root.html
+          vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" > /tmp/mobile.js
+          grep -q 'mobile-controls-v40.js' /tmp/root.html
+          grep -q 'scheduleNativeEndFallback' /tmp/mobile.js
+          grep -q "visible=!/^\\/desktop" /tmp/mobile.js
+          node --check mobile-controls-v40.js
+          echo "PREVIEW_VERIFY_OK"
+
+      - name: Promote exact preview to production
+        working-directory: tesla-music-production
+        run: vercel promote "$PREVIEW_URL" --yes
+
+      - name: Production smoke test
+        run: |
+          sleep 5
+          curl -fsS "$PROD_URL/?mobile=1&device=mobile" -o /tmp/prod-root.html
+          curl -fsS "$PROD_URL/mobile-controls-v40.js" -o /tmp/prod-mobile.js
+          grep -q 'scheduleNativeEndFallback' /tmp/prod-mobile.js
+          grep -q "visible=!/^\\/desktop" /tmp/prod-mobile.js
+          echo "PRODUCTION_SMOKE_OK"
