@@ -62,7 +62,7 @@
     if(which==='likes')return all.filter(t=>t.liked).sort((a,b)=>score(b)-score(a)).map(item);
     if(which==='recent')return all.filter(t=>t.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed)-Date.parse(a.lastPlayed)).map(item);
     if(which==='queue'){
-      const visible=typeof items!=='undefined'&&Array.isArray(items)?items:[];
+      const visible=!/^\/desktop\/?$/.test(location.pathname)&&typeof items!=='undefined'&&Array.isArray(items)?items:[];
       if(visible.length)return visible;
       const searched=typeof searchResults!=='undefined'&&Array.isArray(searchResults)?searchResults:[];
       const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
@@ -120,7 +120,7 @@
     window.dispatchEvent(new CustomEvent('tesla-music-trackchange',{detail:t}));
   }
   function scheduleNativeEndFallback(){
-    if(!nativeActive||!settings.auto||advancing||!hasNativeNext())return;
+    if(/^\/desktop\/?$/.test(location.pathname)||!nativeActive||!settings.auto||advancing||!hasNativeNext())return;
     let beforeId='',beforeIndex=-1;
     try{beforeId=player.getVideoData?.().video_id||'';beforeIndex=player.getPlaylistIndex?.();}catch{return;}
     clearTimeout(nativeEndTimer);
