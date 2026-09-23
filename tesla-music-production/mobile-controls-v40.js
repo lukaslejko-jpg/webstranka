@@ -1,4 +1,4 @@
-/* Tesla Music V40: user-initiated start + native YouTube queue for background playback.
+/* Tesla Music V40: single shared playback controller + native YouTube queue.
  * No audio extraction, hidden audio, background polling or account dependency.
  * iOS owns the final lock-screen UI; real-device verification remains necessary.
  */
@@ -63,11 +63,15 @@
     if(which==='recent')return all.filter(t=>t.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed)-Date.parse(a.lastPlayed)).map(item);
     if(which==='queue'){
       const visible=!/^\/desktop\/?$/.test(location.pathname)&&typeof items!=='undefined'&&Array.isArray(items)?items:[];
-      if(visible.length)return visible;
       const searched=typeof searchResults!=='undefined'&&Array.isArray(searchResults)?searchResults:[];
       const queued=typeof queue!=='undefined'&&Array.isArray(queue)?queue:[];
       const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
-      return searched.length?searched:(queued.length?queued:recommended);
+      const learned=Object.values(profile.tracks||{}).map(item);
+      const seen=new Set(),out=[];
+      for(const raw of [...visible,...searched,...queued,...recommended,...learned]){
+        const t=normal(raw);if(!t||seen.has(t.id))continue;seen.add(t.id);out.push(raw);
+      }
+      return out;
     }
     const ranked=all.filter(t=>isAutoMusic(item(t))).sort((a,b)=>score(b)-score(a)).map(item);
     const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
@@ -101,14 +105,37 @@
     try{const list=player.getPlaylist()||[],i=player.getPlaylistIndex();return i>=0&&i+1<list.length;}catch{return false;}
   }
   next=function(manual=true){
-    // YouTube advances its native playlist itself. Do not also advance in JS.
-    if(!manual&&nativeActive)return;
     if(advancing)return;
+    if(nativeActive&&player){
+      try{
+        const list=player.getPlaylist?.()||[],i=player.getPlaylistIndex?.();
+        if(i>=0&&list.length>1){
+          // AUTO is owned by the native YouTube playlist. Manual Next advances
+          // exactly once inside that same playlist.
+          if(!manual)return;
+          advancing=true;
+          player.nextVideo?.();
+          return;
+        }
+      }catch{}
+    }
     advancing=true;
-    try{const result=baseNext(manual);if(result?.then)return result.finally(()=>{advancing=false;});advancing=false;return result;}
-    catch(e){advancing=false;throw e;}
+    try{
+      const result=baseNext(manual);
+      if(result?.then)return result.finally(()=>{advancing=false;});
+      advancing=false;return result;
+    }catch(e){advancing=false;throw e;}
   };
-  prev=function(){if(advancing)return;advancing=true;try{return basePrev();}finally{advancing=false;}};
+  prev=function(){
+    if(advancing)return;
+    if(nativeActive&&player){
+      try{
+        const i=player.getPlaylistIndex?.();
+        if(i>0){advancing=true;player.previousVideo?.();return;}
+      }catch{}
+    }
+    advancing=true;try{return basePrev();}finally{advancing=false;}
+  };
   for(const id of ['next','bnext'])if($(id))$(id).onclick=()=>next(true);
   for(const id of ['prev','bprev'])if($(id))$(id).onclick=()=>prev();
   function syncNativeTrack(){
@@ -139,7 +166,10 @@
   }
   function onState(e){
     if(e.data===1){advancing=false;clearTimeout(nativeEndTimer);nativeEndTimer=0;syncNativeTrack();}
-    else if(e.data===0)scheduleNativeEndFallback();
+    else if(e.data===0){
+      if(nativeActive)scheduleNativeEndFallback();
+      else if(settings.auto&&!advancing)baseNext(false);
+    }
     registerMediaActions();media();
   }
   function installPlayer(){
@@ -195,28 +225,5 @@
   window.addEventListener('pageshow',()=>{initialHint();registerMediaActions();});
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',initialHint));
   window.teslaMusicPlaybackV40=Object.freeze({version:40,start,state:()=>({nativeEnabled,nativeActive,nativeContext,pending:pending?.id||null,current:current?.id||null,playlist:nativeActive?(player?.getPlaylist?.()||[]):[]})});
-  // This script loads before mobile-v128-music-logic.js. Re-assert the final
-  // native AUTO/Next bridge after all synchronous scripts have loaded so a
-  // later next() override cannot turn AUTO into a no-op.
-  setTimeout(()=>{
-    if(/^\/desktop\/?$/.test(location.pathname)||window.teslaMusicFinalNextV40)return;
-    const downstreamNext=next;
-    next=function(manual=true){
-      if(nativeActive&&player){
-        try{
-          const list=player.getPlaylist?.()||[],i=player.getPlaylistIndex?.();
-          if(i>=0&&i+1<list.length){
-            if(advancing)return;
-            advancing=true;
-            player.nextVideo?.();
-            setTimeout(()=>{advancing=false},500);
-            return;
-          }
-        }catch{}
-      }
-      return downstreamNext(manual);
-    };
-    window.teslaMusicFinalNextV40=true;
-  },0);
   registerMediaActions();initialHint();if(ready)window.teslaMusicReadyV40();
 })();
