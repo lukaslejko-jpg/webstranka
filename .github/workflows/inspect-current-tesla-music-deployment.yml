@@ -1,0 +1,43 @@
+name: Inspect current Tesla Music deployment source
+on:
+  push:
+    branches: [fix/tesla-music-mobile-endless-20260923]
+    paths: ['.github/workflows/inspect-current-tesla-music-deployment.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Vercel auth is available
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "VERCEL_TOKEN_MISSING"
+            exit 2
+          fi
+          echo "VERCEL_TOKEN_AVAILABLE"
+      - name: Read exact current production source tree
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+          DEPLOYMENT_ID: dpl_H1L29ngkfBrrntSX4d1needeTGnA
+        run: |
+          curl -fsS -H "Authorization: Bearer $VERCEL_TOKEN"             "https://api.vercel.com/v6/deployments/$DEPLOYMENT_ID/files?teamId=$TEAM_ID"             -o /tmp/tree.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const tree=JSON.parse(fs.readFileSync('/tmp/tree.json','utf8'));
+          const out=[];
+          function walk(nodes,p=''){
+            for(const n of nodes||[]){
+              const q=p? p+'/'+n.name:n.name;
+              if(n.type==='file') out.push(q);
+              if(n.children) walk(n.children,q);
+            }
+          }
+          walk(tree);
+          console.log('SOURCE_FILES='+out.length);
+          console.log(out.filter(x=>/mobile-controls-v40\.js$|package\.json$|vercel\.json$|build.*\.mjs$|^api\//.test(x)).slice(0,80).join('\n'));
+          if(!out.some(x=>/mobile-controls-v40\.js$/.test(x))) process.exit(3);
+          NODE
