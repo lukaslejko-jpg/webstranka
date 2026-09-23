@@ -19,7 +19,7 @@ jobs:
       TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
       TEAM_SLUG: lukaslejko-9932s-projects
       PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
-      BASE_DPL: dpl_D1B68ws6JGYcqXhvjxXGBor4iuwN
+      BASE_DPL: dpl_H1L29ngkfBrrntSX4d1needeTGnA
       BUILD: "154"
       PROD_ALIAS: tesla-waze-piped.vercel.app
     steps:
