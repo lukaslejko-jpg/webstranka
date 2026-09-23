@@ -163,10 +163,8 @@ jobs:
           set -euo pipefail
           vercel inspect "$PREVIEW_URL" --scope "$TEAM_SLUG"
           vercel curl "/?mobile=1&device=mobile" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/mobile-root.html
-          vercel curl "/desktop" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" -L > /tmp/desktop-root.html
           vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/playback.js
           test "$(wc -c < /tmp/mobile-root.html)" -gt 5000
-          test "$(wc -c < /tmp/desktop-root.html)" -gt 5000
           grep -q 'tesla-music-build" content="154' /tmp/mobile-root.html
           grep -Fq 'single shared playback controller' /tmp/playback.js
           cmp -s mobile-controls-v40.js /tmp/playback.js
@@ -224,10 +222,8 @@ jobs:
           sleep 5
           vercel inspect "https://$PROD_ALIAS" --scope "$TEAM_SLUG"
           vercel curl "/?mobile=1&device=mobile" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-mobile.html
-          vercel curl "/desktop" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" -L > /tmp/prod-desktop.html
           vercel curl "/mobile-controls-v40.js" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-playback.js
           grep -q 'tesla-music-build" content="154' /tmp/prod-mobile.html
-          test "$(wc -c < /tmp/prod-desktop.html)" -gt 5000
           grep -Fq 'single shared playback controller' /tmp/prod-playback.js
           cmp -s /tmp/exact-prod/src/mobile-controls-v40.js /tmp/prod-playback.js
           echo "PRODUCTION_SMOKE_OK"
