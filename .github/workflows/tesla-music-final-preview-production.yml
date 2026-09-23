@@ -163,7 +163,7 @@ jobs:
           set -euo pipefail
           vercel inspect "$PREVIEW_URL" --scope "$TEAM_SLUG"
           vercel curl "/?mobile=1&device=mobile" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/mobile-root.html
-          vercel curl "/desktop" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/desktop-root.html
+          vercel curl "/desktop" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" -L > /tmp/desktop-root.html
           vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/playback.js
           test "$(wc -c < /tmp/mobile-root.html)" -gt 5000
           test "$(wc -c < /tmp/desktop-root.html)" -gt 5000
@@ -185,7 +185,7 @@ jobs:
           const TESLA='Mozilla/5.0 (X11; GNU/Linux) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Tesla/2026.20';
           (async()=>{
             const browser=await chromium.launch({args:['--no-sandbox']});
-            for(const cfg of [{path:'/',ua:IOS,mobile:true},{path:'/desktop',ua:TESLA,mobile:false}]){
+            for(const cfg of [{path:'/',ua:IOS,mobile:true},{path:'/desktop',ua:TESLA,mobile:false},{path:'/desktop/',ua:TESLA,mobile:false}]){
               const ctx=await browser.newContext({userAgent:cfg.ua,viewport:cfg.mobile?{width:390,height:844}:{width:1280,height:800},isMobile:cfg.mobile,hasTouch:cfg.mobile,serviceWorkers:'block'});
               await ctx.addInitScript(()=>{
                 localStorage.setItem('music:memberSession:v1','test-session');
@@ -224,7 +224,7 @@ jobs:
           sleep 5
           vercel inspect "https://$PROD_ALIAS" --scope "$TEAM_SLUG"
           vercel curl "/?mobile=1&device=mobile" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-mobile.html
-          vercel curl "/desktop" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-desktop.html
+          vercel curl "/desktop" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" -L > /tmp/prod-desktop.html
           vercel curl "/mobile-controls-v40.js" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-playback.js
           grep -q 'tesla-music-build" content="154' /tmp/prod-mobile.html
           test "$(wc -c < /tmp/prod-desktop.html)" -gt 5000
