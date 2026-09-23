@@ -62,6 +62,7 @@ async function context(browser,{mobile}){
    '/rescue-v135.js':path.join(dir,'rescue-v135.js'),
    '/mode-v9.js':path.join(dir,'mode-v9.js'),
    '/desktop-v97-youtube-search.js':path.join(dir,'desktop-v97-youtube-search.js'),
+   '/member-v49-search-layout.js':path.join(dir,'member-v49-search-layout.js'),
    '/member-v50-foryou.js':path.join(dir,'member-v50-foryou.js')
  };
  await c.route('https://tesla-waze-piped.vercel.app/**',async route=>{
