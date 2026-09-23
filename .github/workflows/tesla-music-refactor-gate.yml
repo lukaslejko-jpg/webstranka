@@ -34,6 +34,7 @@ jobs:
           node --check tesla-music-production/desktop-route-v52.js
           node --check tesla-music-production/mode-v9.js
           node --check tesla-music-production/desktop-v97-youtube-search.js
+          node --check tesla-music-production/member-v49-search-layout.js
           node --check tesla-music-production/member-v50-foryou.js
 
       - name: Architectural guards
