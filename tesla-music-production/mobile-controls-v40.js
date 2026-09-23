@@ -148,7 +148,7 @@
     window.dispatchEvent(new CustomEvent('tesla-music-trackchange',{detail:t}));
   }
   function scheduleNativeEndFallback(){
-    if(/^\/desktop\/?$/.test(location.pathname)||!nativeActive||!settings.auto||advancing||!hasNativeNext())return;
+    if(!nativeActive||!settings.auto||advancing||!hasNativeNext())return;
     let beforeId='',beforeIndex=-1;
     try{beforeId=player.getVideoData?.().video_id||'';beforeIndex=player.getPlaylistIndex?.();}catch{return;}
     clearTimeout(nativeEndTimer);
