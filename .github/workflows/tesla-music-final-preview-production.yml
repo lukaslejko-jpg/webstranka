@@ -91,6 +91,11 @@ jobs:
           const fs=require('fs');
           const p='/tmp/exact-prod/src/vercel.json';
           const v=JSON.parse(fs.readFileSync(p,'utf8'));
+          if(!fs.existsSync('/tmp/exact-prod/src/package.json')){
+            delete v.buildCommand;
+            delete v.outputDirectory;
+            delete v.installCommand;
+          }
           v.redirects=Array.isArray(v.redirects)?v.redirects:[];
           v.redirects=v.redirects.filter(r=>r.source!=='/desktop/');
           v.redirects.push({source:'/desktop/',destination:'/desktop',permanent:false});
@@ -134,7 +139,7 @@ jobs:
           const fs=require('fs');
           const p='/tmp/exact-prod/src/vercel.json';
           const v=JSON.parse(fs.readFileSync(p,'utf8'));
-          if(v.buildCommand&&v.buildCommand.includes('npm run build')&&!fs.existsSync('/tmp/exact-prod/src/package.json')) throw new Error('unexpected npm build command without package.json');
+          if(!fs.existsSync('/tmp/exact-prod/src/package.json')&&(v.buildCommand||v.outputDirectory)) throw new Error('static deploy model not normalized');
           if(!(v.redirects||[]).some(r=>r.source==='/desktop/'&&r.destination==='/desktop')) throw new Error('desktop slash redirect missing');
           NODE
 
