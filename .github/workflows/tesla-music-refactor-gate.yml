@@ -41,6 +41,10 @@ jobs:
           if(!firstCode.includes("if(!/^\\/(?:index\\.html)?$/.test(location.pathname))return")) throw new Error('mobile-v128 route guard is not root-only: '+firstCode);
           const silence=fs.readFileSync('tesla-music-production/desktop-silence-v63.js','utf8');
           if(/new\s+Audio\s*\(/.test(silence)||/playVideo\s*\(/.test(silence)||/silence\.wav/.test(silence)) throw new Error('desktop silence bridge still contains playback code');
+          const rescue=fs.readFileSync('tesla-music-production/rescue-v135.js','utf8');
+          if(/setInterval\s*\(/.test(rescue)) throw new Error('rescue polling still active');
+          const playCalls=(rescue.match(/\.playVideo\s*\(/g)||[]).length;
+          if(playCalls>1) throw new Error('rescue playVideo spam still active: '+playCalls);
           NODE
 
       - name: Mobile playback regression
