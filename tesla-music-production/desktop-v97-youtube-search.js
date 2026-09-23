@@ -1,5 +1,5 @@
 /* Desktop V97: YouTube-like, music-first search with a compact filter panel. */
-(()=>{'use strict';return;
+(()=>{'use strict';if(!/^\/desktop\/?$/.test(location.pathname))return;
 const defaults=()=>({video:true,audio:true,remix:true,live:true,onlyArtist:true,similar:false,watched:false});
 const LAST_SEARCH_KEY='teslaMusic:lastSearch:v1';
 const PLAYBACK_DEFAULTS_KEY='teslaMusic:playbackDefaults:v2';
