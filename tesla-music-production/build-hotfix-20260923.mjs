@@ -22,3 +22,6 @@ await fs.copyFile('rescue-v135.js','public/rescue-v135.js');
 await fs.copyFile('desktop-silence-v63.js','public/desktop-silence-v63.js');
 await fs.copyFile('mobile-v128-music-logic.js','public/mobile-v128-music-logic.js');
 console.log('TESLA_MUSIC_HOTFIX: immutable production snapshot + one mobile playback file');
+
+await fs.copyFile('mode-v9.js','public/mode-v9.js');
+await fs.copyFile('desktop-v97-youtube-search.js','public/desktop-v97-youtube-search.js');
