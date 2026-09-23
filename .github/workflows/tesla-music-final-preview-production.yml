@@ -84,6 +84,19 @@ jobs:
             cp "tesla-music-production/$f" "$SRC/$f"
           done
 
+      - name: Normalize desktop route without changing production build model
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const p='/tmp/exact-prod/src/vercel.json';
+          const v=JSON.parse(fs.readFileSync(p,'utf8'));
+          v.redirects=Array.isArray(v.redirects)?v.redirects:[];
+          v.redirects=v.redirects.filter(r=>r.source!=='/desktop/');
+          v.redirects.push({source:'/desktop/',destination:'/desktop',permanent:false});
+          fs.writeFileSync(p,JSON.stringify(v,null,2)+'\n');
+          NODE
+
       - name: Normalize one build version
         run: |
           set -euo pipefail
@@ -117,6 +130,13 @@ jobs:
           grep -Fq "if(!/^\/desktop\/?$/.test(location.pathname))return" "$SRC/desktop-v97-youtube-search.js"
           ! grep -Eq 'new[[:space:]]+Audio|silence\.wav' "$SRC/desktop-silence-v63.js"
           ! grep -Eq 'setInterval[[:space:]]*\(' "$SRC/rescue-v135.js"
+          node <<'NODE'
+          const fs=require('fs');
+          const p='/tmp/exact-prod/src/vercel.json';
+          const v=JSON.parse(fs.readFileSync(p,'utf8'));
+          if(v.buildCommand&&v.buildCommand.includes('npm run build')&&!fs.existsSync('/tmp/exact-prod/src/package.json')) throw new Error('unexpected npm build command without package.json');
+          if(!(v.redirects||[]).some(r=>r.source==='/desktop/'&&r.destination==='/desktop')) throw new Error('desktop slash redirect missing');
+          NODE
 
       - name: Link exact project
         working-directory: /tmp/exact-prod/src
