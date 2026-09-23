@@ -76,10 +76,10 @@ jobs:
       - name: Assert exact expected production structure
         run: |
           set -euo pipefail
-          test -f /tmp/exact-prod/mobile-controls-v40.js
-          test -f /tmp/exact-prod/index.html
-          grep -q 'mobile-controls-v40.js' /tmp/exact-prod/index.html
-          grep -q 'tesla-music-build' /tmp/exact-prod/index.html
+          test -f /tmp/exact-prod/src/mobile-controls-v40.js
+          test -f /tmp/exact-prod/src/index.html
+          grep -q 'mobile-controls-v40.js' /tmp/exact-prod/src/index.html
+          grep -q 'tesla-music-build' /tmp/exact-prod/src/index.html
           echo "EXACT_PROD_STRUCTURE_OK"
 
       - name: Record base hashes and patch only mobile-controls-v40.js
@@ -87,10 +87,10 @@ jobs:
           set -euo pipefail
           cd /tmp/exact-prod
           find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/before.sha256
-          cp "$GITHUB_WORKSPACE/tesla-music-production/mobile-controls-v40.js" ./mobile-controls-v40.js
-          node --check ./mobile-controls-v40.js
-          grep -Fq 'scheduleNativeEndFallback' ./mobile-controls-v40.js
-          grep -Fq 'const visible=' ./mobile-controls-v40.js
+          cp "$GITHUB_WORKSPACE/tesla-music-production/mobile-controls-v40.js" ./src/mobile-controls-v40.js
+          node --check ./src/mobile-controls-v40.js
+          grep -Fq 'scheduleNativeEndFallback' ./src/mobile-controls-v40.js
+          grep -Fq 'const visible=' ./src/mobile-controls-v40.js
           find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/after.sha256
           node <<'NODE'
           const fs=require('fs');
@@ -98,7 +98,7 @@ jobs:
           const a=parse('/tmp/before.sha256'),b=parse('/tmp/after.sha256');
           const changed=[...new Set([...a.keys(),...b.keys()])].filter(k=>a.get(k)!==b.get(k));
           console.log('CHANGED_FILES='+changed.join(','));
-          if(changed.length!==1 || changed[0]!=='./mobile-controls-v40.js') throw new Error('More than one file changed');
+          if(changed.length!==1 || changed[0]!=='./src/mobile-controls-v40.js') throw new Error('More than one file changed');
           NODE
 
       - name: Link exact existing Vercel project
@@ -127,7 +127,7 @@ jobs:
           test "$(wc -c < /tmp/preview-root.html)" -gt 5000
           grep -q 'mobile-controls-v40.js' /tmp/preview-root.html
           grep -Fq 'scheduleNativeEndFallback' /tmp/preview-mobile.js
-          cmp -s ./mobile-controls-v40.js /tmp/preview-mobile.js
+          cmp -s ./src/mobile-controls-v40.js /tmp/preview-mobile.js
           echo "PREVIEW_EXACT_PATCH_OK"
 
       - name: STOP before production promotion
