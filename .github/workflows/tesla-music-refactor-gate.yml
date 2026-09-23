@@ -1,0 +1,50 @@
+name: Tesla Music refactor gate
+
+on:
+  push:
+    branches:
+      - refactor/tesla-music-playback-core-20260923
+    paths:
+      - 'tesla-music-production/**'
+      - '.github/workflows/tesla-music-refactor-gate.yml'
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Syntax checks
+        run: |
+          node --check tesla-music-production/app-v7.js
+          node --check tesla-music-production/mobile-controls-v40.js
+          node --check tesla-music-production/mobile-v128-music-logic.js
+          node --check tesla-music-production/desktop-v97-youtube-search.js
+          node --check tesla-music-production/rescue-v135.js
+          node --check tesla-music-production/desktop-silence-v63.js
+
+      - name: Architectural guards
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const mobile=fs.readFileSync('tesla-music-production/mobile-v128-music-logic.js','utf8');
+          if(/desktop/.test(mobile.split('\n').slice(0,3).join('\n'))) throw new Error('mobile-v128 must not run on /desktop');
+          const rescue=fs.readFileSync('tesla-music-production/rescue-v135.js','utf8');
+          if(/setInterval\s*\(\s*\(\)\s*=>\s*\{exposeCore\(\);stableSearch\(\);hardenControls\(\);killMini\(\);hookYouTubeErrors\(\)\}/.test(rescue)) throw new Error('legacy 700ms rescue polling still active');
+          NODE
+
+      - name: Playback regression
+        env:
+          TESLA_MOBILE_ONLY: '0'
+        run: node tesla-music-production/test-current-production-playback-fix.cjs
