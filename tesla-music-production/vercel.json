@@ -45,5 +45,12 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/desktop/",
+      "destination": "/desktop",
+      "permanent": false
+    }
   ]
 }
