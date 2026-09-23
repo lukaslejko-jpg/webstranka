@@ -34,6 +34,7 @@ jobs:
           node --check tesla-music-production/desktop-route-v52.js
           node --check tesla-music-production/mode-v9.js
           node --check tesla-music-production/desktop-v97-youtube-search.js
+          node --check tesla-music-production/member-v50-foryou.js
 
       - name: Architectural guards
         run: |
@@ -57,6 +58,10 @@ jobs:
             if(/\bnext\s*=/.test(code)||/\bprev\s*=/.test(code)||/\bplayTrack\s*=/.test(code)) throw new Error('unexpected playback override in '+file);
             if(/setActionHandler\(['"]nexttrack/.test(code)||/setActionHandler\(['"]previoustrack/.test(code)) throw new Error('unexpected media-session playback override in '+file);
           }
+          const forYou=fs.readFileSync('tesla-music-production/member-v50-foryou.js','utf8');
+          if(/appendChild\s*\(/.test(forYou)||/setTimeout\s*\(\s*reorder/.test(forYou)) throw new Error('member-v50 still mutates rendered DOM after paint');
+          const vercel=JSON.parse(fs.readFileSync('tesla-music-production/vercel.json','utf8'));
+          if(!(vercel.redirects||[]).some(r=>r.source==='/desktop/'&&r.destination==='/desktop')) throw new Error('/desktop/ normalization missing');
           const rescue=fs.readFileSync('tesla-music-production/rescue-v135.js','utf8');
           if(/setInterval\s*\(/.test(rescue)) throw new Error('rescue polling still active');
           const playCalls=(rescue.match(/\.playVideo\s*\(/g)||[]).length;
