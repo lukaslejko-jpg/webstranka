@@ -30,7 +30,7 @@ jobs:
           node --check tesla-music-production/mobile-v128-music-logic.js
           node --check tesla-music-production/desktop-silence-v63.js
           node --check tesla-music-production/test-current-production-playback-fix.cjs
-          grep -q "nativeEnabled=.*desktop" tesla-music-production/mobile-controls-v40.js
+          grep -q "scheduleNativeEndFallback" tesla-music-production/mobile-controls-v40.js
           grep -q "player.nextVideo" tesla-music-production/mobile-controls-v40.js
           grep -q "player?.nextVideo" tesla-music-production/mobile-v128-music-logic.js
           ! grep -q "count>20" tesla-music-production/desktop-silence-v63.js
