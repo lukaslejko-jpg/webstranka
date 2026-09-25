@@ -5,6 +5,10 @@
   "outputDirectory": "public",
   "rewrites": [
     {
+      "source": "/api/music",
+      "destination": "https://europrojekty-app.vercel.app/api/music"
+    },
+    {
       "source": "/api/youtube-search",
       "destination": "https://tesla-waze-piped-i9nw8dg6c-lukaslejko-9932s-projects.vercel.app/api/youtube-search"
     },
