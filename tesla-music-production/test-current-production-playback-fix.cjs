@@ -17,15 +17,15 @@ window.YT={PlayerState:{UNSTARTED:-1,ENDED:0,PLAYING:1,PAUSED:2,BUFFERING:3,CUED
  this.getPlayerState=()=>this.state;this.getCurrentTime=()=>this.time;this.getDuration=()=>220;
  this.getVideoData=()=>({video_id:this.id});this.getPlaylist=()=>this.list.slice();this.getPlaylistIndex=()=>this.index;
  this.addEventListener=(e,h)=>(this.listeners[e]||(this.listeners[e]=[])).push(h);
- this.loadPlaylist=(list,index=0,start=0)=>{window.__ytCalls.push(['playlist',list.slice(),index,start]);this.list=list.slice();this.index=index;this.id=list[index];this.time=start;this.emit(1);};
+ this.loadPlaylist=(list,index=0,start=0)=>{window.__ytCalls.push(['playlist',list.slice(),index,start]);this.list=list.slice();this.index=index;this.id=list[index];this.time=start;this.emit(window.__iosMediaStrict?5:1);};
  this.loadVideoById=(input,start=0)=>{const vid=typeof input==='string'?input:input?.videoId;const sec=typeof input==='object'?Number(input.startSeconds||0):start;window.__ytCalls.push(['single',vid,sec]);this.list=[];this.index=-1;this.id=vid;this.time=sec;this.emit(1);};
  this.cueVideoById=(id,start=0)=>{window.__ytCalls.push(['cue',id,start]);this.id=typeof id==='string'?id:id?.videoId;this.time=start;this.emit(5);};
  this.playVideo=()=>{window.__ytCalls.push(['play']);this.emit(1);};
  this.pauseVideo=()=>{window.__ytCalls.push(['pause']);this.emit(2);};
  this.seekTo=t=>{this.time=t;window.__ytCalls.push(['seek',t]);};
  this.setLoop=v=>{this.loop=!!v;window.__ytCalls.push(['loop',!!v]);};this.setShuffle=v=>window.__ytCalls.push(['shuffle',!!v]);
- this.nextVideo=()=>{window.__ytCalls.push(['nextVideo']);if(!this.list.length)return;if(this.index+1<this.list.length)this.index++;else if(this.loop)this.index=0;else return;this.id=this.list[this.index];this.emit(1);};
- this.previousVideo=()=>{window.__ytCalls.push(['previousVideo']);if(this.list.length&&this.index>0){this.index--;this.id=this.list[this.index];this.emit(1);}};
+ this.nextVideo=()=>{window.__ytCalls.push(['nextVideo']);if(!this.list.length)return;if(this.index+1<this.list.length)this.index++;else if(this.loop)this.index=0;else return;this.id=this.list[this.index];this.emit(window.__iosMediaStrict?5:1);};
+ this.previousVideo=()=>{window.__ytCalls.push(['previousVideo']);if(this.list.length&&this.index>0){this.index--;this.id=this.list[this.index];this.emit(window.__iosMediaStrict?5:1);}};
  setTimeout(()=>{options.events.onReady?.({target:this});for(const h of this.listeners.onReady||[]){const fn=typeof h==='string'?window[h]:h;fn?.({target:this});}},10);
 }};setTimeout(()=>window.onYouTubeIframeAPIReady?.(),0);
 `;
@@ -38,7 +38,8 @@ async function context(browser,{mobile}){
    userAgent:mobile?IOS:TESLA,
    isMobile:mobile,hasTouch:mobile
  });
- await c.addInitScript(()=>{
+ await c.addInitScript(({mobile})=>{
+   window.__iosMediaStrict=!!mobile;
    localStorage.setItem('music:memberSession:v1','test-session');
    localStorage.setItem('music:memberUser:v1',JSON.stringify({id:'test-user',email:'test@example.com',role:'member'}));
    localStorage.setItem('teslaMusic:settings:v1',JSON.stringify({shuffle:false,auto:true}));
@@ -52,7 +53,7 @@ async function context(browser,{mobile}){
    }
    localStorage.setItem('teslaMusic:brain:v1',JSON.stringify({tracks,artists:{},events:[]}));
    localStorage.setItem('teslaMusic:queue:v1',JSON.stringify(queue));
- });
+ },{mobile});
  const dir=path.resolve('tesla-music-production');
  const replacements={
    '/app-v7.js':path.join(dir,'app-v7.js'),
@@ -135,6 +136,7 @@ async function mobileTest(browser){
   assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'mobile track selection must stay on the bottom bar');
   const initial=await p.evaluate(()=>({id:current.id,calls:window.__ytCalls.slice(),playlist:player.getPlaylist(),index:player.getPlaylistIndex(),playback:window.teslaMusicPlaybackV40.state(),auto:settings.auto,tab}));
   assert.equal(initial.playback.nativeActive,true,'mobile native background playlist must be active: '+JSON.stringify(initial));
+  assert.equal(await p.evaluate(()=>player.getPlayerState()),1,'iPhone card tap must actually start playback, not remain cued at 0:00');
   assert.equal(initial.calls.filter(x=>x[0]==='playlist').length,1,'mobile should create one native playlist');
   assert.equal(initial.calls.filter(x=>x[0]==='single').length,0,'mobile AUTO should not also load a single video');
   assert.ok(initial.playlist.length>20,'mobile native playlist must buffer more than 20 tracks: '+initial.playlist.length);
@@ -149,6 +151,7 @@ async function mobileTest(browser){
   assert.notEqual(after.id,beforeId);
   assert.equal(after.playlistLoads,1,'manual mobile Next must not rebuild playlist');
   assert.equal(after.nextCalls,1,'manual mobile Next must advance exactly once');
+  assert.equal(await p.evaluate(()=>player.getPlayerState()),1,'iPhone manual Next must keep playback running');
 
   const autoBefore=await p.evaluate(()=>({id:current.id,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length}));
   await p.evaluate(()=>player.emit(YT.PlayerState.ENDED));
@@ -170,6 +173,7 @@ async function mobileTest(browser){
   const nativeAfter=await p.evaluate(()=>({id:current.id,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length,iosHandoffKey:window.teslaMusicPlaybackV40.state().iosHandoffKey}));
   assert.equal(nativeAfter.nextCalls,nativeBefore.nextCalls+1,'iOS pre-end continuity must advance exactly once');
   assert.notEqual(nativeAfter.id,nativeBefore.id,'iOS pre-end continuity must change track');
+  assert.equal(await p.evaluate(()=>player.getPlayerState()),1,'iOS continuity handoff must keep playback in PLAYING state');
 
   // Stress ten iOS continuity transitions. Repeated near-end ticks must not
   // double-skip, rebuild the playlist or fetch search API in the critical window.
