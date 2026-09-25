@@ -117,7 +117,7 @@ jobs:
         run: |
           set -euo pipefail
           SRC=/tmp/exact-prod/src
-          for f in             app-v7.js             mobile-controls-v40.js             rescue-v135.js             desktop-silence-v63.js             mobile-v128-music-logic.js             mode-v9.js             desktop-v97-youtube-search.js             member-v50-foryou.js             member-v49-search-layout.js             mobile-v106-player-parity.js             vercel.json
+          for f in             app-v7.js             mobile-controls-v40.js             rescue-v135.js             desktop-silence-v63.js             mobile-v128-music-logic.js             mode-v9.js             desktop-v97-youtube-search.js             member-v50-foryou.js             member-v49-search-layout.js             mobile-v106-player-parity.js             member-v47-core.js             member-v47-background.js             vercel.json
           do
             cp "tesla-music-production/$f" "$SRC/$f"
           done
