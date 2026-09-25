@@ -127,8 +127,12 @@
   function iosContinuityStep(){
     if(!isIOS||!settings.auto||!current)return false;
     const id=String(current.id||'');if(!id)return false;
-    if(iosHandoffKey===id&&Date.now()-iosHandoffAt<5000)return true;
-    iosHandoffKey=id;iosHandoffAt=Date.now();
+    const now=Date.now();
+    // Ignore stale/repeated end-of-track ticks from the previous item. On
+    // iPhone they can arrive just after nextVideo() has already switched.
+    if(iosHandoffAt&&now-iosHandoffAt<1200)return true;
+    if(iosHandoffKey===id&&now-iosHandoffAt<5000)return true;
+    iosHandoffKey=id;iosHandoffAt=now;
     return nativeStep()||baseAutoStep();
   }
   function maybeIOSPreEnd(detail){
@@ -201,7 +205,7 @@
   function onState(e){
     if(e.data===1){
       clearAdvance();clearTimeout(nativeEndTimer);nativeEndTimer=0;syncNativeTrack();
-      if(current&&iosHandoffKey&&iosHandoffKey!==current.id){iosHandoffKey='';iosHandoffAt=0;}
+      if(current&&iosHandoffKey&&iosHandoffKey!==current.id)iosHandoffKey='';
     }else if(e.data===0){
       if(isIOS&&settings.auto&&current){
         const oldId=String(current.id||'');
@@ -211,7 +215,7 @@
         let actual='';try{actual=player?.getVideoData?.().video_id||'';}catch{}
         if(iosHandoffKey!==oldId)iosContinuityStep();
         else if(!actual||actual===oldId){
-          clearAdvance();nativeActive=false;iosHandoffKey='';iosHandoffAt=0;baseAutoStep();
+          clearAdvance();nativeActive=false;iosHandoffKey='';baseAutoStep();
         }
       }else if(nativeActive)scheduleNativeEndFallback();
       else if(settings.auto&&!advanceBusy())baseAutoStep();
