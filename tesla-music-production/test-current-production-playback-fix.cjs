@@ -74,14 +74,16 @@ async function context(browser,{mobile}){
    return route.continue();
  });
  await c.route('https://www.youtube.com/iframe_api',r=>r.fulfill({body:fakeYoutube(),contentType:'application/javascript'}));
- await c.route('https://europrojekty-app.vercel.app/api/music',async route=>{
+ const musicApiHandler=async route=>{
    let body={};try{body=JSON.parse(route.request().postData()||'{}')}catch{}
    const action=body.action;
    if(action==='me')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({user:{id:'test-user',email:'test@example.com',role:'member'}})});
    if(action==='profile.get')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({profile:null})});
    if(action==='profile.save')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true})});
    return route.fulfill({status:200,contentType:'application/json',body:'{}'});
- });
+ };
+ await c.route('https://europrojekty-app.vercel.app/api/music',musicApiHandler);
+ await c.route('https://tesla-waze-piped.vercel.app/api/music',musicApiHandler);
  return c;
 }
 
