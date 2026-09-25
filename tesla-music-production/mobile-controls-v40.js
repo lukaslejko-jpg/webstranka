@@ -6,10 +6,11 @@
   'use strict';
   if(window.teslaMusicPlaybackV40)return;
   const LAST='teslaMusic:lastTrack:v1';
+  const isIOS=/iP(?:hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   const params=new URLSearchParams(location.search);
   const nativeEnabled=params.get('map')!=='1'&&params.get('embed')!=='1';
   const basePlay=playTrack,baseNext=next,basePrev=prev,baseReady=window.onYouTubeIframeAPIReady;
-  let pending=null,pendingTimer=0,nativeEndTimer=0,installed=false,nativeActive=false,nativeTracks=new Map(),nativeContext='foryou',advancing=false,lastSaved='',lastMetadata='';
+  let pending=null,pendingTimer=0,nativeEndTimer=0,installed=false,nativeActive=false,nativeTracks=new Map(),nativeContext='foryou',advancing=false,advanceStarted=0,iosHandoffKey='',iosHandoffAt=0,lastSaved='',lastMetadata='';
   let originalLoad=null,originalCue=null;
   const status=text=>{const e=$('status');if(e)e.textContent=text;};
   function normal(t){
@@ -58,24 +59,22 @@
   for(const id of ['play','bplay'])if($(id))$(id).onclick=()=>toggle();
   if($('miniPlay'))$('miniPlay').onclick=()=>toggle();
   function contextTracks(which){
-    const all=Object.values(profile.tracks||{});
-    if(which==='likes')return all.filter(t=>t.liked).sort((a,b)=>score(b)-score(a)).map(item);
-    if(which==='recent')return all.filter(t=>t.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed)-Date.parse(a.lastPlayed)).map(item);
-    if(which==='queue'){
-      const visible=!/^\/desktop\/?$/.test(location.pathname)&&typeof items!=='undefined'&&Array.isArray(items)?items:[];
-      const searched=typeof searchResults!=='undefined'&&Array.isArray(searchResults)?searchResults:[];
-      const queued=typeof queue!=='undefined'&&Array.isArray(queue)?queue:[];
-      const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
-      const learned=Object.values(profile.tracks||{}).map(item);
-      const seen=new Set(),out=[];
-      for(const raw of [...visible,...searched,...queued,...recommended,...learned]){
-        const t=normal(raw);if(!t||seen.has(t.id))continue;seen.add(t.id);out.push(raw);
-      }
-      return out;
+    const all=Object.values(profile.tracks||{}),learned=all.map(item);
+    const visible=typeof items!=='undefined'&&Array.isArray(items)?items:[];
+    const queued=typeof queue!=='undefined'&&Array.isArray(queue)?queue:[];
+    let primary=[];
+    if(which==='likes')primary=all.filter(t=>t.liked).sort((a,b)=>score(b)-score(a)).map(item);
+    else if(which==='recent')primary=all.filter(t=>t.lastPlayed).sort((a,b)=>Date.parse(b.lastPlayed)-Date.parse(a.lastPlayed)).map(item);
+    else if(which==='queue')primary=queued;
+    else primary=all.filter(t=>isAutoMusic(item(t))).sort((a,b)=>score(b)-score(a)).map(item);
+    const seen=new Set(),out=[];
+    // Always merge the already-rendered/preloaded lists. Real iPhone playback
+    // must never start as a one-item "playlist" just because the active tab
+    // has a sparse learned profile.
+    for(const raw of [...primary,...visible,...queued,...learned]){
+      const t=normal(raw);if(!t||seen.has(t.id))continue;seen.add(t.id);out.push(raw);
     }
-    const ranked=all.filter(t=>isAutoMusic(item(t))).sort((a,b)=>score(b)-score(a)).map(item);
-    const recommended=typeof recommendationPool!=='undefined'&&Array.isArray(recommendationPool)?recommendationPool:[];
-    return recommended.length?recommended:ranked;
+    return out;
   }
   function makePlaylist(selected){
     const seen=new Set(),tracks=[];
@@ -104,37 +103,72 @@
     if(!nativeActive)return false;
     try{const list=player.getPlaylist()||[],i=player.getPlaylistIndex();return i>=0&&i+1<list.length;}catch{return false;}
   }
+  function clearAdvance(){advancing=false;advanceStarted=0;}
+  function beginAdvance(){advancing=true;advanceStarted=Date.now();}
+  function advanceBusy(){
+    if(!advancing)return false;
+    // Never let a suspended iOS timer leave Next permanently locked.
+    if(!advanceStarted||Date.now()-advanceStarted>1800){clearAdvance();return false;}
+    return true;
+  }
+  function nativeStep(){
+    if(!nativeActive||!player)return false;
+    try{
+      const list=player.getPlaylist?.()||[],i=player.getPlaylistIndex?.();
+      if(i<0||list.length<2)return false;
+      beginAdvance();player.nextVideo?.();return true;
+    }catch{clearAdvance();return false;}
+  }
+  function baseAutoStep(){
+    if(advanceBusy())return false;
+    beginAdvance();
+    try{baseNext(false);return true;}finally{clearAdvance();}
+  }
+  function iosContinuityStep(){
+    if(!isIOS||!settings.auto||!current)return false;
+    const id=String(current.id||'');if(!id)return false;
+    if(iosHandoffKey===id&&Date.now()-iosHandoffAt<5000)return true;
+    iosHandoffKey=id;iosHandoffAt=Date.now();
+    return nativeStep()||baseAutoStep();
+  }
+  function maybeIOSPreEnd(detail){
+    if(!isIOS||!settings.auto||!current||!detail?.playing)return;
+    const now=Number(detail.now||0),duration=Number(detail.duration||0),remaining=duration-now;
+    // iOS can suspend page JS exactly at ENDED. Hand off once while the
+    // current media session is still alive; ENDED is then suppressed for
+    // this track, so there is still exactly one transition owner.
+    if(duration>20&&remaining>0&&remaining<=1.35)iosContinuityStep();
+  }
+
   next=function(manual=true){
-    if(advancing)return;
+    if(advanceBusy())return;
     if(nativeActive&&player){
       try{
         const list=player.getPlaylist?.()||[],i=player.getPlaylistIndex?.();
         if(i>=0&&list.length>1){
-          // AUTO is owned by the native YouTube playlist. Manual Next advances
-          // exactly once inside that same playlist.
+          // AUTO is owned by the native queue. Manual Next advances exactly
+          // once and the lock self-expires even if iOS suspends a reset timer.
           if(!manual)return;
-          advancing=true;
-          player.nextVideo?.();
-          return;
+          beginAdvance();player.nextVideo?.();return;
         }
-      }catch{}
+      }catch{clearAdvance();}
     }
-    advancing=true;
+    beginAdvance();
     try{
       const result=baseNext(manual);
-      if(result?.then)return result.finally(()=>{advancing=false;});
-      advancing=false;return result;
-    }catch(e){advancing=false;throw e;}
+      if(result?.then)return result.finally(clearAdvance);
+      clearAdvance();return result;
+    }catch(e){clearAdvance();throw e;}
   };
   prev=function(){
-    if(advancing)return;
+    if(advanceBusy())return;
     if(nativeActive&&player){
       try{
         const i=player.getPlaylistIndex?.();
-        if(i>0){advancing=true;player.previousVideo?.();return;}
-      }catch{}
+        if(i>0){beginAdvance();player.previousVideo?.();return;}
+      }catch{clearAdvance();}
     }
-    advancing=true;try{return basePrev();}finally{advancing=false;}
+    beginAdvance();try{return basePrev();}finally{clearAdvance();}
   };
   for(const id of ['next','bnext'])if($(id))$(id).onclick=()=>next(true);
   for(const id of ['prev','bprev'])if($(id))$(id).onclick=()=>prev();
@@ -165,10 +199,22 @@
     },350);
   }
   function onState(e){
-    if(e.data===1){advancing=false;clearTimeout(nativeEndTimer);nativeEndTimer=0;syncNativeTrack();}
-    else if(e.data===0){
-      if(nativeActive)scheduleNativeEndFallback();
-      else if(settings.auto&&!advancing)baseNext(false);
+    if(e.data===1){
+      clearAdvance();clearTimeout(nativeEndTimer);nativeEndTimer=0;syncNativeTrack();
+      if(current&&iosHandoffKey&&iosHandoffKey!==current.id){iosHandoffKey='';iosHandoffAt=0;}
+    }else if(e.data===0){
+      if(isIOS&&settings.auto&&current){
+        const oldId=String(current.id||'');
+        // If the pre-end handoff was missed, advance synchronously on ENDED.
+        // If it was attempted but the iframe never changed video, fall back
+        // once through the prepared queue instead of leaving iOS stuck at 0:00.
+        let actual='';try{actual=player?.getVideoData?.().video_id||'';}catch{}
+        if(iosHandoffKey!==oldId)iosContinuityStep();
+        else if(!actual||actual===oldId){
+          clearAdvance();nativeActive=false;iosHandoffKey='';iosHandoffAt=0;baseAutoStep();
+        }
+      }else if(nativeActive)scheduleNativeEndFallback();
+      else if(settings.auto&&!advanceBusy())baseAutoStep();
     }
     registerMediaActions();media();
   }
@@ -219,11 +265,11 @@
     }catch{}
   };
   window.addEventListener('tesla-music-trackchange',e=>{rememberTrack(e.detail);registerMediaActions();media();});
-  window.addEventListener('tesla-music-tick',()=>{media();});
+  window.addEventListener('tesla-music-tick',event=>{maybeIOSPreEnd(event.detail);media();});
   window.addEventListener('tesla-music-profile-reloaded',initialHint);
   document.addEventListener('visibilitychange',()=>{registerMediaActions();media();});
   window.addEventListener('pageshow',()=>{initialHint();registerMediaActions();});
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',initialHint));
-  window.teslaMusicPlaybackV40=Object.freeze({version:40,start,state:()=>({nativeEnabled,nativeActive,nativeContext,pending:pending?.id||null,current:current?.id||null,playlist:nativeActive?(player?.getPlaylist?.()||[]):[]})});
+  window.teslaMusicPlaybackV40=Object.freeze({version:40,start,state:()=>({nativeEnabled,nativeActive,nativeContext,isIOS,advancing,advanceStarted,iosHandoffKey,pending:pending?.id||null,current:current?.id||null,playlist:nativeActive?(player?.getPlaylist?.()||[]):[]})});
   registerMediaActions();initialHint();if(ready)window.teslaMusicReadyV40();
 })();
