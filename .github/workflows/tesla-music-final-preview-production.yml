@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   deploy:
@@ -37,7 +38,44 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Authenticate Vercel CLI
-        run: timeout 300 vercel login --github
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          LOG=/tmp/vercel-device-auth.log
+          rm -f "$LOG"
+          timeout 300 vercel login --github >"$LOG" 2>&1 &
+          PID=$!
+          CODE=""
+          URL=""
+          for _ in $(seq 1 60); do
+            if grep -Eq 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null; then
+              URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" | tail -n1)"
+              CODE="${URL##*user_code=}"
+              break
+            fi
+            sleep 1
+          done
+          if [ -z "$CODE" ]; then
+            cat "$LOG"
+            kill "$PID" 2>/dev/null || true
+            wait "$PID" 2>/dev/null || true
+            echo "Vercel device code was not emitted"
+            exit 1
+          fi
+          echo "::notice title=Vercel device code::$CODE"
+          node - "$CODE" "$URL" <<'NODE' > /tmp/status.json
+          const [code,url]=process.argv.slice(2);
+          process.stdout.write(JSON.stringify({
+            state:'pending',
+            context:'vercel-device-auth',
+            description:'Vercel code: '+code,
+            target_url:url
+          }));
+          NODE
+          curl -fsS -X POST             -H "Authorization: Bearer $GH_STATUS_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"             --data-binary @/tmp/status.json >/dev/null
+          cat "$LOG"
+          wait "$PID"
 
       - name: Verify identity
         run: vercel whoami
