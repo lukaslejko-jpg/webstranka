@@ -19,8 +19,9 @@ Zmeny sa nesmú vrstviť ako ďalšie rescue/hotfix hacky. Každá zmena musí m
    - Žiadne JS timery ako jediný mechanizmus background pokračovania.
 
 3. **Žiadne dvojité AUTO mechanizmy**
-   - Odstrániť near-end trigger typu `duration - 1.1 s → next(false)`.
-   - Odstrániť paralelné `ENDED → next(false)` ak je aktívny native playlist.
+   - Generický near-end `next(false)` mimo playback ownera je zakázaný.
+   - Na iPhone/iOS je povolený iba jeden riadený continuity handoff v playback ownery tesne pred koncom skladby, ak je potrebný na zachovanie background prehrávania. Musí ísť o presne jeden `nextVideo()` v už pripravenom native playliste, s ochranou proti opakovanému ticku a dvojitému preskoku.
+   - Ak iOS handoff prebehol, paralelný `ENDED → next(false)` je zakázaný; ENDED môže urobiť iba jednorazový fallback, ak sa preukázateľne nezmenilo video.
    - Jeden koniec skladby = jeden prechod.
 
 4. **Fronta musí byť pripravená vopred**
@@ -86,7 +87,7 @@ Zmeny sa nesmú vrstviť ako ďalšie rescue/hotfix hacky. Každá zmena musí m
 13. Minimálne 10 automatických prechodov za sebou.
 14. Žiadny reload celej stránky ani iframe spam.
 15. Player window sa pri prechode sám neotvorí.
-16. Mobil background test: viac prirodzených prechodov pri zhasnutom/pozadí.
+16. Mobil background test: viac prirodzených prechodov pri zhasnutom/pozadí na reálnom iPhone; simulácia ani desktop browser sa nepovažujú za náhradu.
 17. Po návrate do foreground UI ukazuje reálne prehrávanú skladbu.
 18. Tesla `/desktop`: viac automatických prechodov bez prebliknutia a bez rádia.
 19. `/api/youtube-search` je HTTP 200.
