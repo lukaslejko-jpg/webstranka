@@ -2,7 +2,7 @@
 (()=>{
 'use strict';
 if(window.musicBackgroundV47)return;
-const API='https://europrojekty-app.vercel.app/api/music';
+const API='/api/music';
 const SESSION='music:memberSession:v1',USER='music:memberUser:v1';
 const KEYS=['teslaMusic:brain:v1','teslaMusic:queue:v1','teslaMusic:searchHistory:v1','teslaMusic:settings:v1'];
 let adminCache=null,adminAt=0,prefetching=null;
