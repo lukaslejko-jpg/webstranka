@@ -35,11 +35,10 @@ function installLiveSearch(){
    go.click();
   },SEARCH_DELAY);
  });
+ const settleExplicit=()=>{clearTimeout(timer);timer=0;lastAuto=q.value.trim();};
+ go.addEventListener('click',settleExplicit,{capture:true});
  q.addEventListener('keydown',e=>{
-  if(e.key==='Enter'){
-   clearTimeout(timer);
-   lastAuto=q.value.trim();
-  }
+  if(e.key==='Enter')settleExplicit();
  });
 }
 function boot(){installStyle();installLiveSearch();}
