@@ -161,14 +161,18 @@ async function mobileTest(browser){
   assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'mobile AUTO fallback must not open the mini player');
 
   const nativeBefore=await p.evaluate(()=>({id:current.id,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length}));
-  await p.evaluate(()=>{player.emit(YT.PlayerState.ENDED);setTimeout(()=>player.nextVideo(),50);});
+  await p.evaluate(()=>{
+    player.time=219.1;
+    window.dispatchEvent(new CustomEvent('tesla-music-tick',{detail:{playing:true,now:219.1,duration:220}}));
+  });
   await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,nativeBefore.id,{timeout:2000});
-  await p.waitForTimeout(450);
-  const nativeAfter=await p.evaluate(()=>({id:current.id,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length}));
-  assert.equal(nativeAfter.nextCalls,nativeBefore.nextCalls+1,'native YouTube advance must cancel fallback and avoid a double skip');
+  await p.waitForTimeout(80);
+  const nativeAfter=await p.evaluate(()=>({id:current.id,nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length,iosHandoffKey:window.teslaMusicPlaybackV40.state().iosHandoffKey}));
+  assert.equal(nativeAfter.nextCalls,nativeBefore.nextCalls+1,'iOS pre-end continuity must advance exactly once');
+  assert.notEqual(nativeAfter.id,nativeBefore.id,'iOS pre-end continuity must change track');
 
-  // Stress ten native AUTO transitions. No search request may be needed in the
-  // critical transition window and every transition must advance exactly once.
+  // Stress ten iOS continuity transitions. Repeated near-end ticks must not
+  // double-skip, rebuild the playlist or fetch search API in the critical window.
   for(let n=0;n<10;n++){
     const before=await p.evaluate(()=>({
       id:current.id,
@@ -176,19 +180,25 @@ async function mobileTest(browser){
       playlistLoads:window.__ytCalls.filter(x=>x[0]==='playlist').length
     }));
     const searchBefore=p.requests.filter(u=>u.includes('/api/youtube-search?')).length;
-    await p.evaluate(()=>{player.emit(YT.PlayerState.ENDED);setTimeout(()=>player.nextVideo(),50);});
+    await p.evaluate(()=>{
+      player.time=219.15;
+      const detail={playing:true,now:219.15,duration:220};
+      window.dispatchEvent(new CustomEvent('tesla-music-tick',{detail}));
+      window.dispatchEvent(new CustomEvent('tesla-music-tick',{detail}));
+      window.dispatchEvent(new CustomEvent('tesla-music-tick',{detail}));
+    });
     await p.waitForFunction(id=>(typeof current!=='undefined'&&current?.id)&&current.id!==id,before.id,{timeout:2000});
-    await p.waitForTimeout(500);
+    await p.waitForTimeout(100);
     const afterStress=await p.evaluate(()=>({
       id:current.id,
       nextCalls:window.__ytCalls.filter(x=>x[0]==='nextVideo').length,
       playlistLoads:window.__ytCalls.filter(x=>x[0]==='playlist').length
     }));
     const searchAfter=p.requests.filter(u=>u.includes('/api/youtube-search?')).length;
-    assert.equal(afterStress.nextCalls,before.nextCalls+1,'AUTO transition '+n+' must advance exactly once');
-    assert.equal(afterStress.playlistLoads,before.playlistLoads,'AUTO transition '+n+' must not rebuild playlist');
-    assert.equal(searchAfter,searchBefore,'AUTO transition '+n+' must not fetch search API in critical window');
-    assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'AUTO transition '+n+' must stay on bottom bar');
+    assert.equal(afterStress.nextCalls,before.nextCalls+1,'iOS AUTO transition '+n+' must advance exactly once');
+    assert.equal(afterStress.playlistLoads,before.playlistLoads,'iOS AUTO transition '+n+' must not rebuild playlist');
+    assert.equal(searchAfter,searchBefore,'iOS AUTO transition '+n+' must not fetch search API in critical window');
+    assert.equal(await p.locator('#playerWindow').evaluate(el=>el.classList.contains('minimized')),true,'iOS AUTO transition '+n+' must stay on bottom bar');
   }
 
   const ytHandle2=await p.locator('#yt').elementHandle();
@@ -196,7 +206,7 @@ async function mobileTest(browser){
   const radio=p.requests.filter(u=>/radio|listType=radio|start_radio/i.test(u));
   assert.equal(radio.length,0,'no radio request is allowed');
   assert.equal(p.errors.length,0,p.errors.join('; '));
-  report.checks.push({mobile:true,search:firstTitle,nextSingleAdvance:true,autoFallbackSingleAdvance:true,nativeAdvanceNoDoubleSkip:true,tenAutoTransitions:true,playlistBuffer:initial.playlist.length,playlistLoads:after.playlistLoads,noTransitionSearch:true,noRadio:true,noJsErrors:true});
+  report.checks.push({mobile:true,search:firstTitle,nextSingleAdvance:true,endedFallbackSingleAdvance:true,iosPreEndSingleAdvance:true,tenIosAutoTransitions:true,playlistBuffer:initial.playlist.length,playlistLoads:after.playlistLoads,noTransitionSearch:true,noRadio:true,noJsErrors:true});
  }finally{await c.close();}
 }
 
