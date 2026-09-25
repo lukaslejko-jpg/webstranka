@@ -98,6 +98,10 @@
     nativeTracks=new Map(list.map(t=>[t.id,t]));nativeActive=true;
     player.loadPlaylist(list.map(t=>t.id),index,Math.max(0,seconds));
     player.setLoop(true);player.setShuffle(!!settings.shuffle);
+    // Real iPhone Safari can leave an iframe playlist merely cued at 0:00.
+    // This call is still inside the user's original gesture when a card is
+    // tapped, and is exactly one explicit start for the prepared playlist.
+    if(isIOS)player.playVideo?.();
   }
   function hasNativeNext(){
     if(!nativeActive)return false;
@@ -116,7 +120,7 @@
     try{
       const list=player.getPlaylist?.()||[],i=player.getPlaylistIndex?.();
       if(i<0||list.length<2)return false;
-      beginAdvance();player.nextVideo?.();return true;
+      beginAdvance();player.nextVideo?.();if(isIOS)player.playVideo?.();return true;
     }catch{clearAdvance();return false;}
   }
   function baseAutoStep(){
@@ -153,7 +157,7 @@
           // AUTO is owned by the native queue. Manual Next advances exactly
           // once and the lock self-expires even if iOS suspends a reset timer.
           if(!manual)return;
-          beginAdvance();player.nextVideo?.();return;
+          beginAdvance();player.nextVideo?.();if(isIOS)player.playVideo?.();return;
         }
       }catch{clearAdvance();}
     }
@@ -169,7 +173,7 @@
     if(nativeActive&&player){
       try{
         const i=player.getPlaylistIndex?.();
-        if(i>0){beginAdvance();player.previousVideo?.();return;}
+        if(i>0){beginAdvance();player.previousVideo?.();if(isIOS)player.playVideo?.();return;}
       }catch{clearAdvance();}
     }
     beginAdvance();try{return basePrev();}finally{clearAdvance();}
