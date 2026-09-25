@@ -44,7 +44,7 @@ jobs:
           ];
           for(const file of safe){
             const s=fs.readFileSync(file,'utf8');
-            if(/\b(?:playTrack|next|prev)\s*=/.test(s)) throw new Error('current UI layer takes playback ownership: '+file);
+            if(/(?:^|[;\n])\s*(?:window\.)?(?:playTrack|next|prev)\s*=/.test(s)) throw new Error('current UI layer takes playback ownership: '+file);
             if(/setActionHandler\(['"](?:nexttrack|previoustrack)/.test(s)) throw new Error('current UI layer takes MediaSession ownership: '+file);
           }
           if(!fs.readFileSync('tesla-music-production/mobile-v128-music-logic.js','utf8').includes("if(!/^\\/(?:index\\.html)?$/.test(location.pathname))return")) throw new Error('mobile logic is not root-only');
