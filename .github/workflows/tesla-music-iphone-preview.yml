@@ -89,7 +89,7 @@ jobs:
         run: |
           set -euo pipefail
           SRC=/tmp/exact-prod/src
-          for f in app-v7.js mobile-controls-v40.js rescue-v135.js desktop-silence-v63.js mobile-v128-music-logic.js mode-v9.js desktop-v97-youtube-search.js member-v50-foryou.js member-v49-search-layout.js mobile-v106-player-parity.js vercel.json
+          for f in app-v7.js mobile-controls-v40.js rescue-v135.js desktop-silence-v63.js mobile-v128-music-logic.js mode-v9.js desktop-v97-youtube-search.js member-v50-foryou.js member-v49-search-layout.js mobile-v106-player-parity.js member-v47-core.js member-v47-background.js vercel.json
           do
             cp "tesla-music-production/$f" "$SRC/$f"
           done
@@ -136,9 +136,11 @@ jobs:
           vercel curl "/?mobile=1&device=mobile" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/root.html
           vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/playback.js
           vercel curl "/api/youtube-search?q=Kali" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/search.json
+          vercel curl "/api/music" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" -X POST -H "content-type: application/json" --data '{"action":"login","email":"preview-connectivity-test@example.invalid","password":"invalid"}' > /tmp/music-login.json
           grep -q 'tesla-music-build" content="154' /tmp/root.html
           cmp -s mobile-controls-v40.js /tmp/playback.js
           node -e "const d=require('/tmp/search.json');if(!Array.isArray(d.items)||!d.items.length)process.exit(1)"
+          node -e "const fs=require('fs');const s=fs.readFileSync('/tmp/music-login.json','utf8');if(!s.trim())process.exit(1);console.log('MUSIC_LOGIN_ROUTE_REACHABLE',s.slice(0,160))"
 
       - name: Publish preview URL
         env:
