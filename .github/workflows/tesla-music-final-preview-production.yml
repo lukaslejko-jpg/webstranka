@@ -98,7 +98,9 @@ jobs:
           }
           v.redirects=Array.isArray(v.redirects)?v.redirects:[];
           v.redirects=v.redirects.filter(r=>r.source!=='/desktop/');
-          v.redirects.push({source:'/desktop/',destination:'/desktop',permanent:false});
+          v.rewrites=Array.isArray(v.rewrites)?v.rewrites:[];
+          v.rewrites=v.rewrites.filter(r=>r.source!=='/desktop'&&r.source!=='/desktop/');
+          v.rewrites.push({source:'/desktop',destination:'/index.html'},{source:'/desktop/',destination:'/index.html'});
           fs.writeFileSync(p,JSON.stringify(v,null,2)+'\n');
           NODE
 
@@ -140,7 +142,8 @@ jobs:
           const p='/tmp/exact-prod/src/vercel.json';
           const v=JSON.parse(fs.readFileSync(p,'utf8'));
           if(!fs.existsSync('/tmp/exact-prod/src/package.json')&&(v.buildCommand||v.outputDirectory)) throw new Error('static deploy model not normalized');
-          if(!(v.redirects||[]).some(r=>r.source==='/desktop/'&&r.destination==='/desktop')) throw new Error('desktop slash redirect missing');
+          if(!(v.rewrites||[]).some(r=>r.source==='/desktop'&&r.destination==='/index.html')) throw new Error('desktop rewrite missing');
+          if(!(v.rewrites||[]).some(r=>r.source==='/desktop/'&&r.destination==='/index.html')) throw new Error('desktop slash rewrite missing');
           NODE
 
       - name: Link exact project
