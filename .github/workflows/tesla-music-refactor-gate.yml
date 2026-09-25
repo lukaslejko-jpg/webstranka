@@ -67,7 +67,8 @@ jobs:
           const forYou=fs.readFileSync('tesla-music-production/member-v50-foryou.js','utf8');
           if(/appendChild\s*\(/.test(forYou)||/setTimeout\s*\(\s*reorder/.test(forYou)) throw new Error('member-v50 still mutates rendered DOM after paint');
           const vercel=JSON.parse(fs.readFileSync('tesla-music-production/vercel.json','utf8'));
-          if(!(vercel.redirects||[]).some(r=>r.source==='/desktop/'&&r.destination==='/desktop')) throw new Error('/desktop/ normalization missing');
+          if(!(vercel.rewrites||[]).some(r=>r.source==='/desktop'&&r.destination==='/index.html')) throw new Error('/desktop rewrite missing');
+          if(!(vercel.rewrites||[]).some(r=>r.source==='/desktop/'&&r.destination==='/index.html')) throw new Error('/desktop/ rewrite missing');
           const rescue=fs.readFileSync('tesla-music-production/rescue-v135.js','utf8');
           if(/setInterval\s*\(/.test(rescue)) throw new Error('rescue polling still active');
           const playCalls=(rescue.match(/\.playVideo\s*\(/g)||[]).length;
