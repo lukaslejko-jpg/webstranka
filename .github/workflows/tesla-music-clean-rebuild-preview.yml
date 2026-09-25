@@ -1,0 +1,246 @@
+name: Tesla Music clean golden rebuild preview
+
+on:
+  push:
+    branches:
+      - rebuild/tesla-music-clean-stable-20260925
+    paths:
+      - '.github/workflows/tesla-music-clean-rebuild-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      GOLDEN_DPL: dpl_H1L29ngkfBrrntSX4d1needeTGnA
+      BUILD: "156"
+    steps:
+      - name: Checkout clean rebuild branch
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@59.25.4
+
+      - name: Authenticate Vercel CLI
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          LOG=/tmp/vercel-device-auth.log
+          rm -f "$LOG"
+          timeout 300 vercel login --github >"$LOG" 2>&1 &
+          PID=$!
+          CODE=""
+          URL=""
+          for _ in $(seq 1 60); do
+            if grep -Eq 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null; then
+              URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" | tail -n1)"
+              CODE="${URL##*user_code=}"
+              break
+            fi
+            sleep 1
+          done
+          test -n "$CODE"
+          echo "::notice title=Vercel device code::$CODE"
+          node - "$CODE" "$URL" <<'NODE' > /tmp/status.json
+          const [code,url]=process.argv.slice(2);
+          process.stdout.write(JSON.stringify({
+            state:'pending',
+            context:'tesla-music-clean-rebuild-auth',
+            description:'Vercel code: '+code,
+            target_url:url
+          }));
+          NODE
+          curl -fsS -X POST             -H "Authorization: Bearer $GH_STATUS_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"             --data-binary @/tmp/status.json >/dev/null
+          cat "$LOG"
+          wait "$PID"
+
+      - name: Clone exact last known good production
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/golden
+          mkdir -p /tmp/golden
+          vercel api "/v6/deployments/$GOLDEN_DPL/files?teamId=$TEAM_ID" > /tmp/tree.json
+          node <<'NODE'
+          const fs=require('fs'),cp=require('child_process'),path=require('path');
+          const tree=JSON.parse(fs.readFileSync('/tmp/tree.json','utf8'));
+          const out='/tmp/golden';
+          let files=[];
+          function walk(nodes,prefix=''){
+            for(const n of nodes||[]){
+              const p=prefix?prefix+'/'+n.name:n.name;
+              if(n.type==='directory') walk(n.children,p);
+              else if(n.type==='file') files.push({path:p,uid:n.uid});
+            }
+          }
+          walk(Array.isArray(tree)?tree:tree.files||tree.children||[]);
+          if(!files.length) throw new Error('No files returned from golden deployment');
+          for(const f of files){
+            fs.mkdirSync(path.dirname(path.join(out,f.path)),{recursive:true});
+            const endpoint='/v8/deployments/'+process.env.GOLDEN_DPL+'/files/'+f.uid+'?teamId='+process.env.TEAM_ID;
+            const raw=cp.execFileSync('vercel',['api',endpoint],{encoding:'utf8',maxBuffer:20*1024*1024});
+            const data=JSON.parse(raw),b64=data.data??data.content??data;
+            if(typeof b64!=='string') throw new Error('Unexpected payload for '+f.path);
+            fs.writeFileSync(path.join(out,f.path),Buffer.from(b64,'base64'));
+          }
+          console.log('GOLDEN_FILES='+files.length);
+          NODE
+          test -f /tmp/golden/src/index.html
+          test -f /tmp/golden/src/app-v7.js
+          test -f /tmp/golden/src/mobile-controls-v40.js
+          test -f /tmp/golden/src/mode-v9.js
+          cp -a /tmp/golden/src /tmp/golden-before-ui
+          sha256sum             /tmp/golden/src/app-v7.js             /tmp/golden/src/mobile-controls-v40.js             /tmp/golden/src/mode-v9.js             /tmp/golden/src/mini-v7.js             /tmp/golden/src/rescue-v135.js             /tmp/golden/src/desktop-silence-v63.js             > /tmp/golden-playback.sha256
+
+      - name: Carry forward current UI and account layers only
+        run: |
+          set -euo pipefail
+          SRC=/tmp/golden/src
+          for f in             member-v47-core.js             member-v47-background.js             member-v49-search-layout.js             member-v50-foryou.js             mobile-v106-player-parity.js             mobile-v128-music-logic.js             desktop-v97-youtube-search.js
+          do
+            cp "tesla-music-production/$f" "$SRC/$f"
+          done
+
+      - name: Preserve golden playback byte-for-byte
+        run: |
+          set -euo pipefail
+          cmp -s /tmp/golden-before-ui/app-v7.js /tmp/golden/src/app-v7.js
+          cmp -s /tmp/golden-before-ui/mobile-controls-v40.js /tmp/golden/src/mobile-controls-v40.js
+          cmp -s /tmp/golden-before-ui/mode-v9.js /tmp/golden/src/mode-v9.js
+          cmp -s /tmp/golden-before-ui/mini-v7.js /tmp/golden/src/mini-v7.js
+          cmp -s /tmp/golden-before-ui/rescue-v135.js /tmp/golden/src/rescue-v135.js
+          cmp -s /tmp/golden-before-ui/desktop-silence-v63.js /tmp/golden/src/desktop-silence-v63.js
+          echo "GOLDEN_PLAYBACK_UNCHANGED"
+
+      - name: Add only routing needed by current UI
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const root='/tmp/golden/src',p=root+'/vercel.json';
+          const v=JSON.parse(fs.readFileSync(p,'utf8'));
+          if(!fs.existsSync(root+'/package.json')){
+            delete v.buildCommand;
+            delete v.outputDirectory;
+            delete v.installCommand;
+          }
+          v.rewrites=Array.isArray(v.rewrites)?v.rewrites:[];
+          v.rewrites=v.rewrites.filter(r=>!['/api/music','/desktop','/desktop/'].includes(r.source));
+          v.rewrites.unshift({source:'/api/music',destination:'https://europrojekty-app.vercel.app/api/music'});
+          v.rewrites.push({source:'/desktop',destination:'/index.html'},{source:'/desktop/',destination:'/index.html'});
+          v.redirects=Array.isArray(v.redirects)?v.redirects.filter(r=>r.source!=='/desktop/'):[];
+          fs.writeFileSync(p,JSON.stringify(v,null,2)+'\n');
+          NODE
+
+      - name: Fresh cache-bust only
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          for(const p of ['/tmp/golden/src/index.html','/tmp/golden/src/upstream/piped/index.html']){
+            if(!fs.existsSync(p))continue;
+            let s=fs.readFileSync(p,'utf8');
+            s=s.replace(/(<meta name="tesla-music-build" content=")[^"]+(")/g,'$1'+process.env.BUILD+'$2');
+            s=s.replace(/((?:src|href)="\/[^"]+?)(?:\?v=\d+)?(")/g,(m,a,b)=>{
+              if(/youtube\.com/.test(a)||/manifest\.webmanifest/.test(a))return m;
+              return a+'?v='+process.env.BUILD+b;
+            });
+            fs.writeFileSync(p,s);
+          }
+          NODE
+
+      - name: Validate clean candidate
+        run: |
+          set -euo pipefail
+          SRC=/tmp/golden/src
+          node --check "$SRC/app-v7.js"
+          node --check "$SRC/mobile-controls-v40.js"
+          node --check "$SRC/mode-v9.js"
+          node --check "$SRC/mobile-v128-music-logic.js"
+          node --check "$SRC/mobile-v106-player-parity.js"
+          node --check "$SRC/desktop-v97-youtube-search.js"
+          node --check "$SRC/member-v47-core.js"
+          node --check "$SRC/member-v47-background.js"
+          grep -q 'tesla-music-build" content="156' "$SRC/index.html"
+          node <<'NODE'
+          const fs=require('fs');
+          const safe=[
+            '/tmp/golden/src/mobile-v128-music-logic.js',
+            '/tmp/golden/src/mobile-v106-player-parity.js',
+            '/tmp/golden/src/desktop-v97-youtube-search.js',
+            '/tmp/golden/src/member-v47-core.js',
+            '/tmp/golden/src/member-v47-background.js',
+            '/tmp/golden/src/member-v49-search-layout.js',
+            '/tmp/golden/src/member-v50-foryou.js'
+          ];
+          for(const file of safe){
+            const s=fs.readFileSync(file,'utf8');
+            if(/(?:^|[;\n])\s*(?:window\.)?(?:playTrack|next|prev)\s*=/.test(s)) throw new Error('UI overlay owns playback: '+file);
+            if(/setActionHandler\(['"](?:nexttrack|previoustrack)/.test(s)) throw new Error('UI overlay owns MediaSession: '+file);
+          }
+          NODE
+          echo "CLEAN_CANDIDATE_OK"
+
+      - name: Link exact project
+        working-directory: /tmp/golden/src
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$PROJECT_ID" > .vercel/project.json
+
+      - name: Deploy preview only
+        working-directory: /tmp/golden/src
+        run: |
+          set -euo pipefail
+          URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
+          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
+          echo "PREVIEW=$URL"
+
+      - name: Verify exact preview
+        working-directory: /tmp/golden/src
+        run: |
+          set -euo pipefail
+          vercel inspect "$PREVIEW_URL" --scope "$TEAM_SLUG"
+          vercel curl "/?mobile=1&device=mobile" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/root.html
+          vercel curl "/app-v7.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/deployed-app.js
+          vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/deployed-playback.js
+          vercel curl "/mode-v9.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/deployed-mode.js
+          vercel curl "/mobile-v128-music-logic.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/deployed-mobile-ui.js
+          vercel curl "/member-v47-core.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/deployed-member.js
+          vercel curl "/api/youtube-search?q=Kali" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/search.json
+          vercel curl "/api/music" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" -X POST -H "content-type: application/json" --data '{"action":"login","email":"preview-connectivity-test@example.invalid","password":"invalid"}' > /tmp/login.json
+          grep -q 'tesla-music-build" content="156' /tmp/root.html
+          cmp -s /tmp/golden-before-ui/app-v7.js /tmp/deployed-app.js
+          cmp -s /tmp/golden-before-ui/mobile-controls-v40.js /tmp/deployed-playback.js
+          cmp -s /tmp/golden-before-ui/mode-v9.js /tmp/deployed-mode.js
+          cmp -s mobile-v128-music-logic.js /tmp/deployed-mobile-ui.js
+          cmp -s member-v47-core.js /tmp/deployed-member.js
+          node -e "const d=require('/tmp/search.json');if(!Array.isArray(d.items)||!d.items.length)process.exit(1)"
+          node -e "const fs=require('fs');if(!fs.readFileSync('/tmp/login.json','utf8').trim())process.exit(1)"
+          echo "CLEAN_PREVIEW_EXACT_OK"
+
+      - name: Publish clean preview URL
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+        run: |
+          node - "$PREVIEW_URL" <<'NODE' > /tmp/preview-status.json
+          const url=process.argv[2];
+          process.stdout.write(JSON.stringify({
+            state:'success',
+            context:'tesla-music-clean-rebuild-preview',
+            description:'Golden playback + current UI preview ready',
+            target_url:url
+          }));
+          NODE
+          curl -fsS -X POST             -H "Authorization: Bearer $GH_STATUS_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"             --data-binary @/tmp/preview-status.json >/dev/null
