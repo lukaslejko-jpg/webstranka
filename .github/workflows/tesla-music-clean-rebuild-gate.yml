@@ -1,0 +1,53 @@
+name: Tesla Music clean rebuild gate
+
+on:
+  push:
+    branches:
+      - rebuild/tesla-music-clean-stable-20260925
+    paths:
+      - 'tesla-music-production/**'
+      - '.github/workflows/tesla-music-clean-rebuild-gate.yml'
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and ownership guards
+        run: |
+          set -euo pipefail
+          node --check tesla-music-production/mobile-controls-v40.js
+          node --check tesla-music-production/mobile-v128-music-logic.js
+          node --check tesla-music-production/mobile-v106-player-parity.js
+          node --check tesla-music-production/desktop-v97-youtube-search.js
+          node --check tesla-music-production/member-v47-core.js
+          node --check tesla-music-production/member-v47-background.js
+          node --check tesla-music-production/member-v49-search-layout.js
+          node --check tesla-music-production/member-v50-foryou.js
+          node <<'NODE'
+          const fs=require('fs');
+          const stable=fs.readFileSync('tesla-music-production/mobile-controls-v40.js','utf8');
+          if(!stable.includes('native YouTube queue for iPhone')) throw new Error('verified stable V40 playback base missing');
+          const safe=[
+            'tesla-music-production/mobile-v128-music-logic.js',
+            'tesla-music-production/mobile-v106-player-parity.js',
+            'tesla-music-production/desktop-v97-youtube-search.js',
+            'tesla-music-production/member-v47-core.js',
+            'tesla-music-production/member-v47-background.js',
+            'tesla-music-production/member-v49-search-layout.js',
+            'tesla-music-production/member-v50-foryou.js'
+          ];
+          for(const file of safe){
+            const s=fs.readFileSync(file,'utf8');
+            if(/\b(?:playTrack|next|prev)\s*=/.test(s)) throw new Error('current UI layer takes playback ownership: '+file);
+            if(/setActionHandler\(['"](?:nexttrack|previoustrack)/.test(s)) throw new Error('current UI layer takes MediaSession ownership: '+file);
+          }
+          if(!fs.readFileSync('tesla-music-production/mobile-v128-music-logic.js','utf8').includes("if(!/^\\/(?:index\\.html)?$/.test(location.pathname))return")) throw new Error('mobile logic is not root-only');
+          if(!fs.readFileSync('tesla-music-production/desktop-v97-youtube-search.js','utf8').includes("if(!/^\\/desktop\\/?$/.test(location.pathname))return")) throw new Error('desktop search is not desktop-only');
+          console.log('CLEAN_REBUILD_OWNERSHIP_OK');
+          NODE
