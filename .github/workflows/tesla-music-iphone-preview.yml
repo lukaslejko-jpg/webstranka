@@ -1,0 +1,151 @@
+name: Tesla Music iPhone preview
+
+on:
+  push:
+    branches:
+      - refactor/tesla-music-playback-core-20260923
+    paths:
+      - 'tesla-music-production/mobile-controls-v40.js'
+      - 'tesla-music-production/test-current-production-playback-fix.cjs'
+      - '.github/workflows/tesla-music-iphone-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      BASE_DPL: dpl_H1L29ngkfBrrntSX4d1needeTGnA
+      BUILD: "154"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@59.25.4
+
+      - name: Authenticate Vercel CLI
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          LOG=/tmp/vercel-device-auth.log
+          rm -f "$LOG"
+          timeout 300 vercel login --github >"$LOG" 2>&1 &
+          PID=$!
+          CODE=""
+          URL=""
+          for _ in $(seq 1 60); do
+            if grep -Eq 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null; then
+              URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" | tail -n1)"
+              CODE="${URL##*user_code=}"
+              break
+            fi
+            sleep 1
+          done
+          test -n "$CODE"
+          echo "::notice title=Vercel device code::$CODE"
+          node - "$CODE" "$URL" <<'NODE' > /tmp/status.json
+          const [code,url]=process.argv.slice(2);
+          process.stdout.write(JSON.stringify({state:'pending',context:'vercel-device-auth',description:'Vercel code: '+code,target_url:url}));
+          NODE
+          curl -fsS -X POST             -H "Authorization: Bearer $GH_STATUS_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"             --data-binary @/tmp/status.json >/dev/null
+          cat "$LOG"
+          wait "$PID"
+
+      - name: Clone verified base
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/exact-prod
+          mkdir -p /tmp/exact-prod
+          vercel api "/v6/deployments/$BASE_DPL/files?teamId=$TEAM_ID" > /tmp/tree.json
+          node <<'NODE'
+          const fs=require('fs'),cp=require('child_process'),path=require('path');
+          const tree=JSON.parse(fs.readFileSync('/tmp/tree.json','utf8')),out='/tmp/exact-prod';
+          let files=[];
+          function walk(nodes,prefix=''){for(const n of nodes||[]){const p=prefix?prefix+'/'+n.name:n.name;if(n.type==='directory')walk(n.children,p);else if(n.type==='file')files.push({path:p,uid:n.uid});}}
+          walk(Array.isArray(tree)?tree:tree.files||tree.children||[]);
+          if(!files.length)throw new Error('No source files');
+          for(const f of files){
+            fs.mkdirSync(path.dirname(path.join(out,f.path)),{recursive:true});
+            const raw=cp.execFileSync('vercel',['api','/v8/deployments/'+process.env.BASE_DPL+'/files/'+f.uid+'?teamId='+process.env.TEAM_ID],{encoding:'utf8',maxBuffer:20*1024*1024});
+            const data=JSON.parse(raw),b64=data.data??data.content??data;
+            fs.writeFileSync(path.join(out,f.path),Buffer.from(b64,'base64'));
+          }
+          NODE
+          test -f /tmp/exact-prod/src/index.html
+
+      - name: Overlay tested Tesla Music files
+        run: |
+          set -euo pipefail
+          SRC=/tmp/exact-prod/src
+          for f in app-v7.js mobile-controls-v40.js rescue-v135.js desktop-silence-v63.js mobile-v128-music-logic.js mode-v9.js desktop-v97-youtube-search.js member-v50-foryou.js member-v49-search-layout.js mobile-v106-player-parity.js vercel.json
+          do
+            cp "tesla-music-production/$f" "$SRC/$f"
+          done
+          node <<'NODE'
+          const fs=require('fs');
+          const root='/tmp/exact-prod/src',p=root+'/vercel.json',v=JSON.parse(fs.readFileSync(p,'utf8'));
+          if(!fs.existsSync(root+'/package.json')){delete v.buildCommand;delete v.outputDirectory;delete v.installCommand;}
+          v.redirects=Array.isArray(v.redirects)?v.redirects:[];
+          v.redirects=v.redirects.filter(r=>r.source!=='/desktop/');
+          v.rewrites=Array.isArray(v.rewrites)?v.rewrites:[];
+          v.rewrites=v.rewrites.filter(r=>r.source!=='/desktop'&&r.source!=='/desktop/');
+          v.rewrites.push({source:'/desktop',destination:'/index.html'},{source:'/desktop/',destination:'/index.html'});
+          fs.writeFileSync(p,JSON.stringify(v,null,2)+'\n');
+          for(const file of [root+'/index.html',root+'/upstream/piped/index.html']){
+            if(!fs.existsSync(file))continue;
+            let s=fs.readFileSync(file,'utf8');
+            s=s.replace(/(<meta name="tesla-music-build" content=")[^"]+(")/g,'$1'+process.env.BUILD+'$2');
+            s=s.replace(/((?:src|href)="\/[^"]+?)(?:\?v=\d+)?(")/g,(m,a,b)=>/youtube\.com|manifest\.webmanifest/.test(a)?m:a+'?v='+process.env.BUILD+b);
+            fs.writeFileSync(file,s);
+          }
+          NODE
+          node --check "$SRC/mobile-controls-v40.js"
+          grep -q 'tesla-music-build" content="154' "$SRC/index.html"
+
+      - name: Link exact project
+        working-directory: /tmp/exact-prod/src
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$PROJECT_ID" > .vercel/project.json
+
+      - name: Deploy preview only
+        working-directory: /tmp/exact-prod/src
+        run: |
+          set -euo pipefail
+          URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
+          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
+          echo "PREVIEW=$URL"
+
+      - name: Verify preview
+        working-directory: /tmp/exact-prod/src
+        run: |
+          set -euo pipefail
+          vercel inspect "$PREVIEW_URL" --scope "$TEAM_SLUG"
+          vercel curl "/?mobile=1&device=mobile" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/root.html
+          vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/playback.js
+          vercel curl "/api/youtube-search?q=Kali" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/search.json
+          grep -q 'tesla-music-build" content="154' /tmp/root.html
+          cmp -s mobile-controls-v40.js /tmp/playback.js
+          node -e "const d=require('/tmp/search.json');if(!Array.isArray(d.items)||!d.items.length)process.exit(1)"
+
+      - name: Publish preview URL
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+        run: |
+          node - "$PREVIEW_URL" <<'NODE' > /tmp/preview-status.json
+          const url=process.argv[2];
+          process.stdout.write(JSON.stringify({state:'success',context:'tesla-music-iphone-preview',description:'iPhone preview ready - production unchanged',target_url:url}));
+          NODE
+          curl -fsS -X POST             -H "Authorization: Bearer $GH_STATUS_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"             --data-binary @/tmp/preview-status.json >/dev/null
