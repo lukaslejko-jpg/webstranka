@@ -1,14 +1,6 @@
 (function(){'use strict';
-function hideYoutubeAccount(){
- var nodes=document.querySelectorAll('button,a,.chip');
- for(var i=0;i<nodes.length;i++){var t=(nodes[i].textContent||'').replace(/\s+/g,' ').trim().toLowerCase();if(t==='youtube účet'||t==='youtube ucet'){nodes[i].style.display='none';nodes[i].setAttribute('aria-hidden','true')}}
-}
-function setFilterDefaults(){
- var panel=document.getElementById('musicFiltersPanel');if(!panel)return;
- var only=panel.querySelector('[data-filter="onlyArtist"]'),similar=panel.querySelector('[data-filter="similar"]');
- if(only)only.checked=false;if(similar)similar.checked=true;
-}
-function apply(){hideYoutubeAccount();setFilterDefaults()}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
-var n=0,t=setInterval(function(){apply();if(++n>20)clearInterval(t)},250);
+function hideYoutubeAccount(){var nodes=document.querySelectorAll('button,a,.chip');for(var i=0;i<nodes.length;i++){var t=(nodes[i].textContent||'').replace(/\s+/g,' ').trim().toLowerCase();if(t==='youtube účet'||t==='youtube ucet'){nodes[i].style.display='none';nodes[i].setAttribute('aria-hidden','true')}}}
+function syncVideoToggle(){var b=document.getElementById('videoToggle');if(!b||b.dataset.syncPatched==='1')return;b.dataset.syncPatched='1';b.addEventListener('click',function(){var p=window.player;if(!p)return;var data=null,time=0,state=-1;try{data=p.getVideoData?p.getVideoData():null;time=p.getCurrentTime?p.getCurrentTime():0;state=p.getPlayerState?p.getPlayerState():-1}catch(e){}setTimeout(function(){try{if(!data||!data.video_id||!window.player)return;var now=window.player.getVideoData?window.player.getVideoData():null;if(!now||now.video_id!==data.video_id){window.player.loadVideoById({videoId:data.video_id,startSeconds:Math.max(0,time)});if(state!==1&&window.player.pauseVideo)setTimeout(function(){window.player.pauseVideo()},250)}else if(window.player.seekTo){window.player.seekTo(Math.max(0,time),true);if(state===1&&window.player.playVideo)window.player.playVideo();else if(window.player.pauseVideo)window.player.pauseVideo()}}catch(e){}},80)},true)}
+function apply(){hideYoutubeAccount();syncVideoToggle()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();var n=0,t=setInterval(function(){apply();if(++n>24)clearInterval(t)},250);
 })();
