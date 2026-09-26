@@ -1,4 +1,4 @@
-name: Deploy public Music QR test v168
+name: Deploy approved Music v168 production
 on:
   push:
     branches: [fix/music-qr-minimized-preview-20260926]
@@ -17,7 +17,7 @@ jobs:
       TEAM_SLUG: lukaslejko-9932s-projects
       BASE_DPL: dpl_Bd6H4i853jeN7SstdpzLz9npZMLx
       ARCHIVE_UID: a9507d7e63085bfc1f33cc76770de0f5aa4a282c
-      TEST_PROJECT: music-qr-test
+      TEST_PROJECT: tesla-waze-piped
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,14 +52,14 @@ jobs:
           let m=fs.readFileSync('/tmp/base/mobile-v128-music-logic.js','utf8');m=m.replace('onlyArtist:true,similar:false','onlyArtist:false,similar:true');m=m.replace('data-filter="onlyArtist" checked','data-filter="onlyArtist"').replace('data-filter="similar"> Podobná hudba','data-filter="similar" checked> Podobná hudba');fs.writeFileSync('/tmp/base/mobile-v128-music-logic.js',m);
           fs.writeFileSync(p,h);
           NODE
-      - name: Create isolated project and deploy public production
+      - name: Deploy approved v168 to Music production
         working-directory: /tmp/base
         run: |
           set -euo pipefail
           vercel project inspect "$TEST_PROJECT" --scope "$TEAM_SLUG" >/dev/null 2>&1 || vercel project add "$TEST_PROJECT" --scope "$TEAM_SLUG"
           vercel link --yes --project "$TEST_PROJECT" --scope "$TEAM_SLUG"
           URL="$(vercel deploy --prod --yes --archive=tgz --scope "$TEAM_SLUG")"
-          echo "PUBLIC_MUSIC_QR_TEST=$URL"
+          echo "PUBLIC_MUSIC_PRODUCTION=$URL"
 
 # trigger v165 package
 
