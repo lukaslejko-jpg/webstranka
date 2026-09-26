@@ -1,0 +1,74 @@
+name: Deploy simple Music QR preview
+on:
+  push:
+    branches: [fix/music-qr-minimized-preview-20260926]
+    paths:
+      - 'music-qr-preview/**'
+      - '.github/workflows/deploy-simple-music-qr-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  statuses: write
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      BASE_DPL: dpl_Bd6H4i853jeN7SstdpzLz9npZMLx
+      ARCHIVE_UID: a9507d7e63085bfc1f33cc76770de0f5aa4a282c
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --global vercel@59.25.4
+      - name: Authenticate
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          LOG=/tmp/auth
+          timeout 300 vercel login --github >"$LOG" 2>&1 & PID=$!
+          for _ in $(seq 1 60); do
+            URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null | tail -n1 || true)"
+            [ -n "$URL" ] && break
+            sleep 1
+          done
+          CODE="${URL##*user_code=}"
+          node - "$CODE" "$URL" <<'NODE' >/tmp/status.json
+          const [code,url]=process.argv.slice(2);
+          process.stdout.write(JSON.stringify({state:'pending',context:'simple-music-preview-auth',description:'Vercel code: '+code,target_url:url}));
+          NODE
+          curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary @/tmp/status.json >/dev/null
+          wait "$PID"
+      - name: Rebuild exact 158 plus simple remote only
+        run: |
+          set -euo pipefail
+          vercel api "/v8/deployments/$BASE_DPL/files/$ARCHIVE_UID?teamId=$TEAM_ID" > /tmp/raw.json
+          node -e "const fs=require('fs'),d=JSON.parse(fs.readFileSync('/tmp/raw.json','utf8')),b=d.data??d.content??d;fs.writeFileSync('/tmp/source.tgz',Buffer.from(b,'base64'))"
+          mkdir -p /tmp/base
+          tar -xzf /tmp/source.tgz -C /tmp/base
+          cp music-qr-preview/simple-remote-v159.js /tmp/base/src/simple-remote-v159.js
+          cp music-qr-preview/api/simple-remote.js /tmp/base/src/api/simple-remote.js
+          node <<'NODE'
+          const fs=require('fs'),p='/tmp/base/src/index.html';
+          let h=fs.readFileSync(p,'utf8');
+          h=h.replace(/<script src="\/qr-link-v129\.js\?v=158"><\/script>/g,'');
+          h=h.replace(/<script src="\/mobile-pair-v133\.js\?v=158"><\/script>/g,'');
+          h=h.replace('</body>','<script src="/simple-remote-v159.js?v=159"></script></body>');
+          h=h.replace('name="tesla-music-build" content="158"','name="tesla-music-build" content="159-preview"');
+          fs.writeFileSync(p,h);
+          NODE
+          node --check /tmp/base/src/simple-remote-v159.js
+          node --check /tmp/base/src/api/simple-remote.js
+      - name: Deploy preview only
+        working-directory: /tmp/base/src
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$PROJECT_ID" > .vercel/project.json
+          URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
+          echo "SIMPLE_MUSIC_PREVIEW=$URL"
