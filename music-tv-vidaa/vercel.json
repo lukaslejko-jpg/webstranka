@@ -1,0 +1,10 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "https://tesla-waze-piped.vercel.app/desktop" },
+    { "source": "/desktop", "destination": "https://tesla-waze-piped.vercel.app/desktop" },
+    { "source": "/:path*", "destination": "https://tesla-waze-piped.vercel.app/:path*" }
+  ],
+  "headers": [
+    { "source": "/(.*)", "headers": [{ "key": "X-Music-TV-Base", "value": "production-build-158" }] }
+  ]
+}
