@@ -17,7 +17,7 @@ jobs:
     env:
       VERCEL_ORG_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
       VERCEL_PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
-      ROLLBACK_DEPLOYMENT: dpl_H1L29ngkfBrrntSX4d1needeTGnA
+      ROLLBACK_DEPLOYMENT: dpl_Bd6H4i853jeN7SstdpzLz9npZMLx
       PROD_URL: https://tesla-waze-piped.vercel.app
     steps:
       - uses: actions/setup-node@v4
