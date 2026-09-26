@@ -72,3 +72,4 @@ jobs:
           printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$PROJECT_ID" > .vercel/project.json
           URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
           echo "SIMPLE_MUSIC_PREVIEW=$URL"
+
