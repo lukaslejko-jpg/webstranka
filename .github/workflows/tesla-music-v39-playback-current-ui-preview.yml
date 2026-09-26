@@ -255,10 +255,26 @@ jobs:
             await p.waitForFunction(()=>player?.getPlayerState?.()===1);
             const minimizedRender=await p.evaluate(()=>{
               const el=document.getElementById('playerWindow'),cs=getComputedStyle(el),r=el.getBoundingClientRect();
-              return {minimized:el.classList.contains('minimized'),display:cs.display,visibility:cs.visibility,width:r.width,height:r.height,opacity:cs.opacity};
+              const rules=[];
+              for(const sheet of [...document.styleSheets]){
+                let cssRules=[];try{cssRules=[...sheet.cssRules]}catch{}
+                for(const rule of cssRules){
+                  if(!rule.selectorText)continue;
+                  try{
+                    if(el.matches(rule.selectorText)&&/display\s*:\s*none/i.test(rule.cssText))rules.push({href:sheet.href||'inline',selector:rule.selectorText,css:rule.cssText});
+                  }catch{}
+                }
+              }
+              return {
+                minimized:el.classList.contains('minimized'),
+                display:cs.display,visibility:cs.visibility,width:r.width,height:r.height,opacity:cs.opacity,
+                className:el.className,styleAttr:el.getAttribute('style'),hidden:el.hidden,
+                outer:el.outerHTML.slice(0,1200),rules
+              };
             });
+            console.log('MINIMIZED_RENDER_DEBUG='+JSON.stringify(minimizedRender));
             assert.equal(minimizedRender.minimized,true,'mobile player should remain minimized');
-            assert.notEqual(minimizedRender.display,'none','minimized iPhone player must remain rendered');
+            assert.notEqual(minimizedRender.display,'none','minimized iPhone player must remain rendered: '+JSON.stringify(minimizedRender));
             assert.ok(minimizedRender.width>=1&&minimizedRender.height>=1,'minimized iframe host must retain a rendered box');
             const first=await p.evaluate(()=>current.id);
             await p.locator('#bnext').click();
