@@ -1,4 +1,4 @@
-name: Deploy public Music QR test v166
+name: Deploy public Music QR test v167
 on:
   push:
     branches: [fix/music-qr-minimized-preview-20260926]
@@ -47,7 +47,7 @@ jobs:
           node <<'NODE'
           const fs=require('fs'),p='/tmp/base/index.html';let h=fs.readFileSync(p,'utf8');
           h=h.replace(/<script src="\/qr-link-v129\.js\?v=158"><\/script>/g,'').replace(/<script src="\/mobile-pair-v133\.js\?v=158"><\/script>/g,'');
-          h=h.replace('</body>','<script src="/ui-cleanup-v165.js?v=166"></script><script src="/simple-remote-v159.js?v=166"></script></body>').replace('name="tesla-music-build" content="158"','name="tesla-music-build" content="166-test"');
+          h=h.replace('</body>','<script src="/ui-cleanup-v165.js?v=167"></script><script src="/simple-remote-v159.js?v=167"></script></body>').replace('name="tesla-music-build" content="158"','name="tesla-music-build" content="167-test"');
           let m=fs.readFileSync('/tmp/base/mobile-v128-music-logic.js','utf8');m=m.replace('onlyArtist:true,similar:false','onlyArtist:false,similar:true');m=m.replace('data-filter="onlyArtist" checked','data-filter="onlyArtist"').replace('data-filter="similar"> Podobná hudba','data-filter="similar" checked> Podobná hudba');fs.writeFileSync('/tmp/base/mobile-v128-music-logic.js',m);
           fs.writeFileSync(p,h);
           NODE
