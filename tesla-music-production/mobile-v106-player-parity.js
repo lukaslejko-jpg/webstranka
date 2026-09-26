@@ -42,6 +42,55 @@ function boot(){
   if(!video){video=document.createElement('button');video.id='mobileMiniVideoOpen';video.type='button';video.className='iconbtn';video.textContent='🎬 Video';video.title='Zobraziť video';video.setAttribute('aria-label','Zobraziť video');head.insertBefore(video,pmin||pmax||null)}
   video.onclick=openVideo;
   const style=document.createElement('style');style.id='mobileV106PlayerParity';style.textContent=`
+    /* iPhone: never remove the YouTube iframe from rendering while minimized.
+       display:none makes Safari leave the next video cued/stopped at 0:00. */
+    #playerWindow.minimized{
+      display:block!important;
+      position:fixed!important;
+      left:1px!important;
+      top:auto!important;
+      right:auto!important;
+      bottom:1px!important;
+      width:2px!important;
+      height:2px!important;
+      min-width:2px!important;
+      min-height:2px!important;
+      max-width:2px!important;
+      max-height:2px!important;
+      opacity:.01!important;
+      overflow:hidden!important;
+      pointer-events:none!important;
+      border:0!important;
+      box-shadow:none!important;
+      z-index:1!important;
+    }
+    #playerWindow.minimized .phead,
+    #playerWindow.minimized .nowrow,
+    #playerWindow.minimized .seek,
+    #playerWindow.minimized .controls,
+    #playerWindow.minimized .stats,
+    #playerWindow.minimized .status,
+    #playerWindow.minimized .mini-recommend,
+    #playerWindow.minimized .resize,
+    #playerWindow.minimized .mini-resize-zone,
+    #playerWindow.minimized .mini-resize-corner{display:none!important}
+    #playerWindow.minimized .player-body,
+    #playerWindow.minimized .video,
+    #playerWindow.minimized #yt,
+    #playerWindow.minimized iframe{
+      display:block!important;
+      position:absolute!important;
+      inset:0!important;
+      width:2px!important;
+      height:2px!important;
+      min-width:2px!important;
+      min-height:2px!important;
+      opacity:.01!important;
+      visibility:visible!important;
+      pointer-events:none!important;
+      padding:0!important;
+      margin:0!important;
+    }
     #mobileMiniVideoOpen{display:none;white-space:nowrap;padding:0 10px;font-size:13px}
     #playerWindow.mini-recs #mobileMiniVideoOpen{display:block}
     @media(max-width:760px){
