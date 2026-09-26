@@ -42,11 +42,13 @@ jobs:
           node -e "const fs=require('fs'),d=JSON.parse(fs.readFileSync('/tmp/raw.json','utf8')),b=d.data??d.content??d;fs.writeFileSync('/tmp/source.tgz',Buffer.from(b,'base64'))"
           mkdir -p /tmp/base && tar -xzf /tmp/source.tgz -C /tmp/base
           cp music-qr-preview/simple-remote-v159.js /tmp/base/simple-remote-v159.js
-          cp music-qr-preview/api/simple-remote.js /tmp/base/api/simple-remote.js\n          cp music-qr-preview/ui-cleanup-v165.js /tmp/base/ui-cleanup-v165.js
+          cp music-qr-preview/api/simple-remote.js /tmp/base/api/simple-remote.js
+          cp music-qr-preview/ui-cleanup-v165.js /tmp/base/ui-cleanup-v165.js
           node <<'NODE'
           const fs=require('fs'),p='/tmp/base/index.html';let h=fs.readFileSync(p,'utf8');
           h=h.replace(/<script src="\/qr-link-v129\.js\?v=158"><\/script>/g,'').replace(/<script src="\/mobile-pair-v133\.js\?v=158"><\/script>/g,'');
-          h=h.replace('</body>','<script src="/ui-cleanup-v165.js?v=165"></script><script src="/simple-remote-v159.js?v=165"></script></body>').replace('name="tesla-music-build" content="158"','name="tesla-music-build" content="165-test"');\n          let m=fs.readFileSync('/tmp/base/mobile-v128-music-logic.js','utf8');m=m.replace('onlyArtist:true,similar:false','onlyArtist:false,similar:true');m=m.replace('data-filter="onlyArtist" checked','data-filter="onlyArtist"').replace('data-filter="similar"> Podobná hudba','data-filter="similar" checked> Podobná hudba');fs.writeFileSync('/tmp/base/mobile-v128-music-logic.js',m);
+          h=h.replace('</body>','<script src="/ui-cleanup-v165.js?v=165"></script><script src="/simple-remote-v159.js?v=165"></script></body>').replace('name="tesla-music-build" content="158"','name="tesla-music-build" content="165-test"');
+          let m=fs.readFileSync('/tmp/base/mobile-v128-music-logic.js','utf8');m=m.replace('onlyArtist:true,similar:false','onlyArtist:false,similar:true');m=m.replace('data-filter="onlyArtist" checked','data-filter="onlyArtist"').replace('data-filter="similar"> Podobná hudba','data-filter="similar" checked> Podobná hudba');fs.writeFileSync('/tmp/base/mobile-v128-music-logic.js',m);
           fs.writeFileSync(p,h);
           NODE
       - name: Create isolated project and deploy public production
