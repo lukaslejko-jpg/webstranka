@@ -51,10 +51,10 @@ jobs:
           node -e "const fs=require('fs'),d=JSON.parse(fs.readFileSync('/tmp/raw.json','utf8')),b=d.data??d.content??d;fs.writeFileSync('/tmp/source.tgz',Buffer.from(b,'base64'))"
           mkdir -p /tmp/base
           tar -xzf /tmp/source.tgz -C /tmp/base
-          cp music-qr-preview/simple-remote-v159.js /tmp/base/src/simple-remote-v159.js
-          cp music-qr-preview/api/simple-remote.js /tmp/base/src/api/simple-remote.js
+          cp music-qr-preview/simple-remote-v159.js /tmp/base/simple-remote-v159.js
+          cp music-qr-preview/api/simple-remote.js /tmp/base/api/simple-remote.js
           node <<'NODE'
-          const fs=require('fs'),p='/tmp/base/src/index.html';
+          const fs=require('fs'),p='/tmp/base/index.html';
           let h=fs.readFileSync(p,'utf8');
           h=h.replace(/<script src="\/qr-link-v129\.js\?v=158"><\/script>/g,'');
           h=h.replace(/<script src="\/mobile-pair-v133\.js\?v=158"><\/script>/g,'');
@@ -62,10 +62,10 @@ jobs:
           h=h.replace('name="tesla-music-build" content="158"','name="tesla-music-build" content="159-preview"');
           fs.writeFileSync(p,h);
           NODE
-          node --check /tmp/base/src/simple-remote-v159.js
-          node --check /tmp/base/src/api/simple-remote.js
+          node --check /tmp/base/simple-remote-v159.js
+          node --check /tmp/base/api/simple-remote.js
       - name: Deploy preview only
-        working-directory: /tmp/base/src
+        working-directory: /tmp/base
         run: |
           set -euo pipefail
           mkdir -p .vercel
