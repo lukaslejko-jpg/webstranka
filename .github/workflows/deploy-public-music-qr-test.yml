@@ -1,4 +1,4 @@
-name: Deploy public Music QR test
+name: Deploy public Music QR test v2
 on:
   push:
     branches: [fix/music-qr-minimized-preview-20260926]
