@@ -1,4 +1,4 @@
-name: Deploy public Music QR test v167
+name: Deploy public Music QR test v168
 on:
   push:
     branches: [fix/music-qr-minimized-preview-20260926]
@@ -44,10 +44,11 @@ jobs:
           cp music-qr-preview/simple-remote-v159.js /tmp/base/simple-remote-v159.js
           cp music-qr-preview/api/simple-remote.js /tmp/base/api/simple-remote.js
           cp music-qr-preview/ui-cleanup-v165.js /tmp/base/ui-cleanup-v165.js
+          node music-qr-preview/patch-real-player-v168.cjs
           node <<'NODE'
           const fs=require('fs'),p='/tmp/base/index.html';let h=fs.readFileSync(p,'utf8');
           h=h.replace(/<script src="\/qr-link-v129\.js\?v=158"><\/script>/g,'').replace(/<script src="\/mobile-pair-v133\.js\?v=158"><\/script>/g,'');
-          h=h.replace('</body>','<script src="/ui-cleanup-v165.js?v=167"></script><script src="/simple-remote-v159.js?v=167"></script></body>').replace('name="tesla-music-build" content="158"','name="tesla-music-build" content="167-test"');
+          h=h.replace('</body>','<script src="/ui-cleanup-v165.js?v=168"></script><script src="/simple-remote-v159.js?v=168"></script></body>').replace('name="tesla-music-build" content="158"','name="tesla-music-build" content="168-test"');
           let m=fs.readFileSync('/tmp/base/mobile-v128-music-logic.js','utf8');m=m.replace('onlyArtist:true,similar:false','onlyArtist:false,similar:true');m=m.replace('data-filter="onlyArtist" checked','data-filter="onlyArtist"').replace('data-filter="similar"> Podobná hudba','data-filter="similar" checked> Podobná hudba');fs.writeFileSync('/tmp/base/mobile-v128-music-logic.js',m);
           fs.writeFileSync(p,h);
           NODE
