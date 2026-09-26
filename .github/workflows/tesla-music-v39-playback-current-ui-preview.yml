@@ -138,7 +138,7 @@ jobs:
       - name: Keep minimized iPhone player rendered
         run: |
           set -euo pipefail
-          cat >> /tmp/candidate/src/style-v7.css <<'CSS'
+          cat >> /tmp/candidate/src/mode-v9.css <<'CSS'
 
           /* iPhone live minimized player: do not use display:none for YouTube iframe. */
           #playerWindow.minimized{
@@ -189,7 +189,7 @@ jobs:
             margin:0!important
           }
           CSS
-          grep -Fq "#playerWindow.minimized{" /tmp/candidate/src/style-v7.css
+          grep -Fq "#playerWindow.minimized{" /tmp/candidate/src/mode-v9.css
 
       - name: Verify current overlays do not own playback
         run: |
