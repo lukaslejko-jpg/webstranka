@@ -1,0 +1,56 @@
+name: Extract exact Music 158 archive
+
+on:
+  push:
+    branches: [fix/music-qr-minimized-preview-20260926]
+    paths: ['.github/workflows/extract-music-158.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      BASE_DPL: dpl_Bd6H4i853jeN7SstdpzLz9npZMLx
+      ARCHIVE_UID: a9507d7e63085bfc1f33cc76770de0f5aa4a282c
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm install --global vercel@59.25.4
+      - name: Auth
+        env: { GH_STATUS_TOKEN: "${{ github.token }}" }
+        run: |
+          set -euo pipefail
+          LOG=/tmp/a; timeout 300 vercel login --github >"$LOG" 2>&1 & PID=$!
+          for _ in $(seq 1 60); do URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null|tail -n1||true)"; [ -n "$URL" ]&&break; sleep 1; done
+          CODE="${URL##*user_code=}"
+          node - "$CODE" "$URL" <<'NODE' >/tmp/s.json
+          const [code,url]=process.argv.slice(2);process.stdout.write(JSON.stringify({state:'pending',context:'music-extract-auth',description:'Vercel code: '+code,target_url:url}));
+          NODE
+          curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary @/tmp/s.json >/dev/null
+          wait "$PID"
+      - name: Download archived source
+        run: |
+          set -euo pipefail
+          vercel api "/v8/deployments/$BASE_DPL/files/$ARCHIVE_UID?teamId=$TEAM_ID" > /tmp/raw.json
+          node <<'NODE'
+          const fs=require('fs');const d=JSON.parse(fs.readFileSync('/tmp/raw.json','utf8'));const b=d.data??d.content??d;if(typeof b!=='string')throw Error('bad archive payload');fs.writeFileSync('/tmp/source.tgz',Buffer.from(b,'base64'));console.log('ARCHIVE_BYTES='+fs.statSync('/tmp/source.tgz').size);
+          NODE
+          mkdir -p /tmp/src
+          tar -xzf /tmp/source.tgz -C /tmp/src
+          find /tmp/src -type f | sort | head -200
+      - name: Collect relevant files
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/relevant
+          find /tmp/src -type f | grep -Ei '(qr|pair|index\.html|app-v7|mini-v7|mode-v9|desktop-route|rescue|ux-v130|mobile-v128|vercel\.json)' | while read f; do cp --parents "$f" /tmp/relevant; done
+          find /tmp/relevant -type f -print
+      - uses: actions/upload-artifact@v4
+        with:
+          name: music158-relevant
+          path: /tmp/relevant
