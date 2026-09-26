@@ -197,6 +197,13 @@ jobs:
             await p.waitForSelector('#grid .card');
             await p.locator('#grid .card').first().click();
             await p.waitForFunction(()=>player?.getPlayerState?.()===1);
+            const minimizedRender=await p.evaluate(()=>{
+              const el=document.getElementById('playerWindow'),cs=getComputedStyle(el),r=el.getBoundingClientRect();
+              return {minimized:el.classList.contains('minimized'),display:cs.display,visibility:cs.visibility,width:r.width,height:r.height,opacity:cs.opacity};
+            });
+            assert.equal(minimizedRender.minimized,true,'mobile player should remain minimized');
+            assert.notEqual(minimizedRender.display,'none','minimized iPhone player must remain rendered');
+            assert.ok(minimizedRender.width>=1&&minimizedRender.height>=1,'minimized iframe host must retain a rendered box');
             const first=await p.evaluate(()=>current.id);
             await p.locator('#bnext').click();
             await p.waitForFunction(id=>current?.id&&current.id!==id,first);
