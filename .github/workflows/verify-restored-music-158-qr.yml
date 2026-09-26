@@ -1,0 +1,84 @@
+name: Verify restored Music 158 and QR
+on:
+  push:
+    branches: [restore/music-158-with-qr-20260926]
+    paths: ['.github/workflows/verify-restored-music-158-qr.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+# Production was independently observed through Vercel API on the requested
+# existing deployment. Cancel the older recovery attempt: no more alias writes.
+concurrency:
+  group: music-production-recovery
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PROD_URL: https://tesla-waze-piped.vercel.app
+      APPROVED_URL: https://music-qr-test.vercel.app
+      EXPECTED_DEPLOYMENT: dpl_5HgqHqmmyxfvTztAduHumgkd6fHv
+      BASE_DEPLOYMENT: dpl_Bd6H4i853jeN7SstdpzLz9npZMLx
+      APPROVED_DEPLOYMENT: dpl_Cy4GCgxJcFivhpkKj88oMQUEHmEr
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify public build, exact approved assets, QR API and search
+        run: |
+          mkdir -p /tmp/music-verify
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto'),cp=require('child_process');
+          const prod=process.env.PROD_URL,ref=process.env.APPROVED_URL;
+          const evidence={expectedDeployment:process.env.EXPECTED_DEPLOYMENT,base:process.env.BASE_DEPLOYMENT,approved:process.env.APPROVED_DEPLOYMENT,checkedAt:new Date().toISOString(),checks:[],limitations:['Deployment ID is independently verified with Vercel API, not inferred from HTTP content.','Locked-screen audio on a real iPhone is not tested by this job.']};
+          const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+          function pass(name,details={}){evidence.checks.push({name,ok:true,...details});console.log('PASS '+name+' '+JSON.stringify(details));fs.writeFileSync('/tmp/music-verify/evidence.json',JSON.stringify(evidence,null,2));}
+          async function text(url,options={}){const r=await fetch(url,{redirect:'follow',signal:AbortSignal.timeout(30000),...options});const t=await r.text();if(!r.ok)throw Error('HTTP '+r.status+' '+new URL(url).pathname);return t;}
+          function assert(ok,msg){if(!ok)throw Error(msg);}
+          (async()=>{
+            const [root,approvedRoot]=await Promise.all([text(prod+'/?verify='+process.env.GITHUB_RUN_ID),text(ref+'/?verify='+process.env.GITHUB_RUN_ID)]);
+            assert(/name=["']tesla-music-build["']\s+content=["']168-test["']/.test(root),'Production does not serve approved build168-test');
+            assert(root.includes('/simple-remote-v159.js?v=168'),'QR script missing from production');
+            assert(root===approvedRoot,'Production HTML differs from approved reference');
+            pass('production_root_build168_matches_approved',{bytes:Buffer.byteLength(root),sha256:hash(root)});
+            fs.writeFileSync('/tmp/music-verify/index.html',root);
+            for(const file of ['app-v7.js','simple-remote-v159.js','ui-cleanup-v165.js','mode-v9.js','rescue-v135.js','mobile-v128-music-logic.js']){
+              const [a,b]=await Promise.all([text(prod+'/'+file),text(ref+'/'+file)]);
+              assert(a===b,'Asset differs from approved reference: '+file);
+              assert(a.length>100,'Unexpected empty asset: '+file);
+              fs.writeFileSync('/tmp/music-verify/'+file,a);
+              cp.execFileSync(process.execPath,['--check','/tmp/music-verify/'+file],{stdio:'inherit'});
+              if(file==='simple-remote-v159.js')assert(a.includes('simpleRemoteQr')&&a.includes('/api/simple-remote')&&a.includes('remote=1'),'QR integration missing');
+              pass('exact_asset_'+file,{bytes:Buffer.byteLength(a),sha256:hash(a)});
+            }
+            for(const route of ['/desktop','/desktop/']){
+              const body=await text(prod+route);
+              assert(body.toLowerCase().includes('<html'),'Desktop did not return HTML');
+              pass('route_'+route,{http:200});
+            }
+            const session='music-restore-audit-'+process.env.GITHUB_RUN_ID;
+            const initial=JSON.parse(await text(prod+'/api/simple-remote?session='+session+'&last=0'));
+            assert(!initial.error,'QR API error: '+initial.error);
+            pass('qr_poll_endpoint',{http:200});
+            const search=JSON.parse(await text(prod+'/api/youtube-search?q=Kali'));
+            assert(Array.isArray(search.items)&&search.items.length>0,'Search did not return tracks');
+            pass('search_Kali',{results:search.items.length});
+            const item=search.items[0];
+            const track={id:item.youtubeId||String(item.id||'').replace(/^youtube:/,''),title:item.title||'',uploader:item.artist||item.uploader||'YouTube',duration:Number(item.duration||0),thumbnail:item.artwork||item.thumbnail||''};
+            assert(track.id,'Search track has no video ID');
+            // Only this unique audit session is written; no user's session is targeted.
+            const sent=JSON.parse(await text(prod+'/api/simple-remote',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'send',session,track})}));
+            assert(!sent.error,'QR send failed');
+            const polled=JSON.parse(await text(prod+'/api/simple-remote?session='+session+'&last=0'));
+            assert(polled.track&&polled.track.id===track.id&&polled.seq>0,'QR command was not retrieved');
+            pass('qr_send_poll_roundtrip',{isolatedAuditSession:true});
+            evidence.completed=true;fs.writeFileSync('/tmp/music-verify/evidence.json',JSON.stringify(evidence,null,2));
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'Music production serves the approved 168-test artifact (158 base with QR). HTML and selected playback/QR/UI assets are identical to the approved reference. Desktop routes, search and isolated QR command roundtrip passed. No source, deployment, alias or user storage was changed by this verification. Real iPhone locked-screen audio is not verified.\n');
+          })().catch(e=>{evidence.completed=false;evidence.error=String(e);fs.writeFileSync('/tmp/music-verify/evidence.json',JSON.stringify(evidence,null,2));console.error(e);process.exitCode=1;});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: restored-music-158-qr-verification
+          path: /tmp/music-verify/
+          retention-days: 30
