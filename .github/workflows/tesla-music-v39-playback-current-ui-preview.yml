@@ -12,6 +12,8 @@ permissions:
   contents: read
   statuses: write
 
+# Return point before visibility repair: 0cbb0e4b8a2d401efe8409527e491a76909e26f0.
+# Production alias observed as dpl_5gBLzGmWZZ3m9bzDgvzQhAGQBwfC. Do not promote or alias.
 jobs:
   preview:
     runs-on: ubuntu-latest
@@ -22,7 +24,7 @@ jobs:
       PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
       GOLDEN_DPL: dpl_H1L29ngkfBrrntSX4d1needeTGnA
       V39_SHA: 358ad048c356979f786c0a85dc704fa1b61d9c7d
-      BUILD: "157"
+      BUILD: "158"
     steps:
       - name: Checkout current UI branch
         uses: actions/checkout@v4
@@ -211,84 +213,20 @@ jobs:
           }
           NODE
 
-      - name: Browser regression for real V39 behavior
+      - name: Diagnose and repair exact visibility writer; verify DOM and mock API
         run: |
           set -euo pipefail
-          node <<'NODE'
-          const fs=require('fs'),path=require('path'),assert=require('node:assert/strict');
-          const {chromium}=require('playwright');
-          const ROOT='https://local.test';
-          const fake=`
-          window.__calls=[];
-          window.YT={PlayerState:{ENDED:0,PLAYING:1,PAUSED:2,BUFFERING:3,CUED:5},Player:function(id,o){
-            this.id='';this.state=-1;this.time=0;this.listeners={};
-            this.emit=s=>{this.state=s;o.events.onStateChange?.({data:s,target:this});for(const h of this.listeners.onStateChange||[])(typeof h==='string'?window[h]:h)?.({data:s,target:this});};
-            this.getPlayerState=()=>this.state;this.getCurrentTime=()=>this.time;this.getDuration=()=>180;this.getVideoData=()=>({video_id:this.id});
-            this.addEventListener=(e,h)=>(this.listeners[e]||(this.listeners[e]=[])).push(h);
-            this.loadVideoById=(id,start=0)=>{this.id=typeof id==='string'?id:id.videoId;this.time=start;window.__calls.push(['load',this.id]);this.emit(1);};
-            this.playVideo=()=>{window.__calls.push(['play']);this.emit(1)};this.pauseVideo=()=>this.emit(2);this.seekTo=()=>{};
-            setTimeout(()=>o.events.onReady?.({target:this}),0);
-          }};setTimeout(()=>window.onYouTubeIframeAPIReady?.(),0);`;
-          (async()=>{
-            const browser=await chromium.launch({args:['--no-sandbox']});
-            const c=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844},userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1',isMobile:true,hasTouch:true});
-            await c.addInitScript(()=>{
-              localStorage.setItem('music:memberSession:v1','x');localStorage.setItem('music:memberUser:v1',JSON.stringify({id:'u',role:'member'}));
-              localStorage.setItem('teslaMusic:settings:v1',JSON.stringify({shuffle:false,auto:true}));
-            });
-            await c.route(ROOT+'/**',async r=>{const u=new URL(r.request().url());if(u.pathname==='/api/music')return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({user:{id:'u',role:'member'}})});if(u.pathname.startsWith('/api/youtube-search'))return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({items:[{youtubeId:'unfzfe8f9NI',title:'Song A',artist:'Artist A',duration:180,artwork:''},{youtubeId:'xFrGuyw1V8s',title:'Song B',artist:'Artist B',duration:180,artwork:''},{youtubeId:'XEjLoHdbVeE',title:'Song C',artist:'Artist C',duration:180,artwork:''}]})});const rel=u.pathname==='/'?'index.html':u.pathname.slice(1);try{return r.fulfill({body:fs.readFileSync(path.join('/tmp/candidate/src',rel)),contentType:rel.endsWith('.js')?'application/javascript':rel.endsWith('.css')?'text/css':'text/html'})}catch{return r.continue()}});
-            await c.route('https://www.youtube.com/iframe_api',r=>r.fulfill({body:fake,contentType:'application/javascript'}));
-            const p=await c.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));
-            await p.goto(ROOT+'/?mobile=1&device=mobile',{waitUntil:'domcontentloaded'});
-            await p.waitForFunction(()=>typeof ready!=='undefined'&&ready===true);
-            await p.evaluate(()=>{
-              queue=[
-                {id:'unfzfe8f9NI',title:'Song A',uploader:'Artist A - Topic',duration:180,thumbnail:''},
-                {id:'xFrGuyw1V8s',title:'Song B',uploader:'Artist B - Topic',duration:180,thumbnail:''},
-                {id:'XEjLoHdbVeE',title:'Song C',uploader:'Artist C - Topic',duration:180,thumbnail:''}
-              ];
-              tab='queue';
-              render(queue);
-            });
-            await p.waitForSelector('#grid .card');
-            await p.locator('#grid .card').first().click();
-            await p.waitForFunction(()=>player?.getPlayerState?.()===1);
-            const minimizedRender=await p.evaluate(()=>{
-              const el=document.getElementById('playerWindow'),cs=getComputedStyle(el),r=el.getBoundingClientRect();
-              const rules=[];
-              for(const sheet of [...document.styleSheets]){
-                let cssRules=[];try{cssRules=[...sheet.cssRules]}catch{}
-                for(const rule of cssRules){
-                  if(!rule.selectorText)continue;
-                  try{
-                    if(el.matches(rule.selectorText)&&/display\s*:\s*none/i.test(rule.cssText))rules.push({href:sheet.href||'inline',selector:rule.selectorText,css:rule.cssText});
-                  }catch{}
-                }
-              }
-              return {
-                minimized:el.classList.contains('minimized'),
-                display:cs.display,visibility:cs.visibility,width:r.width,height:r.height,opacity:cs.opacity,
-                className:el.className,styleAttr:el.getAttribute('style'),hidden:el.hidden,
-                outer:el.outerHTML.slice(0,1200),rules
-              };
-            });
-            console.log('MINIMIZED_RENDER_DEBUG='+JSON.stringify(minimizedRender));
-            assert.equal(minimizedRender.minimized,true,'mobile player should remain minimized');
-            assert.notEqual(minimizedRender.display,'none','minimized iPhone player must remain rendered: '+JSON.stringify(minimizedRender));
-            assert.ok(minimizedRender.width>=1&&minimizedRender.height>=1,'minimized iframe host must retain a rendered box');
-            const first=await p.evaluate(()=>current.id);
-            await p.locator('#bnext').click();
-            await p.waitForFunction(id=>current?.id&&current.id!==id,first);
-            assert.equal(await p.evaluate(()=>player.getPlayerState()),1,'Next changed song but did not start it');
-            const second=await p.evaluate(()=>current.id);
-            await p.evaluate(()=>player.emit(YT.PlayerState.ENDED));
-            await p.waitForFunction(id=>current?.id&&current.id!==id,second);
-            assert.equal(await p.evaluate(()=>player.getPlayerState()),1,'AUTO changed song but did not start it');
-            assert.equal(errors.length,0,errors.join('; '));
-            await browser.close();
-            console.log('V39_CURRENT_UI_PLAYBACK_OK');
-          })().catch(e=>{console.error(e);process.exit(1)});
-          NODE
+          node --check scripts/tesla-music-v39-render-regression.cjs
+          node scripts/tesla-music-v39-render-regression.cjs /tmp/candidate/src
+
+      - name: Save visibility regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tesla-music-render-${{ github.run_id }}
+          path: /tmp/tesla-music-render-report/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Link project
         working-directory: /tmp/candidate/src
@@ -309,11 +247,13 @@ jobs:
           vercel curl "/?mobile=1&device=mobile" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/root.html
           vercel curl "/app-v7.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/app.js
           vercel curl "/mode-v9.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/mode.js
-          grep -q 'tesla-music-build" content="157' /tmp/root.html
+          vercel curl "/rescue-v135.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/rescue.js
+          grep -Fq "tesla-music-build\" content=\"$BUILD" /tmp/root.html
           ! grep -q "mobile-controls-v40.js" /tmp/root.html
           cmp -s app-v7.js /tmp/app.js
           cmp -s mode-v9.js /tmp/mode.js
-          echo "DEPLOYED_V39_PLAYBACK_EXACT_OK"
+          cmp -s rescue-v135.js /tmp/rescue.js
+          echo "DEPLOYED_V39_AND_VISIBILITY_PATCH_EXACT_OK"
 
       - name: Publish preview URL
         env:
@@ -321,6 +261,6 @@ jobs:
         run: |
           node - "$PREVIEW_URL" <<'NODE' >/tmp/status.json
           const url=process.argv[2];
-          process.stdout.write(JSON.stringify({state:'success',context:'tesla-music-v39-current-ui-preview',description:'Verified V39 playback + current UI preview ready',target_url:url}));
+          process.stdout.write(JSON.stringify({state:'success',context:'tesla-music-v39-current-ui-preview',description:'Render and mock API checks passed; real iPhone audio test required',target_url:url}));
           NODE
           curl -fsS -X POST             -H "Authorization: Bearer $GH_STATUS_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"             --data-binary @/tmp/status.json >/dev/null
