@@ -1,10 +1,7 @@
 (function(){'use strict';
 function norm(s){return String(s||'').replace(/\s+/g,' ').trim().toLowerCase()}
 function hideYoutubeAccount(){var nodes=document.querySelectorAll('button,a,.chip');for(var i=0;i<nodes.length;i++){var t=norm(nodes[i].textContent);if(t==='youtube účet'||t==='youtube ucet'){nodes[i].style.display='none';nodes[i].setAttribute('aria-hidden','true')}}}
-function isVideoButton(el){while(el&&el!==document.body){if((el.tagName==='BUTTON'||el.getAttribute&&el.getAttribute('role')==='button')&&norm(el.textContent)==='video')return true;el=el.parentElement}return false}
-document.addEventListener('click',function(e){if(!isVideoButton(e.target))return;var p=window.teslaMusicPlayer;if(!p)return;var id='',time=0,state=-1;try{var d=p.getVideoData?p.getVideoData():null;id=d&&d.video_id?d.video_id:'';time=p.getCurrentTime?p.getCurrentTime():0;state=p.getPlayerState?p.getPlayerState():-1}catch(x){}
- setTimeout(function(){try{var q=window.teslaMusicPlayer;if(!q||!id)return;var d2=q.getVideoData?q.getVideoData():null,now=d2&&d2.video_id?d2.video_id:'';if(now!==id&&q.loadVideoById){q.loadVideoById({videoId:id,startSeconds:Math.max(0,time)});setTimeout(function(){try{if(state===1&&q.playVideo){var tries=0,pt=setInterval(function(){tries++;try{q.playVideo();if((q.getPlayerState&&q.getPlayerState()===1)||tries>=12)clearInterval(pt)}catch(z){}if(tries>=12)clearInterval(pt)},250)}else if(q.pauseVideo)q.pauseVideo()}catch(x){}},350)}else{var current=q.getCurrentTime?q.getCurrentTime():time;if(Math.abs(current-time)>1.5&&q.seekTo)q.seekTo(Math.max(0,time),true);if(state===1&&q.playVideo){var tries=0,pt=setInterval(function(){tries++;try{q.playVideo();if((q.getPlayerState&&q.getPlayerState()===1)||tries>=12)clearInterval(pt)}catch(z){}if(tries>=12)clearInterval(pt)},250)}else if((state===2||state===5)&&q.pauseVideo)q.pauseVideo()}}catch(x){}},120);
-},true);
 function apply(){hideYoutubeAccount()}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();var n=0,t=setInterval(function(){apply();if(++n>24)clearInterval(t)},250);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
+var n=0,t=setInterval(function(){apply();if(++n>24)clearInterval(t)},250);
 })();
