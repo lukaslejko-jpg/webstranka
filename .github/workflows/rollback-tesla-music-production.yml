@@ -42,3 +42,5 @@ jobs:
         run: |
           sleep 5
           vercel inspect "$PROD_URL" --scope lukaslejko-9932s-projects
+
+# trigger SAFE BASE 158 rollback
