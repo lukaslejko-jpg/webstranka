@@ -16,8 +16,9 @@ jobs:
     timeout-minutes: 10
     env:
       TEAM_SLUG: lukaslejko-9932s-projects
-      VERIFIED_DPL_URL: https://tesla-waze-piped-m6ek41ab0-lukaslejko-9932s-projects.vercel.app
+      VERIFIED_DPL_URL: https://tesla-waze-piped-h6gkc3w2l-lukaslejko-9932s-projects.vercel.app
       PROD_ALIAS: tesla-waze-piped.vercel.app
+      EXPECTED_BUILD: "158"
     steps:
       - uses: actions/setup-node@v4
         with:
@@ -32,20 +33,28 @@ jobs:
       - name: Verify identity
         run: vercel whoami
 
-      - name: Point production alias to verified READY deployment
+      - name: Verify exact tested deployment before alias
+        run: |
+          set -euo pipefail
+          vercel inspect "$VERIFIED_DPL_URL" --scope "$TEAM_SLUG"
+          vercel curl "/?mobile=1&device=mobile" --deployment "$VERIFIED_DPL_URL" --scope "$TEAM_SLUG" > /tmp/tested-root.html
+          grep -Fq "tesla-music-build\" content=\"$EXPECTED_BUILD" /tmp/tested-root.html
+          ! grep -q "mobile-controls-v40.js" /tmp/tested-root.html
+          echo "EXACT_TESTED_DEPLOYMENT_OK"
+
+      - name: Point production alias to exact tested deployment
         run: |
           set -euo pipefail
           vercel alias set "$VERIFIED_DPL_URL" "$PROD_ALIAS" --scope "$TEAM_SLUG"
           echo "ALIAS_SET_OK"
 
-      - name: Verify alias target
+      - name: Verify production is exact tested build
         run: |
           set -euo pipefail
           sleep 3
           vercel inspect "https://$PROD_ALIAS" --scope "$TEAM_SLUG"
-          vercel curl "/?mobile=1&device=mobile" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/root.html
-          vercel curl "/mobile-controls-v40.js" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/mobile.js
-          test "$(wc -c < /tmp/root.html)" -gt 5000
-          grep -q 'mobile-controls-v40.js' /tmp/root.html
-          grep -Fq 'scheduleNativeEndFallback' /tmp/mobile.js
-          echo "PRODUCTION_ALIAS_VERIFY_OK"
+          vercel curl "/?mobile=1&device=mobile" --deployment "https://$PROD_ALIAS" --scope "$TEAM_SLUG" > /tmp/prod-root.html
+          cmp -s /tmp/tested-root.html /tmp/prod-root.html
+          grep -Fq "tesla-music-build\" content=\"$EXPECTED_BUILD" /tmp/prod-root.html
+          ! grep -q "mobile-controls-v40.js" /tmp/prod-root.html
+          echo "PRODUCTION_ALIAS_EXACT_TESTED_BUILD_OK"
