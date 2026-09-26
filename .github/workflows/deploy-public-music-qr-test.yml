@@ -46,7 +46,7 @@ jobs:
           node <<'NODE'
           const fs=require('fs'),p='/tmp/base/index.html';let h=fs.readFileSync(p,'utf8');
           h=h.replace(/<script src="\/qr-link-v129\.js\?v=158"><\/script>/g,'').replace(/<script src="\/mobile-pair-v133\.js\?v=158"><\/script>/g,'');
-          h=h.replace('</body>','<script src="/simple-remote-v159.js?v=160"></script></body>').replace('name="tesla-music-build" content="158"','name="tesla-music-build" content="160-test"');
+          h=h.replace('</body>','<script src="/simple-remote-v159.js?v=161"></script></body>').replace('name="tesla-music-build" content="158"','name="tesla-music-build" content="161-test"');
           fs.writeFileSync(p,h);
           NODE
       - name: Create isolated project and deploy public production
