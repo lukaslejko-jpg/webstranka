@@ -1,0 +1,67 @@
+name: Inspect exact Music 158 QR and startup
+
+on:
+  push:
+    branches: [fix/music-qr-minimized-preview-20260926]
+    paths:
+      - '.github/workflows/inspect-music-158-qr-startup.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      BASE_DPL: dpl_Bd6H4i853jeN7SstdpzLz9npZMLx
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install Vercel CLI
+        run: npm install --global vercel@59.25.4
+      - name: Authenticate Vercel CLI
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          LOG=/tmp/auth.log; rm -f "$LOG"
+          timeout 300 vercel login --github >"$LOG" 2>&1 & PID=$!
+          for _ in $(seq 1 60); do
+            URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null | tail -n1 || true)"
+            [ -n "$URL" ] && break
+            sleep 1
+          done
+          CODE="${URL##*user_code=}"; test -n "$CODE"
+          node - "$CODE" "$URL" <<'NODE' >/tmp/status.json
+          const [code,url]=process.argv.slice(2); process.stdout.write(JSON.stringify({state:'pending',context:'music-158-inspect-auth',description:'Vercel code: '+code,target_url:url}));
+          NODE
+          curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary @/tmp/status.json >/dev/null
+          cat "$LOG"; wait "$PID"
+      - name: Download exact build 158 source
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/music158; mkdir -p /tmp/music158
+          vercel api "/v6/deployments/$BASE_DPL/files?teamId=$TEAM_ID" > /tmp/tree.json
+          node <<'NODE'
+          const fs=require('fs'),cp=require('child_process'),path=require('path');
+          const tree=JSON.parse(fs.readFileSync('/tmp/tree.json','utf8')), out='/tmp/music158'; let files=[];
+          function walk(ns,p=''){for(const n of ns||[]){const q=p?p+'/'+n.name:n.name;if(n.type==='directory')walk(n.children,q);else if(n.type==='file')files.push({path:q,uid:n.uid});}}
+          walk(Array.isArray(tree)?tree:tree.files||tree.children||[]);
+          for(const f of files){fs.mkdirSync(path.dirname(path.join(out,f.path)),{recursive:true});const raw=cp.execFileSync('vercel',['api','/v8/deployments/'+process.env.BASE_DPL+'/files/'+f.uid+'?teamId='+process.env.TEAM_ID],{encoding:'utf8',maxBuffer:30*1024*1024});const d=JSON.parse(raw),b=d.data??d.content??d;if(typeof b!=='string')throw Error(f.path);fs.writeFileSync(path.join(out,f.path),Buffer.from(b,'base64'));}
+          console.log('FILES='+files.length);
+          NODE
+      - name: Publish relevant source as artifact
+        run: |
+          set -euo pipefail
+          find /tmp/music158 -type f | grep -E 'qr|pair|index\.html|app-v7|mini-v7|mode-v9|desktop-route|rescue|ux-v130|mobile-v128' | sort > /tmp/relevant.txt
+          cat /tmp/relevant.txt
+          tar -czf /tmp/music158-relevant.tgz -T /tmp/relevant.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: music158-relevant
+          path: /tmp/music158-relevant.tgz
