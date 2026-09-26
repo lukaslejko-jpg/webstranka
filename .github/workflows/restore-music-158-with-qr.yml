@@ -1,0 +1,150 @@
+name: Restore Music 158 with approved QR
+on:
+  push:
+    branches: [restore/music-158-with-qr-20260926]
+    paths: ['.github/workflows/restore-music-158-with-qr.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  statuses: write
+concurrency:
+  group: music-production-recovery
+  cancel-in-progress: false
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      BASE_DPL: dpl_Bd6H4i853jeN7SstdpzLz9npZMLx
+      BASE_URL: https://tesla-waze-piped-h6gkc3w2l-lukaslejko-9932s-projects.vercel.app
+      TARGET_DPL: dpl_5HgqHqmmyxfvTztAduHumgkd6fHv
+      TARGET_URL: https://tesla-waze-piped-naie1keil-lukaslejko-9932s-projects.vercel.app
+      APPROVED_URL: https://music-qr-test-hkesp6lt9-lukaslejko-9932s-projects.vercel.app
+      PROD_HOST: tesla-waze-piped.vercel.app
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install pinned Vercel CLI
+        run: |
+          npm install --global vercel@59.25.4
+          cat > "$RUNNER_TEMP/music-vc" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [ -n "${VERCEL_TOKEN:-}" ]; then
+            exec vercel "$@" --token "$VERCEL_TOKEN"
+          else
+            exec vercel "$@"
+          fi
+          SH
+          chmod 700 "$RUNNER_TEMP/music-vc"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Authenticate existing Vercel account
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ -n "${VERCEL_TOKEN:-}" ]; then music-vc whoami; exit 0; fi
+          LOG="$RUNNER_TEMP/music-login.log"
+          timeout 600 vercel login --github > "$LOG" 2>&1 & PID=$!
+          URL=''
+          for _ in $(seq 1 60); do
+            URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null | tail -n1 || true)"
+            [ -n "$URL" ] && break
+            kill -0 "$PID" 2>/dev/null || break
+            sleep 1
+          done
+          [ -n "$URL" ] || { cat "$LOG"; exit 1; }
+          node - "$URL" <<'NODE' > "$RUNNER_TEMP/music-status.json"
+          const url=process.argv[2];
+          process.stdout.write(JSON.stringify({state:'pending',context:'music-158-qr-recovery',description:'Authorize existing Vercel account for requested Music restoration',target_url:url}));
+          NODE
+          curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary "@$RUNNER_TEMP/music-status.json" > /dev/null
+          wait "$PID"
+          music-vc whoami
+      - name: Verify exact target and record current production
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/music-evidence
+          music-vc api "/v13/deployments/$TARGET_DPL?teamId=$TEAM_ID" > /tmp/music-target.json
+          music-vc api "/v13/deployments/$PROD_HOST?teamId=$TEAM_ID" > /tmp/music-before.json
+          node <<'NODE'
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync('/tmp/music-target.json','utf8'));
+          if(d.id!==process.env.TARGET_DPL) throw new Error('Wrong target deployment');
+          if((d.projectId||d.project?.id)!==process.env.PROJECT_ID) throw new Error('Wrong project');
+          if((d.readyState||d.state)!=='READY') throw new Error('Target is not READY');
+          const before=JSON.parse(fs.readFileSync('/tmp/music-before.json','utf8'));
+          fs.writeFileSync('/tmp/music-evidence/identity.json',JSON.stringify({base:process.env.BASE_DPL,target:d.id,project:process.env.PROJECT_ID,previous:before.id,domain:process.env.PROD_HOST,operation:'restore-existing-artifact-no-build'},null,2));
+          console.log('TARGET_IDENTITY_READY_OK; previous='+before.id);
+          NODE
+      - name: Verify 158 player and approved QR before any production write
+        run: |
+          set -euo pipefail
+          music-vc curl / --deployment "$TARGET_URL" --scope "$TEAM_SLUG" > /tmp/music-root.html
+          music-vc curl /app-v7.js --deployment "$TARGET_URL" --scope "$TEAM_SLUG" > /tmp/music-target-player.js
+          music-vc curl /app-v7.js --deployment "$BASE_URL" --scope "$TEAM_SLUG" > /tmp/music-base-player.js
+          music-vc curl /app-v7.js --deployment "$APPROVED_URL" --scope "$TEAM_SLUG" > /tmp/music-approved-player.js
+          music-vc curl /simple-remote-v159.js --deployment "$TARGET_URL" --scope "$TEAM_SLUG" > /tmp/music-target-qr.js
+          music-vc curl /simple-remote-v159.js --deployment "$APPROVED_URL" --scope "$TEAM_SLUG" > /tmp/music-approved-qr.js
+          node --check /tmp/music-target-player.js
+          node --check /tmp/music-target-qr.js
+          cmp /tmp/music-target-player.js /tmp/music-approved-player.js
+          cmp /tmp/music-target-qr.js /tmp/music-approved-qr.js
+          node <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const read=p=>fs.readFileSync(p,'utf8');
+          const root=read('/tmp/music-root.html');
+          if(!/name=["']tesla-music-build["']\s+content=["']168-test["']/.test(root)) throw new Error('Wrong build: expected approved 168-test');
+          if(!root.includes('simple-remote-v159.js')) throw new Error('QR script missing from root');
+          const qr=read('/tmp/music-target-qr.js');
+          if(!qr.includes('simpleRemoteQr')||!qr.includes('/api/simple-remote')) throw new Error('QR implementation missing');
+          const normalize=s=>s.replace(/player\s*=\s*(?:window\.teslaMusicPlayer\s*=\s*)?new\s+YT\.Player\s*\(/g,'player = new YT.Player(');
+          const base=read('/tmp/music-base-player.js'),target=read('/tmp/music-target-player.js');
+          if(normalize(base)!==normalize(target)) throw new Error('Player differs from 158 beyond approved player-reference exposure; production unchanged');
+          const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+          const evidence={build:'168-test',basePlayer:process.env.BASE_DPL,playerMatches158ExceptReferenceExposure:true,playerMatchesApproved168:true,qrMatchesApproved168:true,playerSha256:hash(target),qrSha256:hash(qr),checkedAt:new Date().toISOString()};
+          fs.writeFileSync('/tmp/music-evidence/source-checks.json',JSON.stringify(evidence,null,2));
+          console.log('BASE_158_PLAYER_AND_APPROVED_QR_VERIFIED');
+          NODE
+          music-vc curl "/api/simple-remote?session=recovery-$GITHUB_RUN_ID&last=0" --deployment "$TARGET_URL" --scope "$TEAM_SLUG" > /tmp/music-remote.json
+          node -e "const d=JSON.parse(require('fs').readFileSync('/tmp/music-remote.json','utf8'));if(d.error)throw Error(d.error);console.log('QR_API_JSON_OK')"
+      - name: Restore only the requested production alias to verified existing artifact
+        run: |
+          set -euo pipefail
+          music-vc alias set "$TARGET_URL" "$PROD_HOST" --scope "$TEAM_SLUG"
+      - name: Verify public production identity and QR after restoration
+        run: |
+          set -euo pipefail
+          music-vc api "/v13/deployments/$PROD_HOST?teamId=$TEAM_ID" > /tmp/music-after.json
+          node -e "const d=JSON.parse(require('fs').readFileSync('/tmp/music-after.json','utf8'));if(d.id!==process.env.TARGET_DPL)throw Error('Production alias points at '+d.id);console.log('PRODUCTION_EXACT_DEPLOYMENT_OK '+d.id)"
+          curl --fail --silent --show-error --retry 3 "https://$PROD_HOST/?recovery=$GITHUB_RUN_ID" > /tmp/music-public-root.html
+          grep -q 'content="168-test"' /tmp/music-public-root.html
+          grep -q 'simple-remote-v159.js' /tmp/music-public-root.html
+          curl --fail --silent --show-error --retry 3 "https://$PROD_HOST/simple-remote-v159.js?recovery=$GITHUB_RUN_ID" > /tmp/music-public-qr.js
+          cmp /tmp/music-public-qr.js /tmp/music-target-qr.js
+          curl --fail --silent --show-error --retry 3 "https://$PROD_HOST/app-v7.js?recovery=$GITHUB_RUN_ID" > /tmp/music-public-player.js
+          cmp /tmp/music-public-player.js /tmp/music-target-player.js
+          printf 'Restored existing Music build 168-test (158 player plus approved QR).\nDeployment: %s\nNo new build; no application source changes.\nReal iPhone locked-screen audio not verified by this workflow.\n' "$TARGET_DPL" | tee /tmp/music-evidence/result.txt >> "$GITHUB_STEP_SUMMARY"
+          echo 'PRODUCTION_158_BASE_WITH_QR_VERIFIED'
+      - name: Publish result status
+        if: always()
+        env:
+          GH_STATUS_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+        run: |
+          node <<'NODE' > "$RUNNER_TEMP/music-result.json"
+          const success=process.env.RESULT==='success';
+          process.stdout.write(JSON.stringify({state:success?'success':'failure',context:'music-158-qr-recovery',description:success?'Existing Music 158-based QR artifact restored and verified':'Recovery did not complete; inspect run before retry',target_url:'https://github.com/'+process.env.GITHUB_REPOSITORY+'/actions/runs/'+process.env.GITHUB_RUN_ID}));
+          NODE
+          curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary "@$RUNNER_TEMP/music-result.json" > /dev/null
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: music-recovery-evidence
+          path: /tmp/music-evidence/
+          if-no-files-found: ignore
+          retention-days: 30
