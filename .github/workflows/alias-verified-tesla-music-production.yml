@@ -39,8 +39,8 @@ jobs:
           CODE=""
           URL=""
           for _ in $(seq 1 60); do
-            if grep -Eq 'https://vercel\\.com/oauth/device\\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null; then
-              URL="$(grep -Eo 'https://vercel\\.com/oauth/device\\?user_code=[A-Z0-9-]+' "$LOG" | tail -n1)"
+            if grep -Eq 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null; then
+              URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" | tail -n1)"
               CODE="${URL##*user_code=}"
               break
             fi
