@@ -185,7 +185,16 @@ jobs:
             const p=await c.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));
             await p.goto(ROOT+'/?mobile=1&device=mobile',{waitUntil:'domcontentloaded'});
             await p.waitForFunction(()=>typeof ready!=='undefined'&&ready===true);
-            await p.locator('#q').fill('test');await p.locator('#go').click();await p.waitForSelector('#grid .card');
+            await p.evaluate(()=>{
+              queue=[
+                {id:'unfzfe8f9NI',title:'Song A',uploader:'Artist A - Topic',duration:180,thumbnail:''},
+                {id:'xFrGuyw1V8s',title:'Song B',uploader:'Artist B - Topic',duration:180,thumbnail:''},
+                {id:'XEjLoHdbVeE',title:'Song C',uploader:'Artist C - Topic',duration:180,thumbnail:''}
+              ];
+              tab='queue';
+              render(queue);
+            });
+            await p.waitForSelector('#grid .card');
             await p.locator('#grid .card').first().click();
             await p.waitForFunction(()=>player?.getPlayerState?.()===1);
             const first=await p.evaluate(()=>current.id);
