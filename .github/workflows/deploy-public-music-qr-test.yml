@@ -60,7 +60,7 @@ jobs:
           URL="$(vercel deploy --prod --yes --archive=tgz --scope "$TEAM_SLUG")"
           echo "PUBLIC_MUSIC_PRODUCTION=$URL"
       - name: Alias approved deployment to public Music
-        run: vercel alias set tesla-waze-piped-rm365tvki-lukaslejko-9932s-projects.vercel.app tesla-waze-piped.vercel.app --scope lukaslejko-9932s-projects
+        run: vercel alias set tesla-waze-piped-jfq2aquum-lukaslejko-9932s-projects.vercel.app tesla-waze-piped.vercel.app --scope lukaslejko-9932s-projects
 
 # trigger v165 package
 
