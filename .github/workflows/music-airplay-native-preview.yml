@@ -103,6 +103,17 @@ jobs:
           mkdir -p api
           cp "$GITHUB_WORKSPACE/airplay-preview/api/music.js" api/music.js
           node --check api/music.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('vercel.json'); d=json.loads(p.read_text()) if p.exists() else {}
+          rw=d.get('rewrites',[])
+          rw=[r for r in rw if r.get('source')!='/api/youtube-search']
+          rw.insert(0,{'source':'/api/youtube-search','destination':'https://tesla-waze-piped.vercel.app/api/youtube-search'})
+          d['rewrites']=rw
+          p.write_text(json.dumps(d,separators=(',',':')))
+          PY
+          cat vercel.json
           cat > airplay-test-bypass.js <<'JS'
           (()=>{const clear=()=>document.getElementById('musicGate')?.remove();clear();new MutationObserver(clear).observe(document.documentElement,{childList:true,subtree:true});})();
           JS
@@ -145,4 +156,9 @@ jobs:
           grep -Eq 'error|action|unknown|invalid|login' /tmp/api-post
           echo "PUBLIC_API_PROXY_POST_OK=$STATUS"
           cat /tmp/api-post
+          SEARCH_STATUS="$(curl -sS -o /tmp/search -w '%{http_code}' "https://$TEST_ALIAS/api/youtube-search?q=%C4%BEudovky")"
+          test "$SEARCH_STATUS" = "200"
+          grep -q '"items"' /tmp/search
+          grep -q 'youtubeId' /tmp/search
+          echo "PUBLIC_SEARCH_OK=$SEARCH_STATUS"
           echo "AIRPLAY_PREVIEW_READY"
