@@ -55,16 +55,24 @@ jobs:
         run: |
           set -euo pipefail
           cd /tmp/music
-          cp "$GITHUB_WORKSPACE/airplay-final/mobile-controls-v40.js" .
-          node --check mobile-controls-v40.js
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('index.html');s=p.read_text();m='<script src="/mobile-v128-music-logic.js?v=158"></script>';assert m in s
-          s=s.replace(m,m+'<script src="/mobile-controls-v40.js?v=final-airplay"></script>',1)
-          s=s.replace('</body>','<script src="/airplay-test-bypass.js?v=final"></script></body>')
+          p=Path('app-v7.js');s=p.read_text()
+          old="player.loadVideoById(t.id);now();discover(t);media();window.dispatchEvent(new CustomEvent('tesla-music-trackchange',{detail:t}))"
+          new="const ids=queue.map(x=>String(x.id||x.youtubeId||'')).filter(x=>/^[A-Za-z0-9_-]{11}$/.test(x));const pi=Math.max(0,queue.findIndex(x=>key(x)===key(t)));if(ids.length>1&&typeof player.loadPlaylist==='function')player.loadPlaylist({playlist:ids,index:pi,startSeconds:0,suggestedQuality:'default'});else player.loadVideoById(t.id);now();discover(t);media();window.dispatchEvent(new CustomEvent('tesla-music-trackchange',{detail:t}))"
+          assert old in s
+          s=s.replace(old,new,1)
+          old2="function next(man=true){if(!queue.length)return;if(current&&man&&started&&Date.now()-started<15000)ev('skip',current);"
+          new2="function next(man=true){if(!queue.length)return;if(current&&man&&started&&Date.now()-started<15000)ev('skip',current);if(player&&typeof player.nextVideo==='function'&&player.getPlaylist?.()?.length>1){try{player.nextVideo();return}catch{}}"
+          assert old2 in s
+          s=s.replace(old2,new2,1)
           p.write_text(s)
+          h=Path('index.html');x=h.read_text();x=x.replace('</body>','<script src="/airplay-test-bypass.js?v=final2"></script></body>');h.write_text(x)
           Path('airplay-test-bypass.js').write_text("(()=>{const c=()=>document.getElementById('musicGate')?.remove();c();new MutationObserver(c).observe(document.documentElement,{childList:true,subtree:true})})();")
           PY
+          node --check app-v7.js
+          grep -Fq 'player.loadPlaylist' app-v7.js
+          grep -Fq 'player.nextVideo' app-v7.js
           mkdir -p api
           cat > api/music.js <<'JS'
           export default async function h(req,res){try{const H={'content-type':req.headers['content-type']||'application/json'};if(req.headers.authorization)H.authorization=req.headers.authorization;const r=await fetch('https://tesla-waze-piped.vercel.app/api/music',{method:req.method,headers:H,body:['GET','HEAD'].includes(req.method)?undefined:JSON.stringify(req.body??{})});res.status(r.status).send(await r.text())}catch(e){res.status(502).json({error:String(e)})}}
@@ -88,9 +96,8 @@ jobs:
           H=https://music-airplay-test.vercel.app
           curl -fsS "$H/?final=1" >/tmp/h
           grep -Fq 'content="168-test"' /tmp/h
-          grep -Fq 'mobile-controls-v40.js?v=final-airplay' /tmp/h
-          curl -fsS "$H/mobile-controls-v40.js?v=final-airplay" >/tmp/c
-          grep -Fq 'loadPlaylist' /tmp/c; grep -Fq 'nextVideo' /tmp/c
+          curl -fsS "$H/app-v7.js?v=158" >/tmp/c
+          grep -Fq 'player.loadPlaylist' /tmp/c; grep -Fq 'player.nextVideo' /tmp/c
           curl -fsS "$H/api/youtube-search?q=%C4%BEudovky" >/tmp/s
           grep -q 'youtubeId' /tmp/s
           S="$(curl -sS -o /tmp/p -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"action":"__probe__"}' "$H/api/music")"
