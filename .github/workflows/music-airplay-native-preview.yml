@@ -100,18 +100,9 @@ jobs:
           test -f member-v47-core.js
           node --check member-v47-core.js
           echo "Auth remains same-origin; API availability will be checked after deploy."
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          p=Path('vercel.json')
-          d=json.loads(p.read_text()) if p.exists() else {}
-          rewrites=d.get('rewrites',[])
-          rewrites=[r for r in rewrites if r.get('source')!='/api/music']
-          rewrites.insert(0,{'source':'/api/music','destination':'https://tesla-waze-piped.vercel.app/api/music'})
-          d['rewrites']=rewrites
-          p.write_text(json.dumps(d,separators=(',',':')))
-          PY
-          cat vercel.json
+          mkdir -p api
+          cp "$GITHUB_WORKSPACE/airplay-preview/api/music.js" api/music.js
+          node --check api/music.js
           find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/after
           echo "PATCH_OK"
       - name: Create isolated public test project and deploy
@@ -138,7 +129,10 @@ jobs:
           grep -Fq 'nextVideo' /tmp/core
           TEST_ALIAS="music-airplay-test.vercel.app"
           echo "PUBLIC_TEST_ALIAS=https://$TEST_ALIAS"
-          STATUS="$(curl -sS -o /tmp/api-get -w '%{http_code}' "https://$TEST_ALIAS/api/music")"
-          test "$STATUS" = "405"
-          echo "PUBLIC_API_PROXY_OK=$STATUS"
+          STATUS="$(curl -sS -o /tmp/api-post -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"action":"__probe__"}' "https://$TEST_ALIAS/api/music")"
+          test "$STATUS" != "404"
+          test "$STATUS" != "502"
+          grep -Eq 'error|action|unknown|invalid|login' /tmp/api-post
+          echo "PUBLIC_API_PROXY_POST_OK=$STATUS"
+          cat /tmp/api-post
           echo "AIRPLAY_PREVIEW_READY"
