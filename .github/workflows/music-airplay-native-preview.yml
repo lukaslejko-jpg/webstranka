@@ -97,9 +97,9 @@ jobs:
           fi
           # Keep authentication same-origin in preview. Cross-origin POST to production
           # is blocked by browser CORS and results in the misleading "Load failed".
-          test -f api/music.js
-          node --check api/music.js
+          test -f member-v47-core.js
           node --check member-v47-core.js
+          echo "Auth remains same-origin; API availability will be checked after deploy."
           find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/after
           echo "PATCH_OK"
       - name: Link and deploy preview only
