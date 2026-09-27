@@ -63,16 +63,20 @@ jobs:
           assert old in s
           s=s.replace(old,new,1)
           old2="function next(man=true){if(!queue.length)return;if(current&&man&&started&&Date.now()-started<15000)ev('skip',current);"
-          new2="function next(man=true){if(!queue.length)return;if(current&&man&&started&&Date.now()-started<15000)ev('skip',current);if(player&&typeof player.nextVideo==='function'&&player.getPlaylist?.()?.length>1){try{player.nextVideo();return}catch{}}"
+          # Keep the app's original next() state machine. Native playlist is only the transport layer.
           assert old2 in s
-          s=s.replace(old2,new2,1)
+          old3="onStateChange:e=>{if(e.data===YT.PlayerState.ENDED){if(current)ev('complete',current);if(settings.auto)next(false)}media()}"
+          new3="onStateChange:e=>{if(e.data===YT.PlayerState.ENDED){if(current)ev('complete',current);if(settings.auto){const before=key(current);next(false);setTimeout(()=>{try{if(key(current)!==before&&player.getPlayerState()!==YT.PlayerState.PLAYING)player.playVideo()}catch{}},180)}}media()}"
+          assert old3 in s
+          s=s.replace(old3,new3,1)
           p.write_text(s)
           h=Path('index.html');x=h.read_text();x=x.replace('</body>','<script src="/airplay-test-bypass.js?v=final2"></script></body>');h.write_text(x)
           Path('airplay-test-bypass.js').write_text("(()=>{const c=()=>document.getElementById('musicGate')?.remove();c();new MutationObserver(c).observe(document.documentElement,{childList:true,subtree:true})})();")
           PY
           node --check app-v7.js
           grep -Fq 'player.loadPlaylist' app-v7.js
-          grep -Fq 'player.nextVideo' app-v7.js
+          grep -Fq 'const before=key(current)' app-v7.js
+          ! grep -Fq 'typeof player.nextVideo' app-v7.js
           mkdir -p api
           cat > api/music.js <<'JS'
           export default async function h(req,res){try{const H={'content-type':req.headers['content-type']||'application/json'};if(req.headers.authorization)H.authorization=req.headers.authorization;const r=await fetch('https://tesla-waze-piped.vercel.app/api/music',{method:req.method,headers:H,body:['GET','HEAD'].includes(req.method)?undefined:JSON.stringify(req.body??{})});res.status(r.status).send(await r.text())}catch(e){res.status(502).json({error:String(e)})}}
@@ -97,7 +101,9 @@ jobs:
           curl -fsS "$H/?final=1" >/tmp/h
           grep -Fq 'content="168-test"' /tmp/h
           curl -fsS "$H/app-v7.js?v=158" >/tmp/c
-          grep -Fq 'player.loadPlaylist' /tmp/c; grep -Fq 'player.nextVideo' /tmp/c
+          grep -Fq 'player.loadPlaylist' /tmp/c
+          grep -Fq 'const before=key(current)' /tmp/c
+          ! grep -Fq 'typeof player.nextVideo' /tmp/c
           curl -fsS "$H/api/youtube-search?q=%C4%BEudovky" >/tmp/s
           grep -q 'youtubeId' /tmp/s
           S="$(curl -sS -o /tmp/p -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"action":"__probe__"}' "$H/api/music")"
