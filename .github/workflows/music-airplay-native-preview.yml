@@ -55,7 +55,7 @@ jobs:
           node <<'NODE'
           const fs=require('fs'),cp=require('child_process'),path=require('path');
           const tree=JSON.parse(fs.readFileSync('/tmp/tree.json','utf8')),out='/tmp/music'; let files=[];
-          function walk(nodes,p=''){for(const n of nodes||[]){const q=p?p+'/'+n.name:n.name;if(n.type==='directory')walk(n.children,q);else if(n.type==='file')files.push({path:q,uid:n.uid});}}
+          function walk(nodes,p=''){for(const n of nodes||[]){const q=p?p+'/'+n.name:n.name;if(n.type==='directory')walk(n.children,q);else if((n.type==='file'||n.type==='invalid')&&n.uid)files.push({path:q,uid:n.uid});}}
           walk(Array.isArray(tree)?tree:(tree.files||tree.children||tree));
           if(!files.length){console.log(JSON.stringify(tree).slice(0,4000));throw Error('No deployment files');}
           for(const f of files){fs.mkdirSync(path.dirname(path.join(out,f.path)),{recursive:true});const raw=cp.execFileSync('vercel',['api','/v8/deployments/'+process.env.BASE_DPL+'/files/'+f.uid+'?teamId='+process.env.TEAM_ID],{encoding:'utf8',maxBuffer:25*1024*1024});const d=JSON.parse(raw),b=d.data??d.content??d;if(typeof b!=='string')throw Error('bad '+f.path);fs.writeFileSync(path.join(out,f.path),Buffer.from(b,'base64'));}
