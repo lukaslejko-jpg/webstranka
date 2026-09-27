@@ -77,6 +77,12 @@ jobs:
           new4="let autoEndKey='',autoEndAt=0;function tick(){if(!player||!ready)return;try{const c=player.getCurrentTime()||0,d=player.getDuration()||0;if(current&&d>1&&c>0&&d-c<=0.75){const k=key(current);if(autoEndKey!==k||Date.now()-autoEndAt>5000){autoEndKey=k;autoEndAt=Date.now();setTimeout(()=>{try{if(current&&key(current)===k)next(false)}catch{}},80)}}"
           assert old4 in s
           s=s.replace(old4,new4,1)
+          # Background/AirPlay: arm a wall-clock timer while foreground ticks are available.
+          # The timer can still fire after Safari throttles tick polling on lock.
+          old5="window.dispatchEvent(new CustomEvent('tesla-music-tick',{detail:{playing:p,now:c,duration:d}}))"
+          new5="if(p&&current&&d>c&&d-c>0.8){const k=key(current),ms=Math.max(100,Math.round((d-c-0.55)*1000));if(window.__tmBgKey!==k||Math.abs((window.__tmBgDue||0)-Date.now()-ms)>1500){clearTimeout(window.__tmBgTimer);window.__tmBgKey=k;window.__tmBgDue=Date.now()+ms;window.__tmBgTimer=setTimeout(()=>{try{if(current&&key(current)===k)next(false)}catch{}},ms)}}window.dispatchEvent(new CustomEvent('tesla-music-tick',{detail:{playing:p,now:c,duration:d}}))"
+          assert old5 in s
+          s=s.replace(old5,new5,1)
           p.write_text(s)
           h=Path('index.html');x=h.read_text();x=x.replace('</body>','<script src="/airplay-test-bypass.js?v=final2"></script></body>');h.write_text(x)
           Path('airplay-test-bypass.js').write_text("(()=>{const c=()=>document.getElementById('musicGate')?.remove();c();new MutationObserver(c).observe(document.documentElement,{childList:true,subtree:true})})();")
@@ -85,6 +91,7 @@ jobs:
           grep -Fq 'player.loadPlaylist' app-v7.js
           grep -Fq 'setTimeout(()=>{try{next(false)}catch{}},80)' app-v7.js
           grep -Fq "d-c<=0.75" app-v7.js
+          grep -Fq "__tmBgTimer" app-v7.js
           ! grep -Fq 'typeof player.nextVideo' app-v7.js
           mkdir -p api
           cat > api/music.js <<'JS'
@@ -113,6 +120,7 @@ jobs:
           grep -Fq 'player.loadPlaylist' /tmp/c
           grep -Fq 'setTimeout(()=>{try{next(false)}catch{}},80)' /tmp/c
           grep -Fq "d-c<=0.75" /tmp/c
+          grep -Fq "__tmBgTimer" /tmp/c
           ! grep -Fq 'typeof player.nextVideo' /tmp/c
           curl -fsS "$H/api/youtube-search?q=%C4%BEudovky" >/tmp/s
           grep -q 'youtubeId' /tmp/s
