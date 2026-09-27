@@ -95,6 +95,15 @@ jobs:
           p.write_text(s.replace(marker,marker+'<script src="/mobile-controls-v40.js?v=169-airplay"></script>',1))
           PY
           fi
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('member-v47-core.js')
+          if p.exists():
+              s=p.read_text()
+              s=s.replace("const API='/api/music',SESSION=", "const API=(location.hostname==='tesla-waze-piped.vercel.app'?'/api/music':'https://tesla-waze-piped.vercel.app/api/music'),SESSION=",1)
+              p.write_text(s)
+          PY
+          node --check member-v47-core.js
           find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/after
           echo "PATCH_OK"
       - name: Link and deploy preview only
