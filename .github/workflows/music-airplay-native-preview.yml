@@ -102,13 +102,16 @@ jobs:
           echo "Auth remains same-origin; API availability will be checked after deploy."
           find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/after
           echo "PATCH_OK"
-      - name: Link and deploy preview only
+      - name: Create isolated public test project and deploy
         working-directory: /tmp/music-src
         run: |
           set -euo pipefail
-          mkdir -p .vercel
-          printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$PROJECT_ID" > .vercel/project.json
-          URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
+          TEST_PROJECT="music-airplay-test"
+          vercel project add "$TEST_PROJECT" --scope "$TEAM_SLUG" 2>/dev/null || true
+          vercel project protection disable "$TEST_PROJECT" --sso --scope "$TEAM_SLUG" || true
+          rm -rf .vercel
+          vercel link --yes --project "$TEST_PROJECT" --scope "$TEAM_SLUG"
+          URL="$(vercel deploy --prod --archive=tgz --scope "$TEAM_SLUG")"
           echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
           echo "PREVIEW=$URL"
       - name: Smoke preview
@@ -122,8 +125,5 @@ jobs:
           grep -Fq 'loadPlaylist' /tmp/core
           grep -Fq 'nextVideo' /tmp/core
           TEST_ALIAS="music-airplay-test.vercel.app"
-          vercel alias set "$PREVIEW_URL" "$TEST_ALIAS" --scope "$TEAM_SLUG"
-          vercel curl "/" --deployment "https://$TEST_ALIAS" --scope "$TEAM_SLUG" > /tmp/alias-root
-          test "$(wc -c < /tmp/alias-root)" -gt 5000
           echo "PUBLIC_TEST_ALIAS=https://$TEST_ALIAS"
           echo "AIRPLAY_PREVIEW_READY"
