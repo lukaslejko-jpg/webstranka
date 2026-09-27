@@ -63,8 +63,10 @@ jobs:
           p=Path('app-v7.js');s=p.read_text()
           old="function tick(){if(!player||!ready)return;try{const c=player.getCurrentTime()||0,d=player.getDuration()||0;"
           new="let autoEndKey='',autoEndAt=0;function tick(){if(!player||!ready)return;try{const c=player.getCurrentTime()||0,d=player.getDuration()||0;if(current&&d>1&&c>0&&d-c<=0.75){const k=key(current);if(autoEndKey!==k||Date.now()-autoEndAt>5000){autoEndKey=k;autoEndAt=Date.now();setTimeout(()=>{try{if(current&&key(current)===k)next(false)}catch{}},80)}}"
-          assert old in s
-          p.write_text(s.replace(old,new,1))
+          if "d-c<=0.75" not in s:
+            assert old in s
+            s=s.replace(old,new,1)
+          p.write_text(s)
           PY
           node --check app-v7.js
           grep -Fq "d-c<=0.75" app-v7.js
