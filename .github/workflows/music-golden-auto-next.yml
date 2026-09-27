@@ -45,6 +45,10 @@ jobs:
             except:pass
           PY
           printf '{}' >/tmp/golden/vercel.json
+          mkdir -p /tmp/golden/api
+          cat > /tmp/golden/api/music.js <<'JS'
+          export default async function h(req,res){try{const H={'content-type':req.headers['content-type']||'application/json'};if(req.headers.authorization)H.authorization=req.headers.authorization;const r=await fetch('https://music-qr-test.vercel.app/api/music',{method:req.method,headers:H,body:['GET','HEAD'].includes(req.method)?undefined:JSON.stringify(req.body??{})});const t=await r.text();res.status(r.status);const ct=r.headers.get('content-type');if(ct)res.setHeader('content-type',ct);res.send(t)}catch(e){res.status(502).json({error:'music_proxy_failed'})}}
+          JS
           curl -fsS "$PROD/app-v7.js?v=158" -o /tmp/golden/app-v7.js
           curl -fsS "$PROD/mobile-v128-music-logic.js?v=158" -o /tmp/golden/mobile-v128-music-logic.js
           test -s /tmp/golden/app-v7.js
@@ -89,6 +93,8 @@ jobs:
           grep -Fq 'content="168-test"' /tmp/root
           grep -Fq "d-c<=0.75" /tmp/app
           node --check /tmp/app
+          S="$(vercel curl "/api/music" --deployment "$URL" --scope "$TEAM_SLUG" 2>/dev/null | head -c 500 || true)"
+          test -n "$S"
       - name: Promote exact verified candidate
         run: |
           set -euo pipefail
@@ -96,4 +102,6 @@ jobs:
           sleep 3
           curl -fsS "https://tesla-waze-piped.vercel.app/app-v7.js?v=golden-auto-next" >/tmp/live
           grep -Fq "d-c<=0.75" /tmp/live
+          STATUS="$(curl -sS -o /tmp/api-live -w '%{http_code}' "https://tesla-waze-piped.vercel.app/api/music")"
+          test "$STATUS" != "404"
           echo GOLDEN_AUTO_NEXT_PRODUCTION_OK
