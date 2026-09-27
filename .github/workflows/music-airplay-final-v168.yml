@@ -71,6 +71,12 @@ jobs:
           new3="onStateChange:e=>{if(e.data===YT.PlayerState.ENDED){if(current)ev('complete',current);setTimeout(()=>{try{next(false)}catch{}},80)}media()}"
           assert old3 in s
           s=s.replace(old3,new3,1)
+          # iOS Safari does not reliably deliver YT ENDED. Add a one-shot near-end watchdog
+          # to the existing tick(), without replacing the app's next() implementation.
+          old4="function tick(){if(!player||!ready)return;try{const c=player.getCurrentTime()||0,d=player.getDuration()||0;"
+          new4="let autoEndKey='',autoEndAt=0;function tick(){if(!player||!ready)return;try{const c=player.getCurrentTime()||0,d=player.getDuration()||0;if(current&&d>1&&c>0&&d-c<=0.75){const k=key(current);if(autoEndKey!==k||Date.now()-autoEndAt>5000){autoEndKey=k;autoEndAt=Date.now();setTimeout(()=>{try{if(current&&key(current)===k)next(false)}catch{}},80)}}"
+          assert old4 in s
+          s=s.replace(old4,new4,1)
           p.write_text(s)
           h=Path('index.html');x=h.read_text();x=x.replace('</body>','<script src="/airplay-test-bypass.js?v=final2"></script></body>');h.write_text(x)
           Path('airplay-test-bypass.js').write_text("(()=>{const c=()=>document.getElementById('musicGate')?.remove();c();new MutationObserver(c).observe(document.documentElement,{childList:true,subtree:true})})();")
@@ -78,6 +84,7 @@ jobs:
           node --check app-v7.js
           grep -Fq 'player.loadPlaylist' app-v7.js
           grep -Fq 'setTimeout(()=>{try{next(false)}catch{}},80)' app-v7.js
+          grep -Fq "d-c<=0.75" app-v7.js
           ! grep -Fq 'typeof player.nextVideo' app-v7.js
           mkdir -p api
           cat > api/music.js <<'JS'
@@ -105,6 +112,7 @@ jobs:
           curl -fsS "$H/app-v7.js?v=158" >/tmp/c
           grep -Fq 'player.loadPlaylist' /tmp/c
           grep -Fq 'setTimeout(()=>{try{next(false)}catch{}},80)' /tmp/c
+          grep -Fq "d-c<=0.75" /tmp/c
           ! grep -Fq 'typeof player.nextVideo' /tmp/c
           curl -fsS "$H/api/youtube-search?q=%C4%BEudovky" >/tmp/s
           grep -q 'youtubeId' /tmp/s
