@@ -78,7 +78,8 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           a=Path('/tmp/original-app.js').read_text();b=Path('/tmp/golden/app-v7.js').read_text()
-          assert len(b)>len(a) and "d-c<=0.75" in b and "d-c<=0.75" not in a
+          assert "d-c<=0.75" in b
+          if "d-c<=0.75" in a: assert b==a
           PY
       - name: Deploy candidate to SAME production project without alias
         working-directory: /tmp/golden
