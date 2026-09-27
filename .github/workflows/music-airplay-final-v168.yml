@@ -1,0 +1,89 @@
+name: Build final AirPlay test from approved Music v168
+on:
+  push:
+    branches: [fix/music-airplay-final-from-approved-v168-20260927]
+    paths: ['airplay-final/**','.github/workflows/music-airplay-final-v168.yml']
+permissions: {contents: read, statuses: write}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      BASE_DPL: dpl_Cy4GCgxJcFivhpkKj88oMQUEHmEr
+      TEST_PROJECT: music-airplay-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm i -g vercel@59.25.4
+      - name: Auth
+        env: {GH_STATUS_TOKEN: "${{ github.token }}"}
+        run: |
+          set -euo pipefail
+          LOG=/tmp/a; timeout 300 vercel login --github >"$LOG" 2>&1 & PID=$!
+          for _ in $(seq 1 60); do URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null|tail -1||true)"; [ -n "$URL" ]&&break;sleep 1;done
+          test -n "$URL"; CODE="${URL##*user_code=}"
+          printf '{"state":"pending","context":"music-airplay-final-auth","description":"Vercel code: %s","target_url":"%s"}' "$CODE" "$URL" >/tmp/s
+          curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary @/tmp/s >/dev/null
+          wait "$PID"
+      - name: Extract exact approved immutable v168
+        run: |
+          set -euo pipefail
+          vercel api "/v6/deployments/$BASE_DPL/files?teamId=$TEAM_ID" >/tmp/tree
+          node <<'NODE'
+          const fs=require('fs'),cp=require('child_process'),path=require('path');const t=JSON.parse(fs.readFileSync('/tmp/tree'));let a=[];
+          function w(ns,p=''){for(const n of ns||[]){const q=p?p+'/'+n.name:n.name;if(n.type==='directory')w(n.children,q);else if((n.type==='file'||n.type==='invalid')&&n.uid)a.push([q,n.uid]);}}
+          w(Array.isArray(t)?t:(t.files||t.children||t)); if(!a.length)throw Error('no files');
+          fs.mkdirSync('/tmp/raw',{recursive:true});
+          for(const [p,u] of a){const x=JSON.parse(cp.execFileSync('vercel',['api','/v8/deployments/'+process.env.BASE_DPL+'/files/'+u+'?teamId='+process.env.TEAM_ID],{encoding:'utf8',maxBuffer:3e7}));const b=x.data??x.content??x;fs.mkdirSync(path.dirname('/tmp/raw/'+p),{recursive:true});fs.writeFileSync('/tmp/raw/'+p,Buffer.from(b,'base64'))}
+          NODE
+          A="$(find /tmp/raw -name 'source.tgz.part1' -print -quit)"; test -n "$A"; mkdir /tmp/u; tar -xzf "$A" -C /tmp/u
+          ROOT="$(find /tmp/u -name 'mobile-v128-music-logic.js' -printf '%h\n'|head -1)"; test -n "$ROOT"; cp -a "$ROOT" /tmp/music
+          grep -Fq 'content="168-test"' /tmp/music/index.html
+      - name: Patch only playback and bypass gate on test
+        run: |
+          set -euo pipefail
+          cd /tmp/music
+          cp "$GITHUB_WORKSPACE/airplay-final/mobile-controls-v40.js" .
+          node --check mobile-controls-v40.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text();m='<script src="/mobile-v128-music-logic.js?v=158"></script>';assert m in s
+          s=s.replace(m,m+'<script src="/mobile-controls-v40.js?v=final-airplay"></script>',1)
+          s=s.replace('</body>','<script src="/airplay-test-bypass.js?v=final"></script></body>')
+          p.write_text(s)
+          Path('airplay-test-bypass.js').write_text("(()=>{const c=()=>document.getElementById('musicGate')?.remove();c();new MutationObserver(c).observe(document.documentElement,{childList:true,subtree:true})})();")
+          PY
+          mkdir -p api
+          cat > api/music.js <<'JS'
+          export default async function h(req,res){try{const H={'content-type':req.headers['content-type']||'application/json'};if(req.headers.authorization)H.authorization=req.headers.authorization;const r=await fetch('https://tesla-waze-piped.vercel.app/api/music',{method:req.method,headers:H,body:['GET','HEAD'].includes(req.method)?undefined:JSON.stringify(req.body??{})});res.status(r.status).send(await r.text())}catch(e){res.status(502).json({error:String(e)})}}
+          JS
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('vercel.json');d=json.loads(p.read_text()) if p.exists() else {};r=d.get('rewrites',[]);r=[x for x in r if x.get('source')!='/api/youtube-search'];r.insert(0,{'source':'/api/youtube-search','destination':'https://tesla-waze-piped.vercel.app/api/youtube-search'});d['rewrites']=r;p.write_text(json.dumps(d,separators=(',',':')))
+          PY
+      - name: Deploy isolated public test
+        working-directory: /tmp/music
+        run: |
+          set -euo pipefail
+          vercel project add "$TEST_PROJECT" --scope "$TEAM_SLUG" 2>/dev/null||true
+          vercel project protection disable "$TEST_PROJECT" --sso --scope "$TEAM_SLUG"||true
+          vercel link --yes --project "$TEST_PROJECT" --scope "$TEAM_SLUG"
+          URL="$(vercel deploy --prod --archive=tgz --scope "$TEAM_SLUG")"; echo "URL=$URL" >> "$GITHUB_ENV"
+      - name: Hard verify before user sees link
+        run: |
+          set -euo pipefail
+          H=https://music-airplay-test.vercel.app
+          curl -fsS "$H/?final=1" >/tmp/h
+          grep -Fq 'content="168-test"' /tmp/h
+          grep -Fq 'mobile-controls-v40.js?v=final-airplay' /tmp/h
+          curl -fsS "$H/mobile-controls-v40.js?v=final-airplay" >/tmp/c
+          grep -Fq 'loadPlaylist' /tmp/c; grep -Fq 'nextVideo' /tmp/c
+          curl -fsS "$H/api/youtube-search?q=%C4%BEudovky" >/tmp/s
+          grep -q 'youtubeId' /tmp/s
+          S="$(curl -sS -o /tmp/p -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"action":"__probe__"}' "$H/api/music")"
+          test "$S" != 404; test "$S" != 502
+          echo FINAL_AIRPLAY_TEST_READY
