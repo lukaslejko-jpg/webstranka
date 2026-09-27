@@ -44,7 +44,9 @@ jobs:
             try:o.write_bytes(urllib.request.urlopen('https://tesla-waze-piped.vercel.app'+u,timeout=20).read())
             except:pass
           PY
-          curl -fsS "$PROD/vercel.json" -o /tmp/golden/vercel.json || printf '{}' >/tmp/golden/vercel.json
+          printf '{}' >/tmp/golden/vercel.json
+          test -f /tmp/golden/app-v7.js
+          test -f /tmp/golden/mobile-v128-music-logic.js
           sha256sum /tmp/golden/* 2>/dev/null | sort >/tmp/golden-before.sha
       - name: Patch ONLY app-v7 auto-next watchdog
         run: |
