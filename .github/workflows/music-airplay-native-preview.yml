@@ -1,0 +1,85 @@
+name: Music AirPlay native-playlist preview
+
+on:
+  push:
+    branches: [fix/music-airplay-native-playlist-20260927]
+    paths:
+      - 'airplay-preview/**'
+      - '.github/workflows/music-airplay-native-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      BASE_DPL: dpl_5HgqHqmmyxfvTztAduHumgkd6fHv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm install --global vercel@59.25.4
+      - name: Authenticate Vercel CLI
+        run: timeout 300 vercel login --github
+      - name: Clone exact current Music source
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/music && mkdir -p /tmp/music
+          vercel api "/v6/deployments/$BASE_DPL/files?teamId=$TEAM_ID" > /tmp/tree.json
+          node <<'NODE'
+          const fs=require('fs'),cp=require('child_process'),path=require('path');
+          const tree=JSON.parse(fs.readFileSync('/tmp/tree.json','utf8')),out='/tmp/music'; let files=[];
+          function walk(nodes,p=''){for(const n of nodes||[]){const q=p?p+'/'+n.name:n.name;if(n.type==='directory')walk(n.children,q);else if(n.type==='file')files.push({path:q,uid:n.uid});}}
+          walk(Array.isArray(tree)?tree:tree.files||tree.children||[]);
+          if(!files.length)throw Error('No deployment files');
+          for(const f of files){fs.mkdirSync(path.dirname(path.join(out,f.path)),{recursive:true});const raw=cp.execFileSync('vercel',['api','/v8/deployments/'+process.env.BASE_DPL+'/files/'+f.uid+'?teamId='+process.env.TEAM_ID],{encoding:'utf8',maxBuffer:25*1024*1024});const d=JSON.parse(raw),b=d.data??d.content??d;if(typeof b!=='string')throw Error('bad '+f.path);fs.writeFileSync(path.join(out,f.path),Buffer.from(b,'base64'));}
+          console.log('FILES='+files.length);
+          NODE
+      - name: Patch only playback layer
+        run: |
+          set -euo pipefail
+          cd /tmp/music
+          find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/before
+          test -f mobile-v128-music-logic.js
+          test -f app-v7.js
+          cp "$GITHUB_WORKSPACE/airplay-preview/mobile-controls-v40.js" ./mobile-controls-v40.js
+          node --check mobile-controls-v40.js
+          grep -Fq 'loadPlaylist' mobile-controls-v40.js
+          grep -Fq 'nextVideo' mobile-controls-v40.js
+          if ! grep -q 'mobile-controls-v40.js' index.html; then
+            python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text()
+          marker='<script src="/mobile-v128-music-logic.js?v=158"></script>'
+          assert marker in s
+          p.write_text(s.replace(marker,marker+'<script src="/mobile-controls-v40.js?v=169-airplay"></script>',1))
+          PY
+          fi
+          find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/after
+          echo "PATCH_OK"
+      - name: Link and deploy preview only
+        working-directory: /tmp/music
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$PROJECT_ID" > .vercel/project.json
+          URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
+          echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
+          echo "PREVIEW=$URL"
+      - name: Smoke preview
+        working-directory: /tmp/music
+        run: |
+          set -euo pipefail
+          vercel inspect "$PREVIEW_URL" --scope "$TEAM_SLUG"
+          vercel curl "/" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/root
+          vercel curl "/mobile-controls-v40.js" --deployment "$PREVIEW_URL" --scope "$TEAM_SLUG" > /tmp/core
+          grep -q 'mobile-controls-v40.js' /tmp/root
+          grep -Fq 'loadPlaylist' /tmp/core
+          grep -Fq 'nextVideo' /tmp/core
+          echo "AIRPLAY_PREVIEW_READY"
