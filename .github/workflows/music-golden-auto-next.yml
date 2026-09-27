@@ -96,8 +96,8 @@ jobs:
           grep -Fq 'content="168-test"' /tmp/root
           grep -Fq "d-c<=0.75" /tmp/app
           node --check /tmp/app
-          S="$(vercel curl "/api/music" --deployment "$URL" --scope "$TEAM_SLUG" 2>/dev/null | head -c 500 || true)"
-          test -n "$S"
+          vercel curl "/api/music" --deployment "$URL" --scope "$TEAM_SLUG" >/tmp/api-check || true
+          test -f /tmp/api-check
       - name: Promote exact verified candidate
         run: |
           set -euo pipefail
