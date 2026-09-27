@@ -103,6 +103,16 @@ jobs:
           mkdir -p api
           cp "$GITHUB_WORKSPACE/airplay-preview/api/music.js" api/music.js
           node --check api/music.js
+          cat > airplay-test-bypass.js <<'JS'
+          (()=>{const clear=()=>document.getElementById('musicGate')?.remove();clear();new MutationObserver(clear).observe(document.documentElement,{childList:true,subtree:true});})();
+          JS
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text()
+          tag='<script src="/airplay-test-bypass.js?v=1"></script>'
+          if tag not in s: s=s.replace('</body>',tag+'</body>')
+          p.write_text(s)
+          PY
           find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/after
           echo "PATCH_OK"
       - name: Create isolated public test project and deploy
