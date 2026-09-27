@@ -121,4 +121,9 @@ jobs:
           grep -q 'mobile-controls-v40.js' /tmp/root
           grep -Fq 'loadPlaylist' /tmp/core
           grep -Fq 'nextVideo' /tmp/core
+          TEST_ALIAS="music-airplay-test.vercel.app"
+          vercel alias set "$PREVIEW_URL" "$TEST_ALIAS" --scope "$TEAM_SLUG"
+          vercel curl "/" --deployment "https://$TEST_ALIAS" --scope "$TEAM_SLUG" > /tmp/alias-root
+          test "$(wc -c < /tmp/alias-root)" -gt 5000
+          echo "PUBLIC_TEST_ALIAS=https://$TEST_ALIAS"
           echo "AIRPLAY_PREVIEW_READY"
