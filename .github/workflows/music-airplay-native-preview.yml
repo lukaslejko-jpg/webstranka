@@ -61,10 +61,22 @@ jobs:
           for(const f of files){fs.mkdirSync(path.dirname(path.join(out,f.path)),{recursive:true});const raw=cp.execFileSync('vercel',['api','/v8/deployments/'+process.env.BASE_DPL+'/files/'+f.uid+'?teamId='+process.env.TEAM_ID],{encoding:'utf8',maxBuffer:25*1024*1024});const d=JSON.parse(raw),b=d.data??d.content??d;if(typeof b!=='string')throw Error('bad '+f.path);fs.writeFileSync(path.join(out,f.path),Buffer.from(b,'base64'));}
           console.log('FILES='+files.length);
           NODE
+          ARCHIVE="$(find /tmp/music -type f -name 'source.tgz.part1' -print -quit)"
+          test -n "$ARCHIVE"
+          mkdir -p /tmp/unpacked
+          tar -xzf "$ARCHIVE" -C /tmp/unpacked
+          ROOT="$(find /tmp/unpacked -type f -name 'index.html' -printf '%h\n' | head -1)"
+          test -n "$ROOT"
+          rm -rf /tmp/music-src
+          mkdir -p /tmp/music-src
+          cp -a "$ROOT"/. /tmp/music-src/
+          echo "SOURCE_ROOT=$ROOT"
+          find /tmp/music-src -maxdepth 1 -type f -printf '%f\n' | sort
+
       - name: Patch only playback layer
         run: |
           set -euo pipefail
-          cd /tmp/music
+          cd /tmp/music-src
           find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/before
           test -f mobile-v128-music-logic.js
           test -f app-v7.js
@@ -84,7 +96,7 @@ jobs:
           find . -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/after
           echo "PATCH_OK"
       - name: Link and deploy preview only
-        working-directory: /tmp/music
+        working-directory: /tmp/music-src
         run: |
           set -euo pipefail
           mkdir -p .vercel
