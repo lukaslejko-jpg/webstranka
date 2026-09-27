@@ -1,0 +1,95 @@
+name: Promote Golden Music auto-next safely
+on:
+  push:
+    branches: [release/music-golden-auto-next-20260927]
+    paths: ['.github/workflows/music-golden-auto-next.yml']
+permissions: {contents: read, statuses: write}
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      PROD: https://tesla-waze-piped.vercel.app
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm i -g vercel@59.25.4
+      - name: Auth
+        env: {GH_STATUS_TOKEN: "${{ github.token }}"}
+        run: |
+          set -euo pipefail
+          LOG=/tmp/a; timeout 300 vercel login --github >"$LOG" 2>&1 & PID=$!
+          for _ in $(seq 1 60); do URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null|tail -1||true)"; [ -n "$URL" ]&&break;sleep 1;done
+          test -n "$URL"; CODE="${URL##*user_code=}"
+          printf '{"state":"pending","context":"music-golden-promote-auth","description":"Vercel code: %s","target_url":"%s"}' "$CODE" "$URL" >/tmp/s
+          curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary @/tmp/s >/dev/null
+          wait "$PID"
+      - name: Clone exact Golden production assets
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/golden
+          curl -fsS "$PROD/" -o /tmp/golden/index.html
+          grep -Fq 'content="168-test"' /tmp/golden/index.html
+          python3 - <<'PY'
+          import re,urllib.request
+          from pathlib import Path
+          h=Path('/tmp/golden/index.html').read_text()
+          for u in sorted(set(re.findall(r'(?:src|href)="(/[^"]+)"',h))):
+            p=u.split('?')[0]
+            if p=='/' or p.startswith('//'): continue
+            o=Path('/tmp/golden'+p);o.parent.mkdir(parents=True,exist_ok=True)
+            try:o.write_bytes(urllib.request.urlopen('https://tesla-waze-piped.vercel.app'+u,timeout=20).read())
+            except:pass
+          PY
+          curl -fsS "$PROD/vercel.json" -o /tmp/golden/vercel.json || printf '{}' >/tmp/golden/vercel.json
+          sha256sum /tmp/golden/* 2>/dev/null | sort >/tmp/golden-before.sha
+      - name: Patch ONLY app-v7 auto-next watchdog
+        run: |
+          set -euo pipefail
+          cd /tmp/golden
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app-v7.js');s=p.read_text()
+          old="function tick(){if(!player||!ready)return;try{const c=player.getCurrentTime()||0,d=player.getDuration()||0;"
+          new="let autoEndKey='',autoEndAt=0;function tick(){if(!player||!ready)return;try{const c=player.getCurrentTime()||0,d=player.getDuration()||0;if(current&&d>1&&c>0&&d-c<=0.75){const k=key(current);if(autoEndKey!==k||Date.now()-autoEndAt>5000){autoEndKey=k;autoEndAt=Date.now();setTimeout(()=>{try{if(current&&key(current)===k)next(false)}catch{}},80)}}"
+          assert old in s
+          p.write_text(s.replace(old,new,1))
+          PY
+          node --check app-v7.js
+          grep -Fq "d-c<=0.75" app-v7.js
+      - name: Assert no other Golden asset changed
+        run: |
+          set -euo pipefail
+          curl -fsS "$PROD/app-v7.js?v=158" >/tmp/original-app.js
+          test "$(find /tmp/golden -maxdepth 1 -type f -name 'app-v7.js' | wc -l)" = 1
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('/tmp/original-app.js').read_text();b=Path('/tmp/golden/app-v7.js').read_text()
+          assert len(b)>len(a) and "d-c<=0.75" in b and "d-c<=0.75" not in a
+          PY
+      - name: Deploy candidate to SAME production project without alias
+        working-directory: /tmp/golden
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$PROJECT_ID" > .vercel/project.json
+          URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
+          echo "URL=$URL" >> "$GITHUB_ENV"
+      - name: Hard verify candidate
+        run: |
+          set -euo pipefail
+          vercel curl "/" --deployment "$URL" --scope "$TEAM_SLUG" >/tmp/root
+          vercel curl "/app-v7.js?v=158" --deployment "$URL" --scope "$TEAM_SLUG" >/tmp/app
+          grep -Fq 'content="168-test"' /tmp/root
+          grep -Fq "d-c<=0.75" /tmp/app
+          node --check /tmp/app
+      - name: Promote exact verified candidate
+        run: |
+          set -euo pipefail
+          vercel alias set "$URL" "tesla-waze-piped.vercel.app" --scope "$TEAM_SLUG"
+          sleep 3
+          curl -fsS "https://tesla-waze-piped.vercel.app/app-v7.js?v=golden-auto-next" >/tmp/live
+          grep -Fq "d-c<=0.75" /tmp/live
+          echo GOLDEN_AUTO_NEXT_PRODUCTION_OK
