@@ -45,8 +45,10 @@ jobs:
             except:pass
           PY
           printf '{}' >/tmp/golden/vercel.json
-          test -f /tmp/golden/app-v7.js
-          test -f /tmp/golden/mobile-v128-music-logic.js
+          curl -fsS "$PROD/app-v7.js?v=158" -o /tmp/golden/app-v7.js
+          curl -fsS "$PROD/mobile-v128-music-logic.js?v=158" -o /tmp/golden/mobile-v128-music-logic.js
+          test -s /tmp/golden/app-v7.js
+          test -s /tmp/golden/mobile-v128-music-logic.js
           sha256sum /tmp/golden/* 2>/dev/null | sort >/tmp/golden-before.sha
       - name: Patch ONLY app-v7 auto-next watchdog
         run: |
