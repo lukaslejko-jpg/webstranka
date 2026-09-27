@@ -49,6 +49,12 @@ jobs:
           cat > /tmp/golden/api/music.js <<'JS'
           export default async function h(req,res){try{const H={'content-type':req.headers['content-type']||'application/json'};if(req.headers.authorization)H.authorization=req.headers.authorization;const r=await fetch('https://music-qr-test.vercel.app/api/music',{method:req.method,headers:H,body:['GET','HEAD'].includes(req.method)?undefined:JSON.stringify(req.body??{})});const t=await r.text();res.status(r.status);const ct=r.headers.get('content-type');if(ct)res.setHeader('content-type',ct);res.send(t)}catch(e){res.status(502).json({error:'music_proxy_failed'})}}
           JS
+          cat > /tmp/golden/api/youtube-search.js <<'JS'
+          export default async function h(req,res){try{const q=new URLSearchParams();for(const [k,v] of Object.entries(req.query||{})){if(Array.isArray(v))v.forEach(x=>q.append(k,x));else if(v!=null)q.set(k,String(v))}const r=await fetch('https://music-qr-test.vercel.app/api/youtube-search?'+q.toString(),{headers:{accept:'application/json'}});const t=await r.text();res.status(r.status);const ct=r.headers.get('content-type');if(ct)res.setHeader('content-type',ct);res.setHeader('cache-control','no-store');res.send(t)}catch(e){res.status(502).json({error:'search_proxy_failed'})}}
+          JS
+          cat > /tmp/golden/api/simple-remote.js <<'JS'
+          export default async function h(req,res){try{const q=new URLSearchParams();for(const [k,v] of Object.entries(req.query||{}))if(v!=null)q.set(k,String(v));const r=await fetch('https://music-qr-test.vercel.app/api/simple-remote'+(q.toString()?'?'+q:''),{method:req.method,headers:{'content-type':req.headers['content-type']||'application/json'},body:['GET','HEAD'].includes(req.method)?undefined:JSON.stringify(req.body??{})});res.status(r.status).send(await r.text())}catch(e){res.status(502).json({error:'remote_proxy_failed'})}}
+          JS
           curl -fsS "$PROD/app-v7.js?v=158" -o /tmp/golden/app-v7.js
           curl -fsS "$PROD/mobile-v128-music-logic.js?v=158" -o /tmp/golden/mobile-v128-music-logic.js
           test -s /tmp/golden/app-v7.js
@@ -107,4 +113,9 @@ jobs:
           grep -Fq "d-c<=0.75" /tmp/live
           STATUS="$(curl -sS -o /tmp/api-live -w '%{http_code}' "https://tesla-waze-piped.vercel.app/api/music")"
           test "$STATUS" != "404"
+          SEARCH_STATUS="$(curl -sS -o /tmp/search-live -w '%{http_code}' "https://tesla-waze-piped.vercel.app/api/youtube-search?q=kali")"
+          test "$SEARCH_STATUS" = "200"
+          grep -q 'youtubeId' /tmp/search-live
+          REMOTE_STATUS="$(curl -sS -o /tmp/remote-live -w '%{http_code}' "https://tesla-waze-piped.vercel.app/api/simple-remote?session=probe&last=0")"
+          test "$REMOTE_STATUS" = "200"
           echo GOLDEN_AUTO_NEXT_PRODUCTION_OK
