@@ -12,6 +12,7 @@ jobs:
       TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
       TEAM_SLUG: lukaslejko-9932s-projects
       BASE_DPL: dpl_Cy4GCgxJcFivhpkKj88oMQUEHmEr
+      APPROVED_HOST: https://music-qr-test.vercel.app
       TEST_PROJECT: music-airplay-test
     steps:
       - uses: actions/checkout@v4
@@ -28,20 +29,28 @@ jobs:
           printf '{"state":"pending","context":"music-airplay-final-auth","description":"Vercel code: %s","target_url":"%s"}' "$CODE" "$URL" >/tmp/s
           curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary @/tmp/s >/dev/null
           wait "$PID"
-      - name: Extract exact approved immutable v168
+      - name: Clone exact approved public v168 assets
         run: |
           set -euo pipefail
-          vercel api "/v6/deployments/$BASE_DPL/files?teamId=$TEAM_ID" >/tmp/tree
-          node <<'NODE'
-          const fs=require('fs'),cp=require('child_process'),path=require('path');const t=JSON.parse(fs.readFileSync('/tmp/tree'));let a=[];
-          function w(ns,p=''){for(const n of ns||[]){const q=p?p+'/'+n.name:n.name;if(n.type==='directory')w(n.children,q);else if((n.type==='file'||n.type==='invalid')&&n.uid)a.push([q,n.uid]);}}
-          w(Array.isArray(t)?t:(t.files||t.children||t)); if(!a.length)throw Error('no files');
-          fs.mkdirSync('/tmp/raw',{recursive:true});
-          for(const [p,u] of a){const x=JSON.parse(cp.execFileSync('vercel',['api','/v8/deployments/'+process.env.BASE_DPL+'/files/'+u+'?teamId='+process.env.TEAM_ID],{encoding:'utf8',maxBuffer:3e7}));const b=x.data??x.content??x;fs.mkdirSync(path.dirname('/tmp/raw/'+p),{recursive:true});fs.writeFileSync('/tmp/raw/'+p,Buffer.from(b,'base64'))}
-          NODE
-          A="$(find /tmp/raw -name 'source.tgz.part1' -print -quit)"; test -n "$A"; mkdir /tmp/u; tar -xzf "$A" -C /tmp/u
-          ROOT="$(find /tmp/u -name 'mobile-v128-music-logic.js' -printf '%h\n'|head -1)"; test -n "$ROOT"; cp -a "$ROOT" /tmp/music
+          mkdir -p /tmp/music
+          curl -fsS "$APPROVED_HOST/" -o /tmp/music/index.html
           grep -Fq 'content="168-test"' /tmp/music/index.html
+          python3 - <<'PY'
+          import re,urllib.request
+          from pathlib import Path
+          h=Path('/tmp/music/index.html').read_text()
+          urls=set(re.findall(r'(?:src|href)="(/[^"]+)"',h))
+          for u in sorted(urls):
+              p=u.split('?')[0]
+              if p=='/' or p.startswith('//'): continue
+              out=Path('/tmp/music'+p); out.parent.mkdir(parents=True,exist_ok=True)
+              try: out.write_bytes(urllib.request.urlopen('https://music-qr-test.vercel.app'+u,timeout=20).read())
+              except Exception as e: print('SKIP',u,e)
+          PY
+          test -f /tmp/music/mobile-v128-music-logic.js
+          test -f /tmp/music/app-v7.js
+          test -f /tmp/music/rescue-v135.js
+          curl -fsS "$APPROVED_HOST/vercel.json" -o /tmp/music/vercel.json || printf '{}' >/tmp/music/vercel.json
       - name: Patch only playback and bypass gate on test
         run: |
           set -euo pipefail
