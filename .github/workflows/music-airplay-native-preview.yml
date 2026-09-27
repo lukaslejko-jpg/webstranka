@@ -65,8 +65,10 @@ jobs:
           test -n "$ARCHIVE"
           mkdir -p /tmp/unpacked
           tar -xzf "$ARCHIVE" -C /tmp/unpacked
-          ROOT="$(find /tmp/unpacked -type f -name 'index.html' -printf '%h\n' | head -1)"
+          ROOT="$(find /tmp/unpacked -type f -name 'mobile-v128-music-logic.js' -printf '%h\n' | head -1)"
           test -n "$ROOT"
+          test -f "$ROOT/index.html"
+          test -f "$ROOT/app-v7.js"
           rm -rf /tmp/music-src
           mkdir -p /tmp/music-src
           cp -a "$ROOT"/. /tmp/music-src/
