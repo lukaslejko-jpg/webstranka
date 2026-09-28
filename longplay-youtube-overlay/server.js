@@ -1,0 +1,1 @@
+import express from 'express';import path from 'path';import{fileURLToPath}from'url';const app=express(),dir=path.dirname(fileURLToPath(import.meta.url));app.use(express.json());app.use(express.static(path.join(dir,'public')));app.get('/health',(q,r)=>r.json({ok:true,layer:'youtube-overlay',core:'Hiepler/LongPlay@c98c0353'}));app.listen(process.env.PORT||3000,'0.0.0.0');
