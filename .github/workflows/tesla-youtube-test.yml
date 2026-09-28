@@ -1,7 +1,7 @@
 name: Deploy standalone Tesla YouTube test
 on:
   push:
-    branches: [feature/tesla-youtube-app-20260928]
+    branches: [feature/tesla-longplay-overlays-20260928]
     paths: ['tesla-youtube/**','.github/workflows/tesla-youtube-test.yml']
 permissions: {contents: read, statuses: write}
 jobs:
