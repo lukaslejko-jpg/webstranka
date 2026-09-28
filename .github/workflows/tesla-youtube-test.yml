@@ -49,4 +49,11 @@ jobs:
           grep -Fq 'loadPlaylist' /tmp/j
           curl -fsS "$H/api/youtube-search?q=kali" >/tmp/s
           grep -q 'youtubeId' /tmp/s
-          echo TESLA_YOUTUBE_TEST_READY
+          grep -Fq 'silentWavUrl' /tmp/j
+          grep -Fq 'mediaSession.setActionHandler' /tmp/j
+          grep -Fq "data-filter=\"similar\"" /tmp/h
+          grep -Fq "data-view=\"likes\"" /tmp/h
+          grep -Fq 'id=\"splitter\"' /tmp/h
+          grep -Fq 'id=\"repeat\"' /tmp/h
+          grep -Fq 'id=\"clearSearch\"' /tmp/h
+          echo TESLA_YOUTUBE_COMPLEX_READY
