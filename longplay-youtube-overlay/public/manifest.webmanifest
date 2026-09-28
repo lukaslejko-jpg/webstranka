@@ -1,0 +1,17 @@
+{
+  "name": "Music",
+  "short_name": "Music",
+  "start_url": "/?mobile=1",
+  "display": "standalone",
+  "background_color": "#0b0c0e",
+  "theme_color": "#0b0c0e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/music-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
