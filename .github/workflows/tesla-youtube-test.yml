@@ -32,7 +32,12 @@ jobs:
           cat > api/youtube-search.js <<'JS'
           export default async function h(req,res){try{const q=new URLSearchParams();for(const [k,v] of Object.entries(req.query||{}))if(v!=null)q.set(k,String(v));const r=await fetch('https://music-qr-test.vercel.app/api/youtube-search?'+q.toString());res.status(r.status).send(await r.text())}catch(e){res.status(502).json({error:'search_proxy_failed'})}}
           JS
+          cat > api/simple-remote.js <<'JS'
+          const mem=globalThis.__teslaRemote||(globalThis.__teslaRemote=new Map());
+          export default async function h(req,res){const q=req.query||{};if(req.method==='GET'){const s=String(q.session||'');const x=mem.get(s)||{seq:0,track:null};res.setHeader('cache-control','no-store');return res.status(200).json({ok:true,...x})}if(req.method==='POST'){const b=req.body||{},s=String(b.session||'');if(!s)return res.status(400).json({ok:false,error:'missing_session'});const old=mem.get(s)||{seq:0};const x={seq:(old.seq||0)+1,track:b.track||null};mem.set(s,x);return res.status(200).json({ok:true,...x})}return res.status(405).end()}
+          JS
           node --check tesla-app.js
+          node --check api/simple-remote.js
       - name: Deploy public test
         working-directory: /tmp/tesla
         run: |
@@ -56,4 +61,11 @@ jobs:
           grep -Fq 'id=\"splitter\"' /tmp/h
           grep -Fq 'id=\"repeat\"' /tmp/h
           grep -Fq 'id=\"clearSearch\"' /tmp/h
+          grep -Fq 'id=\"qrBtn\"' /tmp/h
+          grep -Fq "remote=1" /tmp/j
+          grep -Fq "silentWavUrl" /tmp/j
+          grep -Fq "data-view=\"recent\"" /tmp/h
+          grep -Fq "data-filter=\"artist\"" /tmp/h
+          R="$(curl -sS -o /tmp/remote -w '%{http_code}' "$H/api/simple-remote?session=smoke&last=0")"
+          test "$R" = "200"
           echo TESLA_YOUTUBE_COMPLEX_READY
