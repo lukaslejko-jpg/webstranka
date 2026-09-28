@@ -25,7 +25,7 @@ jobs:
           wait "$PID"
       - name: Build pristine upstream
         working-directory: vendor/LongPlay
-        run: npm install && npm run build
+        run: npm ci --workspaces=false && npm run build -w @longplay/web
       - name: Deploy
         working-directory: vendor/LongPlay
         run: |
