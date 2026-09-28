@@ -1,0 +1,52 @@
+name: Deploy standalone Tesla YouTube test
+on:
+  push:
+    branches: [feature/tesla-youtube-app-20260928]
+    paths: ['tesla-youtube/**','.github/workflows/tesla-youtube-test.yml']
+permissions: {contents: read, statuses: write}
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env: {TEAM_SLUG: lukaslejko-9932s-projects, TEST_PROJECT: music-tesla-youtube-test}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm i -g vercel@59.25.4
+      - name: Auth
+        env: {GH_STATUS_TOKEN: "${{ github.token }}"}
+        run: |
+          set -euo pipefail
+          LOG=/tmp/a; timeout 300 vercel login --github >"$LOG" 2>&1 & PID=$!
+          for _ in $(seq 1 60); do URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null|tail -1||true)"; [ -n "$URL" ]&&break;sleep 1;done
+          test -n "$URL"; CODE="${URL##*user_code=}"
+          printf '{"state":"pending","context":"tesla-youtube-test-auth","description":"Vercel code: %s","target_url":"%s"}' "$CODE" "$URL" >/tmp/s
+          curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary @/tmp/s >/dev/null
+          wait "$PID"
+      - name: Build isolated app
+        run: |
+          cp -a tesla-youtube /tmp/tesla
+          cd /tmp/tesla
+          mkdir -p api
+          cat > api/youtube-search.js <<'JS'
+          export default async function h(req,res){try{const q=new URLSearchParams();for(const [k,v] of Object.entries(req.query||{}))if(v!=null)q.set(k,String(v));const r=await fetch('https://music-qr-test.vercel.app/api/youtube-search?'+q.toString());res.status(r.status).send(await r.text())}catch(e){res.status(502).json({error:'search_proxy_failed'})}}
+          JS
+          node --check tesla-app.js
+      - name: Deploy public test
+        working-directory: /tmp/tesla
+        run: |
+          vercel project add "$TEST_PROJECT" --scope "$TEAM_SLUG" 2>/dev/null||true
+          vercel project protection disable "$TEST_PROJECT" --sso --scope "$TEAM_SLUG"||true
+          vercel link --yes --project "$TEST_PROJECT" --scope "$TEAM_SLUG"
+          vercel deploy --prod --archive=tgz --scope "$TEAM_SLUG"
+      - name: Verify
+        run: |
+          H=https://music-tesla-youtube-test.vercel.app
+          curl -fsS "$H/" >/tmp/h
+          grep -Fq 'Music for Tesla' /tmp/h
+          curl -fsS "$H/tesla-app.js?v=1" >/tmp/j
+          grep -Fq 'loadPlaylist' /tmp/j
+          curl -fsS "$H/api/youtube-search?q=kali" >/tmp/s
+          grep -q 'youtubeId' /tmp/s
+          echo TESLA_YOUTUBE_TEST_READY
