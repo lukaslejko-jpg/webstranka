@@ -25,9 +25,13 @@ jobs:
           wait "$PID"
       - name: Build pristine upstream
         working-directory: vendor/LongPlay
-        run: npm ci --workspaces=false && npm run build -w @longplay/web
+        run: |
+          npm ci --workspaces=false
+          cd apps/web
+          npm install
+          npm run build
       - name: Deploy
-        working-directory: vendor/LongPlay
+        working-directory: vendor/LongPlay/apps/web
         run: |
           vercel project add "$TEST_PROJECT" --scope "$TEAM_SLUG" 2>/dev/null||true
           vercel project protection disable "$TEST_PROJECT" --sso --scope "$TEAM_SLUG"||true
