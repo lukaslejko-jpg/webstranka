@@ -71,7 +71,23 @@ No further change to production or stable tag is authorized by a failed preview 
 - Previous preview deployment: `dep-db18lc0u01pc73dbbf6g`.
 - Previous preview app commit: `9ad89a42c57fdba8ae4c2c5c8ab9c4c09b2913d3`.
 
-Deployment identity and live comparison results will be recorded after verification.
+Current comparison deployment:
+
+- Commit: `4252531a585e51ccdec813ea19d23528cbf3fd73`.
+- Deployment: `dep-db18som0tbcc73a345lg`.
+- Render status: live; finished `2026-10-04T17:35:59.322641Z`.
+- Verified reference URL: https://music-mobile-favorites-preview.onrender.com/startup-reference-1639536/?mobile=1
+- Main preview remains: https://music-mobile-favorites-preview.onrender.com/?mobile=1
+
+## Live verification
+
+- Both pages and both application scripts returned HTTP 200 and matched the committed local bytes exactly. `/health` returned `ok:true` and the original LongPlay core identifier.
+- A full reload of the current main preview restored the saved song and Favorites list and produced the explicit YouTube blocked result again (`data-startup-result=blocked`, state `-1`).
+- The same browser tab then opened and reloaded the reference page. It loaded the exact original script at `startup-reference-1639536/tesla-app.js?v=1639536`, selected the same saved song, displayed its duration, and remained at 0:00 with the embedded YouTube Play button. This was observed more than 15 seconds after reload. The generated iframe had the same `allow` permissions, no sandbox, and the same player parameters on the same origin.
+- The reference console also reports the existing keep-alive Audio `NotAllowedError`. That Audio error alone is not interpreted as a YouTube rejection event: the exact original code has no `onAutoplayBlocked` observer.
+- This establishes that the exact original startup also did not visibly advance in the control browser. It does not prove audible behavior on the owner's phone or that a different origin would behave identically.
+- Proof screenshot: `music-povodny-start-porovnanie-20261004.jpg`.
+- Owner comparison on the same iPhone remains pending. The main requested autoplay behavior is unresolved, and no stable tag or production update was made.
 
 ## Primary reference
 
