@@ -22,6 +22,13 @@ Production remains separately recoverable:
 - Deployment: dep-datdogc9v7es738aofdg.
 - Commit: 163953618b01c714b5773830648415be0726fa47.
 
+Current second preview:
+- URL: https://music-mobile-favorites-preview.onrender.com/?mobile=1
+- Service: srv-db17m8navr4c73alkop0; existing free preview, auto-deploy remains disabled.
+- Application commit: a1b7d75e32096e045ffaf98fad8f3a9d2dec5ea5.
+- Deployment: dep-db183mhsrm7s73agvv80; live at 2026-10-04T16:42:29.982162Z.
+- This candidate is not a stable/GOLDEN version. Production was not deployed or changed.
+
 ## Resulting behavior
 - The outside Play button shows two pause bars when YouTube reports PLAYING (state 1). Its accessible action is Pozastaviť. Paused, cued, ended, unstarted, and buffering states show the play symbol and Prehrať. State events update it immediately and the existing tick provides a fallback. Playback actions and MediaSession handlers retain their existing behavior.
 - A versioned local `teslaYT:session` snapshot stores current track, displayed items, active queue, view, query, cached search results/page, filter, shuffle, and repeat. No server account or new remote data storage is involved.
@@ -40,7 +47,10 @@ Only the existing mobile service overlay and its tests/documentation are changed
 - `node --check longplay-youtube-overlay/public/tesla-app.js`: passed.
 - Full-script VM suite: 38/38 passed in the final combined run, including the original 10 Favorites regressions. Command: `node --test longplay-youtube-overlay/test/*.test.mjs`.
 - Independent review: ready for preview after six concrete edge cases were reproduced and fixed (recent order, late prefetch query, malformed ID/duration, >2000 favorites preservation, early Play resume, early explicit selection).
-- Live preview deployment and browser reload checks: pending.
+- Render reports the exact second-preview commit live. Downloaded HTML and JavaScript matched the committed source byte for byte; `/tesla-app.js?v=20261004-2` was also confirmed in the browser. The health endpoint returned `ok: true` with the existing LongPlay core and YouTube overlay.
+- Live browser check: selected a Favorite, fully reloaded the page, and observed the same Favorites heading and two cards in the same order restored before the YouTube iframe was ready. The iframe then selected the saved song. Next selected the second song from that restored list. Screenshot: `music-obnoveny-zoznam-20261004-2.jpg` (evidence of list restoration, not audible playback).
+- The cloud browser did not stream audible media; the player remained at 0:00, so an actual live PLAYING-to-pause-icon transition still needs the owner's phone check. The state-to-icon behavior is covered by the automated suite.
+- Browser reloads logged an autoplay `NotAllowedError` from the existing keep-alive startup call before a user gesture. That code is unchanged. Render returned no application error logs for the checked new-deployment window.
 - Physical iPhone test of this new candidate: pending. The owner confirmed sound on the preceding preview, not this new candidate.
 
 ## Next owner check and version designation
