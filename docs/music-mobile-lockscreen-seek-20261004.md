@@ -1,7 +1,7 @@
 # Music mobile — connect lock-screen seeking to YouTube
 
 Date: 2026-10-04. Candidate: **MOBILE-PREVIEW-20261004-05**.
-Status: implementation and technical verification passed; preview deployment verification and real iPhone lock-screen acceptance pending.
+Status: implementation, technical verification and preview deployment checks passed; real iPhone lock-screen acceptance pending.
 
 ## Problem and observed evidence
 
@@ -49,7 +49,18 @@ The first new regression test was also run against the preceding application and
 
 The phone test is: open the main preview in Safari, play a song, lock the phone, try both ten-second controls and the timeline, then Pause and seek while paused. The paused song must remain paused; Play must resume. Returning to the app should show the resulting YouTube position. Do not repeat the already completed autoplay comparison.
 
-Preview commit/deployment and live checks will be added after verification.
+## Verified preview deployment
+
+- Preview commit: `7f8c91b787e410b868fcfc00db1ab8d4d5e59873`.
+- Deployment: `dep-db198a9srm7s73alhaag`.
+- Render status: live; finished `2026-10-04T18:00:42.248984Z`.
+- Verified versioned acceptance link: https://music-mobile-favorites-preview.onrender.com/?mobile=1&v=20261004-5
+- Existing preview service: `srv-db17m8navr4c73alkop0`, free plan, auto-deploy off.
+- Live HTML and application script returned HTTP 200 and matched the tested commit byte for byte. `/health` returned `ok:true` with the original core identifier. The historical reference script still matches its original bytes.
+- Browser inspection confirmed the `20261004-5` script/build, restored Favorites list and selected song, and exactly one YouTube iframe. No new application exception was observed; the existing cloud-browser autoplay rejection remains present.
+- Clicking the ordinary Play control cleared the startup message and retained the selected song/list. This is a UI check, not a claim of audible playback or of native lock-screen event delivery in this cloud browser.
+- Proof screenshot: `music-mobilne-posuvanie-test-20261004-5.jpg`.
+- Production was verified to serve the exact `1639536` application before the preview update and was not deployed by this task. Stable/GOLDEN designation and production promotion remain pending the requested real-device acceptance.
 
 ## Primary sources
 
