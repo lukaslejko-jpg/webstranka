@@ -2,6 +2,12 @@
 
 Date: 2026-10-04. Candidate: **MOBILE-PREVIEW-20261004-06**.
 
+## Owner acceptance — 2026-10-04, 20:46 Europe/Bratislava
+
+The owner explicitly tested the versioned Preview06 URL, reported that everything looks correct, requested a new checkpoint in documentation and Git, and approved this application version for both mobile and desktop. This closes the pending owner-acceptance gate below. The historical test boundaries are preserved as the record of what was known before that confirmation.
+
+Current stable release record: [MUSIC-STABLE-20261004-06](../GOLDEN_MUSIC_STABLE_20261004_06.md). The exact owner-tested application commit is `29fe8492df7c79b0b520ddf2924626ef6c85761c`.
+
 ## Problems reproduced and scope
 
 The owner reported two failures in Preview05: the lock-screen position oscillates between the requested time and zero without seeking the audible song, and selecting Home from Search switches back to Search after the response completes. The requested scope also includes every section transition and incremental loading compared with the functional baseline.

@@ -1,5 +1,7 @@
 # GOLDEN — COMPLETE USABLE MUSIC
 
+Historical checkpoint retained. On 2026-10-04 the owner accepted the newer [MUSIC-STABLE-20261004-06](GOLDEN_MUSIC_STABLE_20261004_06.md) checkpoint for mobile and desktop. Use that release record for current development and recovery identities; the original record below remains available for historical rollback.
+
 Pinned commit: 447441d68b672a3d82c91561521dee531b188229
 Date: 2026-09-28
 Approved URL at checkpoint: https://music-p45f.onrender.com

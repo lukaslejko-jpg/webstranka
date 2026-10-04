@@ -1,5 +1,7 @@
 # GOLDEN — MUSIC RENDER — OWNER VERIFIED
 
+Historical checkpoint retained. The current owner-approved Music release is [MUSIC-STABLE-20261004-06](GOLDEN_MUSIC_STABLE_20261004_06.md). The original record below is preserved as an earlier recovery point.
+
 Date: 2026-09-28
 Pinned commit: 09dc48d7495bf25057e8e8d69e6d03b60e43abf5
 Canonical test URL: https://longplay-youtube-overlay-test.onrender.com
