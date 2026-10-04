@@ -10,4 +10,6 @@ The desktop server, `/apple-touch-icon.png?v=6` endpoint, both existing icon SVG
 
 The accepted suite passes **69/69 tests** against this desktop HTML. JavaScript syntax checks pass. Desktop HTML SHA-256: `18b376855d7611e04d088c32711971cc41cd7c7f5877c8042dd411aba63129a6`.
 
-The desktop release belongs to checkpoint family `MUSIC-STABLE-20261004-06`. Its exact Git and deployed identity are recorded in the shared `GOLDEN_MUSIC_STABLE_20261004_06.md` release record on the mobile/documentation branch. Preserve the earlier desktop deployment for rollback.
+The desktop release belongs to checkpoint family `MUSIC-STABLE-20261004-06`. Runtime commit: `941f4bdd9c148d2c7c470e44d02021cd8b336bc3`. Production deployment: `dep-db1a57egekts73ct9j2g`, live since `2026-10-04T19:02:18.182732Z`. Its served script and HTML match the prepared package byte for byte, `/health` reports `ok: true`, and the original PNG icon endpoint returns a valid PNG.
+
+The fixed Git checkpoint branch is `checkpoint/music-desktop-stable-20261004-06`. Its documentation-only finalization records the release without changing runtime files or rebuilding production. The shared [stable release record](../GOLDEN_MUSIC_STABLE_20261004_06.md) lists both production targets and the prior recovery points. Preserve the earlier desktop deployment for rollback.
