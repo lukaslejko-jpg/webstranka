@@ -30,7 +30,7 @@ Current diagnostic preview:
 - The original production also selected the last song but remained at 0:00 in the cloud browser. An Audio keep-alive autoplay rejection in its console does not establish that YouTube rejected the video request.
 - The older 09dc48d7495bf25057e8e8d69e6d03b60e43abf5 source does not contain onReady restoration, despite the later narrative GOLDEN record describing immediate playback. Its narrative is not evidence of an additional startup mechanism to restore. The later 447441 source is the relevant code comparison.
 
-These findings do not establish the owner's iPhone cause. The different production/preview origins and the phone's exact browser or standalone-app context remain unconfirmed conditions.
+Follow-up owner evidence: `IMG_7527.jpeg` now shows this diagnostic's explicit browser-blocking message on the owner's iPhone. YouTube rejected the automatic attempt on that device as well. The exact policy condition and the previous successful browsing context remain unconfirmed. The precise baseline comparison and a reference page on the same origin are recorded in [music-mobile-startup-comparison-20261004.md](music-mobile-startup-comparison-20261004.md).
 
 ## Diagnostic overlay
 
@@ -72,6 +72,6 @@ WebKit documents gesture restrictions for audible media, with no-gesture autopla
 
 These policies motivate measuring the actual rejection event; they do not by themselves prove what happened on the owner's current phone.
 
-## Required next evidence
+## Owner evidence received
 
-On the same preview link, refresh without pressing Play and wait approximately 15 seconds. Read the short status directly under the controls. The owner need only report that wording. If it reports a browser block, we have evidence of the actual YouTube rejection on that device; if it reports another stage, continue from that stage without attributing it to autoplay policy. The unresolved autoplay requirement must not be recorded as accepted or deployed to production.
+The owner completed the diagnostic step and supplied `IMG_7527.jpeg`. Its message is the explicit `onAutoplayBlocked` result, with the restored song and search list visible. Do not ask the owner to repeat this diagnostic or treat it as merely a timeout. Continue with the exact original-versus-current startup comparison described in [music-mobile-startup-comparison-20261004.md](music-mobile-startup-comparison-20261004.md). Audible automatic startup is still unresolved and must not be recorded as accepted or deployed to production.
