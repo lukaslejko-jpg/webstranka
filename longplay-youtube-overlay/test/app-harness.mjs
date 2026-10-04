@@ -34,7 +34,7 @@ class ClassList {
 
 export function createApp(options = {}) {
   const { ready = true, denyStorageReads = false, denyStorageWrites = false,
-    searchResults = searched } = options;
+    searchResults = searched, loadState = 1 } = options;
   let clock = 0, sequence = 0, player;
   const timers = new Map(), elements = new Map(), calls = [];
   let deferSearchResponses = false;
@@ -134,15 +134,18 @@ export function createApp(options = {}) {
       this.pauseCount = 0;
       this.time = 0;
       this.duration = 180;
+      // Loading a video is not proof that a browser permitted playback.
+      // Tests may leave the iframe cued/unstarted and emit PLAYING separately.
+      this.loadState = loadState;
       player = this;
     }
     loadPlaylist(options) {
       const call = { method: 'loadPlaylist', playlist: Array.from(options.playlist), index: options.index };
       calls.push(call);
       this.videoId = call.playlist[call.index] || null;
-      this.state = 1;
+      this.state = this.loadState;
     }
-    loadVideoById(id) { calls.push({ method: 'loadVideoById', id }); this.videoId = id; this.state = 1; }
+    loadVideoById(id) { calls.push({ method: 'loadVideoById', id }); this.videoId = id; this.state = this.loadState; }
     playVideo() { this.playCount++; this.state = 1; }
     pauseVideo() { this.pauseCount++; this.state = 2; }
     getPlayerState() { return this.state; }
@@ -272,4 +275,27 @@ export function expectPlaylist(app, list, index) {
   assert.deepEqual(app.calls.at(-1), { method: 'loadPlaylist', playlist: ids(list), index });
   assert.equal(app.player.videoId, list[index].id, 'Loaded video must match the selected card');
   assert.equal(app.elements.get('now').textContent, list[index].title, 'Displayed track must match the loaded video');
+}
+
+export function expectAppQueue(app, list, index) {
+  const visible = [...app.elements.get('queue').innerHTML.matchAll(/<div class="qi([^"]*)">([^<]*)<\/div>/g)];
+  const escape = text => String(text).replace(/[&<>"]/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+  }[char]));
+  assert.deepEqual(visible.map(match => match[2]), list.map(item => escape(item.title)),
+    'The complete application queue must remain displayed in its original order');
+  assert.deepEqual(visible.flatMap((match, i) => match[1].trim() === 'on' ? [i] : []), [index],
+    'The queue highlight must retain the selected index within the full list');
+  const session = JSON.parse(app.storage.get('teslaYT:session'));
+  assert.deepEqual(ids(session.queue), ids(list), 'The complete continuation queue must remain persisted');
+  assert.equal(session.current.id, list[index].id, 'The persisted current track must match the full-list index');
+}
+
+export function expectRestoredPlaylist(app, list, index) {
+  const selected = list[index];
+  assert.deepEqual(app.calls.at(-1), { method: 'loadPlaylist', playlist: [selected.id], index: 0 },
+    'Automatic restoration must send the legacy single-track startup payload');
+  assert.equal(app.player.videoId, selected.id, 'The requested video must be the stored last track');
+  assert.equal(app.elements.get('now').textContent, selected.title);
+  expectAppQueue(app, list, index);
 }

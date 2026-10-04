@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createApp, expectPlaylist, favorites, searched, history, ids, flush, track } from './app-harness.mjs';
+import { createApp, expectPlaylist, expectRestoredPlaylist, expectAppQueue,
+  favorites, searched, history, ids, flush, track } from './app-harness.mjs';
 
 const SESSION = 'teslaYT:session';
 const snapshot = (overrides = {}) => ({
@@ -95,7 +96,7 @@ test('A full reload restores search cards, query, selected view, and current-tra
   assert.match(restored.elements.get('heading').textContent, /Vyhľadané/);
   assert.equal(restored.calls.length, 0, 'Restoration must not call an unready iframe');
   restored.fireReady();
-  expectPlaylist(restored, searched, 1);
+  expectRestoredPlaylist(restored, searched, 1);
   restored.button('next');
   expectPlaylist(restored, searched, 2);
   assert.equal(restored.calls.length, 2, 'Next must load exactly one subsequent track');
@@ -111,7 +112,7 @@ test('Favorites and the selected track survive reload with Next, Previous, and a
   expectVisible(restored, favorites);
   assert.equal(restored.activeView, 'likes');
   assert.equal(restored.elements.get('heading').textContent, 'Obľúbené');
-  expectPlaylist(restored, favorites, 1);
+  expectRestoredPlaylist(restored, favorites, 1);
   restored.button('next');
   expectPlaylist(restored, favorites, 2);
   restored.button('prev');
@@ -134,7 +135,7 @@ test('After reload a disjoint last track continues into the last displayed list'
   const restored = createApp({ storage: first.storage });
   const continuation = [searched[1], ...favorites];
   expectVisible(restored, favorites);
-  expectPlaylist(restored, continuation, 0);
+  expectRestoredPlaylist(restored, continuation, 0);
   restored.button('next');
   expectPlaylist(restored, continuation, 1);
   restored.fireState(0);
@@ -158,6 +159,7 @@ test('Returning to Search after restoring Favorites shows the actual saved searc
   first.card(0);
   const restored = createApp({ storage: first.storage });
   expectVisible(restored, favorites);
+  expectRestoredPlaylist(restored, favorites, 0);
   const loads = structuredClone(restored.calls);
   restored.view('search');
   expectVisible(restored, searched);
@@ -175,7 +177,7 @@ test('Saved recent view preserves its last displayed order after playing a track
   const restored = createApp({ storage: first.storage });
   expectVisible(restored, history);
   assert.equal(restored.activeView, 'recent');
-  expectPlaylist(restored, history, 1);
+  expectRestoredPlaylist(restored, history, 1);
   restored.button('next');
   expectPlaylist(restored, history, 2);
 });
@@ -184,17 +186,68 @@ test('An empty displayed list falls back to the saved active queue for continued
   const session = snapshot({ view: 'likes', items: [], current: searched[1] });
   const app = createApp({ storage: seed(session, { likes: [] }) });
   expectVisible(app, []);
-  expectPlaylist(app, searched, 1);
+  expectRestoredPlaylist(app, searched, 1);
   app.button('next');
   expectPlaylist(app, searched, 2);
 });
 
 test('The atomic session current track takes precedence over an older legacy last-track value', () => {
   const app = createApp({ storage: seed(snapshot(), { last: history[0] }) });
-  expectPlaylist(app, searched, 1);
+  expectRestoredPlaylist(app, searched, 1);
 });
 
-test('A user selection before iframe readiness wins over restored current and queue', () => {
+test('Full-list restoration sends the same one-track startup payload as legacy last-track-only restoration', () => {
+  const legacy = createApp({ last: searched[1], loadState: 5 });
+  const restored = createApp({ storage: seed(snapshot()), loadState: 5 });
+  assert.deepEqual(restored.calls, legacy.calls);
+  assert.equal(restored.calls.length, 1);
+  assert.equal(restored.player.config.playerVars.autoplay, 1);
+  expectRestoredPlaylist(restored, searched, 1);
+  expectRestoredPlaylist(legacy, [searched[1]], 0);
+  assert.equal(restored.player.state, 5,
+    'Requesting the correct startup video must not be treated as proof of audible playback');
+});
+
+test('Recent-history fallback uses the one-track startup payload while keeping the displayed continuation list', () => {
+  const app = createApp({ storage: seed(snapshot({ current: null }), { recent: history }) });
+  expectRestoredPlaylist(app, [history[0], ...searched], 0);
+  app.button('next');
+  expectPlaylist(app, [history[0], ...searched], 1);
+});
+
+test('Next, Previous, and ENDED use the full application queue after a one-track startup load', () => {
+  for (const [action, expectedIndex] of [['next', 2], ['prev', 0], ['ended', 2]]) {
+    const app = createApp({ storage: seed(snapshot()) });
+    expectRestoredPlaylist(app, searched, 1);
+    if (action === 'ended') app.fireState(0);
+    else app.button(action);
+    assert.equal(app.calls.length, 2, `${action} must issue exactly one subsequent load`);
+    expectPlaylist(app, searched, expectedIndex);
+    expectAppQueue(app, searched, expectedIndex);
+  }
+});
+
+test('Startup does not retry a cued load or override a later PLAYING to PAUSED transition', async () => {
+  // This models command/state timing only; real Safari autoplay is verified on-device.
+  const app = createApp({ storage: seed(snapshot()), loadState: 5 });
+  expectRestoredPlaylist(app, searched, 1);
+  await app.advance(1500);
+  assert.equal(app.player.state, 5);
+  assert.equal(app.player.playCount, 0);
+  assert.equal(app.calls.length, 1);
+  expectControl(app, false);
+  app.fireState(1);
+  expectControl(app, true);
+  app.fireState(2);
+  expectControl(app, false);
+  await app.advance(3000);
+  assert.equal(app.player.state, 2, 'An explicit player pause must remain paused');
+  assert.equal(app.player.playCount, 0, 'No startup retry may reissue Play after a pause');
+  assert.equal(app.calls.length, 1, 'No delayed startup load may replace the restored song');
+  expectAppQueue(app, searched, 1);
+});
+
+test('A user selection before iframe readiness wins over restored current and queue', async () => {
   const app = createApp({ storage: seed(snapshot()), ready: false });
   app.view('likes');
   app.card(2);
@@ -202,6 +255,9 @@ test('A user selection before iframe readiness wins over restored current and qu
   app.fireReady();
   assert.equal(app.calls.length, 1, 'Readiness must issue only the user-selected load');
   expectPlaylist(app, favorites, 2);
+  expectAppQueue(app, favorites, 2);
+  await app.advance(1500);
+  assert.equal(app.calls.length, 1, 'Automatic restoration must not later replace the selected playlist');
 });
 
 test('Central Play before iframe readiness retains the restored second track', () => {
@@ -211,6 +267,7 @@ test('Central Play before iframe readiness retains the restored second track', (
   app.fireReady();
   assert.equal(app.calls.length, 1);
   expectPlaylist(app, searched, 1);
+  expectAppQueue(app, searched, 1);
 });
 
 test('Central Play before iframe readiness retains a newer explicit card selection', () => {
@@ -222,6 +279,7 @@ test('Central Play before iframe readiness retains a newer explicit card selecti
   app.fireReady();
   assert.equal(app.calls.length, 1);
   expectPlaylist(app, favorites, 2);
+  expectAppQueue(app, favorites, 2);
 });
 
 test('Toggling one favorite in a list larger than the snapshot limit retains every untouched favorite', () => {
@@ -242,7 +300,7 @@ test('Restoration removes invalid and duplicate saved tracks while preserving va
   const app = createApp({ storage: seed(session) });
   const expected = searched.slice(0, 2);
   expectVisible(app, expected);
-  expectPlaylist(app, expected, 0);
+  expectRestoredPlaylist(app, expected, 0);
   app.button('next');
   expectPlaylist(app, expected, 1);
   assert.ok(!app.elements.get('grid').innerHTML.includes('Invalid track'));
@@ -259,7 +317,7 @@ test('Malformed object IDs are discarded and malformed durations cannot crash ca
   const app = createApp({ storage: seed(session, { likes: dirty }) });
   const expected = favorites.slice(0, 2);
   expectVisible(app, expected);
-  expectPlaylist(app, expected, 0);
+  expectRestoredPlaylist(app, expected, 0);
   assert.equal(JSON.parse(app.storage.get('teslaYT:last')).duration, 0,
     'An unusable stored duration should fall back to zero');
   app.view('likes');
@@ -276,7 +334,7 @@ for (const [name, session] of [
 ]) {
   test(`Malformed session (${name}) falls back to the legacy last track without crashing`, () => {
     const app = createApp({ storage: seed(session, { last: history[0] }) });
-    expectPlaylist(app, [history[0]], 0);
+    expectRestoredPlaylist(app, [history[0]], 0);
     app.view('likes');
     app.card(1);
     expectPlaylist(app, favorites, 1);
@@ -285,7 +343,7 @@ for (const [name, session] of [
 
 test('Invalid session track falls back to a valid legacy last track and displayed list', () => {
   const app = createApp({ storage: seed(snapshot({ current: { id: 'bad' } }), { last: searched[2] }) });
-  expectPlaylist(app, searched, 2);
+  expectRestoredPlaylist(app, searched, 2);
 });
 
 for (const [name, storageOptions] of [
@@ -325,6 +383,7 @@ test('A search completed after navigating to Favorites preserves that displayed 
   const restored = createApp({ storage: app.storage });
   expectVisible(restored, favorites);
   assert.equal(restored.activeView, 'likes');
+  expectRestoredPlaylist(restored, favorites, 0);
   restored.view('search');
   expectVisible(restored, searched);
 });
@@ -348,7 +407,7 @@ test('An in-flight infinite-scroll request cannot append search tracks into subs
   const restored = createApp({ storage: app.storage });
   expectVisible(restored, favorites);
   assert.equal(restored.activeView, 'likes');
-  expectPlaylist(restored, [searched[0], ...favorites], 0);
+  expectRestoredPlaylist(restored, [searched[0], ...favorites], 0);
 });
 
 test('When two searches complete out of order only the latest query is displayed and saved', async () => {

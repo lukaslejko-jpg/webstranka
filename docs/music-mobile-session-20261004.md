@@ -3,6 +3,8 @@
 Date: 2026-10-04. Candidate: MOBILE-PREVIEW-20261004-02.
 Status: PREVIEW; owner retest pending. Do not designate GOLDEN or promote before the owner confirms this version.
 
+Owner retest update: the owner subsequently reported all requested behavior OK except automatic playback after refreshing the page. This candidate was not accepted as stable or promoted. The narrowly scoped follow-up is recorded in [music-mobile-autostart-20261004.md](music-mobile-autostart-20261004.md).
+
 ## Request and recovery points
 The owner confirmed audible Favorites playback in the first preview and asked for:
 1. A pause symbol while music is playing, returning to the play symbol when paused.
