@@ -98,13 +98,17 @@ Po prvom pokuse sa nezmenil offline deploy `dep-db1bkb8u01pc73dn86qg`: verejný 
 
 Pevné referencie boli overené cez `git ls-remote`: Offline 02 aj pôvodná offline feature vetva → `a27dfa0e17d4043f50ad1e23470c1d7c63e9f06c`, Music06 mobil → `ee547488cb1c51845754529d8bdf2d49fbc0b51c`, Music06 desktop → `23a57397addfacdbc91eeab9abf0839412e0e2f4`. Žiadny z týchto bodov sa neposunul. Finálny dokumentačný commit nevyžaduje ďalší backend deploy; auto-deploy je vypnutý.
 
-## Preskúmaný API kandidát pre prípadné pokračovanie
+## Pôvodný API kandidát pri prvom pokuse
 
 Zyla API Hub verejne dokumentuje službu „Youtube to Audio API“, ID 381, s Bearer API kľúčom a odpoveďou obsahujúcou odkaz na audio. Vyžaduje vlastný účet a plán; skúšobná ponuka nie je trvalý bezplatný prístup. Produktová stránka uvádza plán 99,99 USD/mesiac, resp. 999,90 USD pri ročnej úhrade. Pre osobné použitie tento konkrétny náklad nepovažujeme za primeraný automatický ďalší krok.
 
-Bola prečítaná iba oficiálna dokumentácia. Nebol založený účet, prijaté predplatné, volané API ani získavané audio cez dodávateľa. Táto ponuka nie je odporúčanie ani dôkaz funkčnosti; nejde o oficiálne API YouTube. Aktuálne nemáme overenú funkčnú bezplatnú API službu, ktorú by bolo možné rovno pripojiť. Prípadná zmena poskytovateľa vyžaduje podporovaný a povolený API prístup aj samostatný skutočný test; už pripravená offline knižnica môže zostať zachovaná.
+Bola prečítaná iba oficiálna dokumentácia. Nebol založený účet, prijaté predplatné, volané API ani získavané audio cez dodávateľa. Táto ponuka nie je odporúčanie ani dôkaz funkčnosti; nejde o oficiálne API YouTube. V čase tohto prvého posúdenia sme nemali prakticky overenú funkčnú bezplatnú API službu, ktorú by bolo možné rovno pripojiť. Prípadná zmena poskytovateľa vyžaduje podporovaný a povolený API prístup aj samostatný skutočný test; už pripravená offline knižnica môže zostať zachovaná.
 
 Dokumentácia kandidáta: https://zylalabs.com/api-marketplace/music%2B&%2Baudio/youtube%2Bto%2Baudio%2Bapi/381.
+
+### Doplnená rešerš 4. októbra 2026
+
+Na ďalšiu požiadavku používateľa boli vyhľadané bezplatné a lacnejšie API, hotové komponenty a možnosti iPhone. [Úplná analýza reálnych možností](music-offline-realne-moznosti-20261004.md) odporúča ako prvý praktický pilot Yoinku Free s deklarovanými 5 stiahnutiami denne bez karty; Tunelio má úvodné kredity a je ďalším kandidátom. Z vlastných serverových komponentov bol preverovaný MeTube. Ide o doložené ponuky a integračné možnosti; nové API ešte nebolo volané a úspešné MP3 sa zatiaľ nepotvrdilo. Rešerš nemení historický výsledok Render testu, funkčné checkpointy ani nasadenie.
 
 ## Primárne zdroje
 
