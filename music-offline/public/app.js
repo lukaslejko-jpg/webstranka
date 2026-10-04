@@ -1,10 +1,11 @@
 // app.js — Kasette. Offline music player: all app logic (state, rendering,
 // audio engine, import, playlists, themes) lives in this single module.
 
-import "./offline.js";
+import { requestOfflineStorage } from "./offline.js";
 import { putAudio, getAudio, putArt, getArt, delTrack, storageEstimate } from "./store.js";
 import { readMeta } from "./meta.js";
 import { LANGUAGES, detectLocale, isSupportedLocale, translate, translateCount } from "./i18n.js";
+import { SAMPLE_TRACKS, downloadSample, isStoredSample } from "./samples.js";
 
 // ───────────────────────── themes ─────────────────────────
 const ACCENTS = [
@@ -41,6 +42,7 @@ const P = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
   down: '<path d="m6 9 6 6 6-6"/>',
+  download: '<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
   more:
     '<circle cx="12" cy="5" r="1.6" style="fill:currentColor;stroke:none"/><circle cx="12" cy="12" r="1.6" style="fill:currentColor;stroke:none"/><circle cx="12" cy="19" r="1.6" style="fill:currentColor;stroke:none"/>',
   folder:
@@ -88,6 +90,9 @@ let view = "home"; // home | search | library | settings
 let plOpen = null; // id of the open playlist (detail view)
 let searchQ = "";
 let libraryTab = "songs";
+const SAMPLE_PLAYLIST = "samples:bach-v1";
+const savedSamples = new Set();
+let sampleBusy = false, sampleMessage = "", sampleError = false;
 
 const $ = (s, r = document) => r.querySelector(s);
 const audio = $("#audio");
@@ -597,6 +602,92 @@ audio.addEventListener("loadedmetadata", () => {
   updateProgressUI();
 });
 
+// Explicit sample downloads use the same local audio store as imported files.
+// They never select a view, start playback, or alter the current queue.
+function sampleCard() {
+  const complete = SAMPLE_TRACKS.every(t => savedSamples.has(t.id) && lib.tracks[t.id]);
+  return `<section class="sample-card" aria-label="${i18n("sampleHeading")}">
+    <h2>${i18n(complete ? "sampleReadyHeading" : "sampleHeading")}</h2>
+    <p>${i18n(complete ? "sampleReadyHint" : "sampleDescription")}</p>
+    <button class="sample-button" data-act="${complete ? "opensamples" : "downloadsamples"}" ${sampleBusy ? "disabled" : ""}>
+      ${ic(complete ? "list" : "download")}<span>${i18n(sampleBusy ? "sampleDownloading" : complete ? "sampleOpen" : "sampleDownload")}</span>
+    </button>
+    <p class="sample-progress ${sampleError ? "sample-error" : ""}" role="status" aria-live="polite">${esc(sampleMessage)}</p>
+    <a class="sample-credits" href="./sample-credits.html" target="_blank" rel="noopener">${i18n("sampleCredits")}</a>
+  </section>`;
+}
+function refreshSampleCards() {
+  for (const slot of document.querySelectorAll(".sample-slot")) slot.innerHTML = sampleCard();
+}
+async function checkSavedSamples() {
+  for (const t of SAMPLE_TRACKS) {
+    try {
+      if (lib.tracks[t.id] && isStoredSample(t, await getAudio(t.id))) savedSamples.add(t.id);
+      else savedSamples.delete(t.id);
+    } catch { savedSamples.delete(t.id); }
+  }
+  refreshSampleCards();
+}
+function sampleLibrary(track) {
+  const tracks = track ? { ...lib.tracks, [track.id]: lib.tracks[track.id] || {
+    id: track.id, title: track.title, artist: track.artist,
+    album: "Music Offline – Ukážkové skladby", duration: track.duration,
+    hasArt: false, lastPlayedAt: 0,
+  } } : lib.tracks;
+  const ids = SAMPLE_TRACKS.filter(t => tracks[t.id]).map(t => t.id);
+  let found = false;
+  const playlists = lib.playlists.map(p => {
+    if (p.id === SYS) return { ...p, trackIds: [...new Set([...p.trackIds, ...ids])] };
+    if (p.id !== SAMPLE_PLAYLIST) return p;
+    found = true;
+    return { ...p, trackIds: [...new Set([...p.trackIds, ...ids])] };
+  });
+  if (!found) playlists.push({ id: SAMPLE_PLAYLIST, name: i18n("samplePlaylist"), trackIds: ids, createdAt: Date.now() });
+  return { ...lib, tracks, playlists };
+}
+function commitSampleLibrary(track) {
+  const updated = sampleLibrary(track);
+  // Publish metadata only after localStorage succeeds; a failed write remains
+  // retriable even when the audio transaction has already committed.
+  localStorage.setItem(LS_LIB, JSON.stringify(updated));
+  lib = updated;
+}
+async function downloadSamples() {
+  if (sampleBusy) return;
+  sampleBusy = true;
+  sampleError = false;
+  sampleMessage = "";
+  dismissModal();
+  requestOfflineStorage();
+  refreshSampleCards();
+  try {
+    for (let i = 0; i < SAMPLE_TRACKS.length; i++) {
+      const t = SAMPLE_TRACKS[i];
+      sampleMessage = i18n("sampleDownloadProgress", { n: i + 1, name: t.title });
+      refreshSampleCards();
+      const existing = await getAudio(t.id);
+      if (!isStoredSample(t, existing)) {
+        const blob = await downloadSample(t);
+        await putAudio(t.id, blob);
+      }
+      commitSampleLibrary(t);
+      savedSamples.add(t.id);
+    }
+    sampleMessage = i18n("sampleDownloadDone");
+    toast(sampleMessage);
+  } catch (error) {
+    sampleError = true;
+    const n = SAMPLE_TRACKS.filter(t => savedSamples.has(t.id) && lib.tracks[t.id]).length;
+    sampleMessage = i18n(error?.name === "QuotaExceededError" ? "sampleStorageError" : "sampleDownloadError", { n });
+    toast(sampleMessage);
+  } finally {
+    sampleBusy = false;
+    // Update just the card: a download finishing cannot replace an input,
+    // reset scroll, or pull the user out of Search/Settings/the player.
+    refreshSampleCards();
+  }
+}
+
 // ───────────────────────── import ─────────────────────────
 async function importFiles(files) {
   if (!files || !files.length) return;
@@ -923,6 +1014,7 @@ function greet() {
 function viewHome() {
   const tracks = allTracks();
   let html = `<h1 class="h-greet">${greet()}</h1>`;
+  html += `<div class="sample-slot">${sampleCard()}</div>`;
 
   if (!tracks.length) {
     html += `<section class="sec"><div class="sec-head">${ic("music")}<span class="sec-title">${i18n("music")}</span></div>
@@ -994,6 +1086,7 @@ function viewLibrary() {
     <h1 class="h-greet">${i18n("yourLibrary")}</h1>
     <button class="icon-btn" data-act="libadd" aria-label="${i18n("ariaAdd")}">${ic("plus")}</button>
   </div>`;
+  html += `<div class="sample-slot">${sampleCard()}</div>`;
   if (settings.playlistsEnabled) html += `<div class="chips">${["songs", "playlists"].map(tab =>
     `<button class="chip ${libraryTab === tab ? "on" : ""}" data-act="librarytab" data-tab="${tab}" aria-pressed="${libraryTab === tab}">${i18n(tab)}</button>`
   ).join("")}</div>`;
@@ -1367,6 +1460,7 @@ function openAddSheet(trackId) {
 function libAddSheet() {
   // The library "+" button menu: import songs or create a new playlist.
   openModal(`<h3>${i18n("addToYourLibrary")}</h3>
+    <button class="opt" data-act="downloadsamples">${ic("download")}<span class="pl-t">${i18n("sampleDownload")}</span></button>
     <button class="opt" data-act="import">${ic("music")}<span class="pl-t">${i18n("importSongsOpt")}</span></button>
     ${settings.playlistsEnabled ? `<button class="opt" data-act="newpl">${ic("list")}<span class="pl-t">${i18n("newPlaylistOpt")}</span></button>` : ""}`);
 }
@@ -1468,6 +1562,18 @@ document.addEventListener("click", (e) => {
       break;
     case "libadd":
       libAddSheet();
+      break;
+    case "downloadsamples":
+      void downloadSamples();
+      break;
+    case "opensamples":
+      try {
+        commitSampleLibrary();
+        plOpen = SAMPLE_PLAYLIST;
+        view = "library";
+        renderNav();
+        renderView();
+      } catch { toast(i18n("notEnoughStorage")); }
       break;
     case "import":
       $("#filepick").click();
@@ -1791,3 +1897,4 @@ ensureHandlers();
 repairImportedMetadata().catch(error => console.warn("Metadata repair:", error));
 if (pb.current) updateMediaSession(pb.current);
 prepareRestoredCurrent();
+void checkSavedSamples();

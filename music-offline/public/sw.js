@@ -1,6 +1,6 @@
 // Music Offline shell. User audio is stored separately in IndexedDB.
 // Cache deletion is deliberately limited to this application's prefix.
-const VERSION = "20261004-01";
+const VERSION = "20261004-02";
 const CACHE_PREFIX = "music-offline-shell-";
 const CACHE = CACHE_PREFIX + VERSION;
 const SHELL = [
@@ -9,6 +9,7 @@ const SHELL = [
   "./locales/fr.js", "./locales/de.js", "./locales/zh-Hans.js", "./manifest.json",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-512-maskable.png",
   "./LICENSE-kasette.txt", "./release.json",
+  "./samples.js", "./sample-credits.html", "./LICENSE-audio.txt",
 ];
 const base = new URL("./", self.location.href);
 const indexURL = new URL("./index.html", base).href;

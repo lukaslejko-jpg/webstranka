@@ -1,5 +1,5 @@
 // Offline readiness and optional storage persistence. No audio playback owner.
-const VERSION = "20261004-01";
+const VERSION = "20261004-02";
 const status = document.querySelector("#offlineStatus");
 const label = document.querySelector("#offlineStatusText");
 const help = document.querySelector("#offlineHelp");
@@ -25,6 +25,7 @@ async function storageStatus(request = false) {
     // A denied persistence request does not prevent importing or listening.
   }
 }
+export function requestOfflineStorage() { void storageStatus(true); }
 
 async function checkShell(worker) {
   if (!worker) return;

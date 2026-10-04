@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { SAMPLE_TRACKS } from '../public/samples.js';
 
 const root = fileURLToPath(new URL('../public/', import.meta.url));
 const version = JSON.parse(await readFile(resolve(root, 'release.json'), 'utf8'));
@@ -41,4 +43,11 @@ async function walk(dir) {
 }
 await walk(root);
 assert((await readFile(resolve(root, 'LICENSE-kasette.txt'), 'utf8')).includes('BSD 3-Clause License'));
+for (const track of SAMPLE_TRACKS) {
+  const path = track.path.slice(2);
+  assert(!shellSet.has(path), `Audio must download only on request: ${path}`);
+  const bytes = await readFile(resolve(root, path));
+  assert.equal(bytes.length, track.bytes, `Sample size mismatch: ${path}`);
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), track.sha256, `Sample hash mismatch: ${path}`);
+}
 console.log(`${version.release}: ${checked} JavaScript files checked; all ${shell.length} offline shell assets and manifest valid.`);

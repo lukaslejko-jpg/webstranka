@@ -2,6 +2,7 @@ import fs from "node:fs";
 import vm from "node:vm";
 import assert from "node:assert/strict";
 import test from "node:test";
+import { SAMPLE_TRACKS, isStoredSample } from "../public/samples.js";
 
 // Simulated unit regressions: execute the complete app script with module
 // imports replaced by fake DOM/audio/storage dependencies. These tests cannot
@@ -77,6 +78,7 @@ function setup({ saved = null, playback = null, read = null } = {}) {
   const revoked = [], reads = [];
   const context = vm.createContext({
     document, window: new Element(),
+    SAMPLE_TRACKS, isStoredSample, requestOfflineStorage() {},
     navigator: {
       language: "sk", languages: ["sk"],
       mediaSession: { setActionHandler() {}, setPositionState() {} },

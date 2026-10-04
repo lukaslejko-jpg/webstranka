@@ -1,0 +1,39 @@
+Music Offline Preview 02 — bundled audio attribution
+Verified 2026-10-04. Composer: Johann Sebastian Bach (1685–1750).
+Complete recordings converted from Ogg Vorbis to MP3, 80 kb/s, 44.1 kHz.
+No endorsement by the performers or original uploaders is implied.
+Licenses apply individually to the audio files, separately from the app source.
+
+Bach – Invention No. 8
+File: ./samples/bach-invention-08.mp3
+Recording / realization: Michael Bednarek · MIDI / piano
+Piano rendering of MIDI uploaded by Illegitimate Barrister. MIDI source credited to Michael Bednarek.
+License: CC0 1.0 — https://creativecommons.org/publicdomain/zero/1.0/
+Source page: https://commons.wikimedia.org/wiki/File:J.S._Bach%27s_Invention_8_(BWV_779)_on_piano.ogg
+Original audio: https://upload.wikimedia.org/wikipedia/commons/8/89/J.S._Bach%27s_Invention_8_%28BWV_779%29_on_piano.ogg
+Original SHA-256: 8572ad59a69f264f5abe44c9f115b26b479c903db315ab925cbf8658d8b3cbf9
+MP3 SHA-256: 56c02c159baf0a5bb3803a4633a71c96bcd3a8eb8f8095447e11aaa33ada8c61
+MP3 bytes: 618924
+
+Bach – Invention No. 10
+File: ./samples/bach-invention-10.mp3
+Recording / realization: Jason M. C., Han
+License: CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0/
+Source page: https://commons.wikimedia.org/wiki/File:G_Major_-_10th_2-parts_Invention,_Bach.ogg
+Original audio: https://upload.wikimedia.org/wikipedia/commons/b/b1/G_Major_-_10th_2-parts_Invention%2C_Bach.ogg
+Original SHA-256: 5ad04afae28e8407a36ebabd6b2f13ebf8e2af89b1814a7fe3e78ceeb45eea33
+MP3 SHA-256: 0afd0b8b45a1f6dc033a2d0e700fde6232cfe2cf9f4a49cf25f3ae20977795bb
+MP3 bytes: 708214
+
+Bach – Invention No. 14
+File: ./samples/bach-invention-14.mp3
+Recording / realization: Jason M. C., Han
+License: CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0/
+Source page: https://commons.wikimedia.org/wiki/File:Bach_Invention_2P_14th.ogg
+Original audio: https://upload.wikimedia.org/wikipedia/commons/f/f8/Bach_Invention_2P_14th.ogg
+Original SHA-256: d1f5511e1e7aab6db469560c0f6de49cbaa982744485c66595f5181c466912a0
+MP3 SHA-256: 2b929e36e185498f8cd67325564ef4d13fcf5c66d9bf03064cc9d19d290c9ab9
+MP3 bytes: 1124851
+
+The MP3 versions of Inventions 10 and 14 are distributed under CC BY-SA 4.0.
+Attribution, source URLs, license and conversion information are also embedded in MP3 tags.

@@ -1,8 +1,8 @@
 # Music Offline — samostatná skúšobná aplikácia
 
-**MUSIC-OFFLINE-PREVIEW-20261004-01 — čaká na skúšku na iPhone.**
+**MUSIC-OFFLINE-PREVIEW-20261004-02 — čaká na skúšku na iPhone.**
 
-Samostatná PWA založená na Kasette 1.4.0. Importuje vlastné hudobné súbory do zariadenia. Webový server poskytuje iba aplikáciu; importovaná hudba sa na server neposiela.
+Samostatná PWA založená na Kasette 1.4.0. Vie priamo stiahnuť tri skúšobné skladby do zariadenia aj importovať vlastné hudobné súbory. Webový server poskytuje aplikáciu a tento konkrétny balík hudby; importovaná hudba sa na server neposiela.
 
 ## Pôvod a licencia
 
@@ -18,8 +18,16 @@ Samostatná PWA založená na Kasette 1.4.0. Importuje vlastné hudobné súbory
 1. Prvé otvorenie vykonaj v Safari s internetom.
 2. Zdieľať → Pridať na plochu. Otvor Music Offline vlastnou ikonou ešte pred vytváraním knižnice.
 3. Počkaj na zelený stav „Pripravené na offline“.
-4. Pridaj 3–5 vlastných MP3/M4A zo Súborov. Súbory uložené len v iCloude najprv stiahni do telefónu.
-5. Spusti skladbu, zapni režim Lietadlo a odskúšaj pokračovanie, posun, zamknutie aj nové otvorenie aplikácie.
+4. Stlač „Stiahnuť 3 skladby na skúšku“ a počkaj na „Uložené 3/3 skladby“. Balík má 2 451 989 bajtov, približne 2,5 MB. Vlastné MP3/M4A možno naďalej pridať cez Súbory.
+5. Otvor skúšobné skladby, spusti prvú, zapni režim Lietadlo a vypni aj Wi-Fi. Odskúšaj pokračovanie, posun, zamknutie aj nové otvorenie aplikácie.
+
+Preview 02 je na https://music-offline-307.onrender.com/. Pri aktualizácii existujúcej ikony môže byť najprv zobrazený TEST 01. Po hlásení o novšej verzii aplikáciu obnov s internetom; cieľový údaj je TEST 02. Aplikáciu ani jej dáta nemaž.
+
+## Skúšobné skladby na stiahnutie
+
+Tlačidlo je na Domov aj v Knižnici; v menu + je dostupné aj opakované stiahnutie. Obsahuje celé Bachove Inventions č. 8, 10 a 14. Audio sa prenáša až po stlačení tlačidla a ukladá do toho istého IndexedDB ako importované súbory. Najprv sa overí HTTP odpoveď, presná veľkosť a SHA-256; za uložené sa označí až po úspešnom uložení zvuku aj metadát. Pri chybe zostávajú dokončené skladby uložené a opakovanie doplní chýbajúce bez duplicít. Dokončenie sťahovania neprepína zobrazenie ani prehrávanú skladbu.
+
+Nahrávka č. 8 je CC0 1.0, nahrávky Jasona M. C., Hana č. 10 a 14 zostávajú CC BY-SA 4.0. Zdrojové odkazy, autorstvo a údaje o prevode sú v `public/LICENSE-audio.txt`, na stránke `public/sample-credits.html` a v MP3 metadátach. Ide o konkrétny testovací balík; offline stiahnutie ľubovoľných online obľúbených skladieb týmto nie je implementované.
 
 Uloženie do aplikácie nie je nezničiteľná záloha. Vymazanie dát prehliadača/aplikácie môže odstrániť aj hudbu. Zachovaj pôvodné súbory alebo vytvor export knižnice cez Nastavenia. Povolenie trvalého úložiska závisí od prehliadača.
 
@@ -64,4 +72,4 @@ Súbor `public/release.json` a rovnaké číslo v HTML, offline module a service
 
 Node testy service workera simulujú nedostupnú sieť; nie sú náhradou za fyzický test režimu Lietadlo na iPhone. Cloudový Chromium takisto nepreukazuje funkčnosť zamknutej obrazovky v iOS. Verejné hlásenie Kasette #5 o automatickom pokračovaní pri zamknutí zostáva dôvodom na túto akceptáciu: https://github.com/nico-alvz/kasette/issues/5.
 
-Presný stav nasadenia a overení: `../docs/music-offline-preview-20261004-01.md`.
+Presný stav nasadenia a overení: `../docs/music-offline-preview-20261004-02.md`. Predchádzajúci záznam Preview 01 a jeho pevný checkpoint zostávajú zachované.
