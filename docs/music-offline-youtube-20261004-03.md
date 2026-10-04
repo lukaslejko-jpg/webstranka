@@ -1,6 +1,6 @@
 # Music Offline — Preview 03: sťahovanie z odkazu YouTube
 
-Status: **implementácia pripravená, prvý skutočný Render pokus zablokoval zdroj; frontend sa nezverejňuje ako funkčná verzia**.
+Status: **NEZVEREJNENÝ FRONTEND / ZABLOKOVANÝ ZDROJ. Implementácia je uložená v Git; skutočný Render test potvrdil požiadavku YouTube na overenie človeka. Nejde o nový funkčný checkpoint.**
 
 ## Požiadavka
 
@@ -72,15 +72,39 @@ Kvóta 6 úloh/hodinu sa viaže na pozorovanú IP spojenia; za Render proxy ju m
 - `/health` vrátil HTTP 200 a správnu službu/verziu.
 - Skutočný `POST /api/jobs` s vyššie uvedeným verejným videom vrátil HTTP 202. Úloha následne skončila `state: failed`, `error: source_blocked`; MP3 nevzniklo.
 
-Prvý kontrakt nerozlišoval presnú príčinu odmietnutia. Pridali sa preto len pevne určené diagnostické kategórie `reason` a fáza `stage` (`probe`/`download`). Surová správa zdroja, adresy a tokeny sa nezverejňujú. Druhý kontrolný pokus má určiť presnú kategóriu, nie skúšať obchádzanie zdrojovej kontroly.
+Prvý kontrakt nerozlišoval presnú príčinu odmietnutia. Pridali sa preto len pevne určené diagnostické kategórie `reason` a fáza `stage` (`probe`/`download`). Surová správa zdroja, adresy a tokeny sa nezverejňujú.
+
+### Potvrdený diagnostický výsledok
+
+- Kompletný pracovný commit klienta a diagnostiky: `810d9cb5274658c830161699abd1f7fb19083c57`.
+- Diagnostický backend deploy: `dep-db1c5n3ncjis73c4bd00`, `live` od `2026-10-04T21:20:34.915434Z`.
+- Jeden kontrolný pokus na tej istej službe, bez zmeny zdroja, prihlásenia, cookies alebo proxy: HTTP 202 → `preparing` → `failed`.
+- Presná bezpečná odpoveď: `error: source_blocked`, `reason: bot_confirmation`, `stage: probe`.
+- Dôvod bol zistený priamo zo správy yt-dlp obsahujúcej požiadavku na potvrdenie, že nejde o robota. Zlyhalo už zisťovanie zdroja, pred stiahnutím a prevodom audia.
+- Po potvrdení tejto kontroly sa ďalšie požiadavky na YouTube nespúšťali a kontrola sa neobchádzala.
+- Výsledné MP3 nebolo získané; úspech sa nesimuluje náhradným súborom.
+
+Strojovo čitateľný záznam bez identifikátora dočasnej úlohy: `../music-offline-downloader/docs/verification-20261004-03.json`.
+
+Tento výsledok dokazuje aktuálny blok konkrétnej Render požiadavky. Nie je tvrdením, že downloader nemôže fungovať nikde alebo že TurboScribe nefunguje vo vlastnom rozhraní. Priame verejné API TurboScribe však podľa jeho podpory dostupné nie je. Pred vydaním zostáva potrebný povolený programový prístup ku skutočnému zdroju audia a opakovanie úplného testu uloženia/prehrávania.
 
 ## Dokončená implementácia klienta
 
 Prešlo 135/135 frontendových testov; validátor skontroloval 16 JS súborov a všetkých 24 offline shell assetov. Backend po doplnení diagnostiky má 15/15 testov. Pokryté sú zápis audia pred metadátami, obnovenie rozpracovanej úlohy, zrušenie aj počas zápisu, kvóta úložiska, poškodené audio, identita videa a zachovanie rozpracovaného vyhľadávania/prehrávania.
 
-Konfigurácia klienta obsahuje presnú adresu vytvorenej služby. `connect-src` povoľuje len vlastný origin a tento server. Nový frontend ostáva iba na izolovanej vývojovej vetve, kým nie je potvrdené skutočné získanie MP3. Verzia v `release.json` má stav `draft-source-verification-blocked`, nie úspešný checkpoint.
+Konfigurácia klienta obsahuje presnú adresu vytvorenej služby. `connect-src` povoľuje len vlastný origin a tento server. Nový frontend ostáva iba na izolovanej vývojovej vetve, kým nie je potvrdené skutočné získanie MP3. Verzia v `release.json` má stav `draft-source-verification-blocked`, nie úspešný checkpoint. Úplná vizuálna a používateľská skúška nového formulára v nasadenej PWA ani fyzická skúška na iPhone sa nevykonala; jednotkové testy ich nenahrádzajú.
 
 Po prvom pokuse sa nezmenil offline deploy `dep-db1bkb8u01pc73dn86qg`: verejný `release.json` stále vracia `20261004-02`. Obe online Music06 vracajú HTTP 200 a pôvodný SHA-256 `tesla-app.js` `d7d76636cf18486c6a0815d967a158764e81b1ea782b5975457262822d80072d`. Cloudový prehliadač ďalej ukazuje pôvodný zoznam troch Bachových skladieb.
+
+Pevné referencie boli overené cez `git ls-remote`: Offline 02 aj pôvodná offline feature vetva → `a27dfa0e17d4043f50ad1e23470c1d7c63e9f06c`, Music06 mobil → `ee547488cb1c51845754529d8bdf2d49fbc0b51c`, Music06 desktop → `23a57397addfacdbc91eeab9abf0839412e0e2f4`. Žiadny z týchto bodov sa neposunul. Finálny dokumentačný commit nevyžaduje ďalší backend deploy; auto-deploy je vypnutý.
+
+## Preskúmaný API kandidát pre prípadné pokračovanie
+
+Zyla API Hub verejne dokumentuje službu „Youtube to Audio API“, ID 381, s Bearer API kľúčom a odpoveďou obsahujúcou odkaz na audio. Vyžaduje vlastný účet a plán; skúšobná ponuka nie je trvalý bezplatný prístup. Produktová stránka uvádza plán 99,99 USD/mesiac, resp. 999,90 USD pri ročnej úhrade. Pre osobné použitie tento konkrétny náklad nepovažujeme za primeraný automatický ďalší krok.
+
+Bola prečítaná iba oficiálna dokumentácia. Nebol založený účet, prijaté predplatné, volané API ani získavané audio cez dodávateľa. Táto ponuka nie je odporúčanie ani dôkaz funkčnosti; nejde o oficiálne API YouTube. Aktuálne nemáme overenú funkčnú bezplatnú API službu, ktorú by bolo možné rovno pripojiť. Prípadná zmena poskytovateľa vyžaduje podporovaný a povolený API prístup aj samostatný skutočný test; už pripravená offline knižnica môže zostať zachovaná.
+
+Dokumentácia kandidáta: https://zylalabs.com/api-marketplace/music%2B&%2Baudio/youtube%2Bto%2Baudio%2Bapi/381.
 
 ## Primárne zdroje
 

@@ -1,0 +1,28 @@
+{
+  "observedAt": "2026-10-04T21:21:37Z",
+  "scope": "real YouTube source request through isolated Render backend",
+  "serviceId": "srv-db1c2ilg1s2s739gbntg",
+  "serviceUrl": "https://music-offline-downloader-307.onrender.com",
+  "plan": "free",
+  "autoDeploy": false,
+  "deploymentId": "dep-db1c5n3ncjis73c4bd00",
+  "runtimeCommit": "810d9cb5274658c830161699abd1f7fb19083c57",
+  "source": "https://www.youtube.com/watch?v=YE7VzlLtp-4",
+  "createHttpStatus": 202,
+  "observedStates": ["preparing", "failed"],
+  "result": {
+    "state": "failed",
+    "error": "source_blocked",
+    "reason": "bot_confirmation",
+    "stage": "probe"
+  },
+  "mp3Produced": false,
+  "frontendReleased": false,
+  "frontendVersionStillLive": "20261004-02",
+  "frontendDeploymentStillLive": "dep-db1bkb8u01pc73dn86qg",
+  "frontendUnitTestsPassed": 135,
+  "backendUnitTestsPassed": 15,
+  "newFrontendBrowserFlowVerified": false,
+  "newFeaturePhysicalIPhoneVerified": false,
+  "testFixtureSubstitutedForSource": false
+}

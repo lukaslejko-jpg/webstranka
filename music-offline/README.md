@@ -1,6 +1,6 @@
 # Music Offline — samostatná skúšobná aplikácia
 
-**MUSIC-OFFLINE-PREVIEW-20261004-03 — rozšírenie o YouTube odkaz; nasadenie podlieha skutočnému testu konverznej služby.**
+**MUSIC-OFFLINE-PREVIEW-20261004-03 — NEZVEREJNENÁ pracovná verzia. Render test skončil `source_blocked / bot_confirmation / probe`. Aktuálna používateľská aplikácia zostáva TEST 02.**
 
 Samostatná PWA založená na Kasette 1.4.0. Má formulár na uloženie zvuku z YouTube odkazu cez oddelenú konverznú službu, tri skúšobné skladby aj import vlastných hudobných súborov. Uložená hudba zostáva v zariadení. Vlastné importované súbory sa na server neposielajú; pri sťahovaní z YouTube server dostane vložený odkaz a pripraví MP3.
 

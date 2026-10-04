@@ -1,5 +1,7 @@
 # Music Offline — samostatný downloader (preview)
 
+**Stav 4. 10. 2026: server sa nasadil, ale skutočný YouTube test skončil `source_blocked / bot_confirmation / probe`. MP3 nebolo získané a nový frontend sa nezverejnil.** Presný stav a zachované návratové body: `../docs/music-offline-youtube-20261004-03.md`. Úspešné jednotkové testy neznamenajú úspešné sťahovanie z hostingu.
+
 Táto služba prijme jeden verejný YouTube odkaz, pripraví MP3 a dočasne ho poskytne Music Offline na uloženie do zariadenia. Nie je súčasťou produkčnej Music06 ani jej servera. Zmena frontendovej aplikácie a jej nasadenie sa evidujú samostatne.
 
 ## Spustenie na Render
