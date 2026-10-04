@@ -34,3 +34,6 @@ The live Favorites tab assigns items from likes but does not set the playlist us
 
 ## Rollback
 Preserve the deployment and source commit above. If a regression appears after production deployment, redeploy the exact baseline (Render rollback to dep-datdogc9v7es738aofdg), or restore the baseline tree in a new commit on the mobile deployment branch and trigger its deployment. Do not force-push or change another service.
+
+## Owner follow-up and second preview
+The owner confirmed on 2026-10-04 that Favorites starts with audible sound on the iPhone at the preview URL. The attached screenshot also shows active YouTube playback while the outside button remains a play triangle. The owner then requested two follow-up changes: a real Play/Pause indicator and restoration of the last displayed list for continued playback. They explicitly requested another preview test before production, and a stable version label only after their acceptance. See `docs/music-mobile-session-20261004.md`.
