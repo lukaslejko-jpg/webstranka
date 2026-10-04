@@ -1,7 +1,7 @@
 # Music mobile — exact startup comparison on one origin
 
 Date: 2026-10-04.
-Status: COMPARISON ONLY. Audible automatic playback after refresh remains unresolved. This is not an autoplay fix, release candidate acceptance, or stable/GOLDEN designation.
+Status: OWNER COMPARISON COMPLETE. The owner confirms that the original and current versions start/continue correctly in Safari and that both fail automatic sound after a hard refresh. The owner accepts the new version's preceding changes. This is not a claim of unconditional autoplay after hard refresh. The accepted state is recorded as [MOBILE-SAFARI-20261004-01](music-mobile-safari-checkpoint-20261004.md); the next isolated issue is [lock-screen seeking](music-mobile-lockscreen-seek-20261004.md).
 
 ## Confirmed owner result
 
@@ -58,9 +58,9 @@ The existing preview gains a reference route at:
 
 ## Interpretation
 
-The remaining useful phone comparison is the exact original code and current code on this one origin, with the same saved song and refresh sequence. Automatic sound in the original but not current version would justify further isolation of initialization differences. Failure in both demonstrates that copying the original startup code onto this origin is insufficient under those tested phone conditions. Neither result by itself proves that deployment onto another origin will grant autoplay.
+The owner has now completed the phone comparison: old and new work after switching from Chrome to Safari, while neither automatically starts after hard refresh. The earlier apparent new-version startup regression is therefore not reproduced when comparing both versions under these same phone/browser conditions. Further autoplay rewrites and repetition of this comparison are not the active task. Neither the source comparison nor this result promises unconditional autoplay in another browser or after hard refresh.
 
-No further change to production or stable tag is authorized by a failed preview test. The requirement remains open until audible behavior is confirmed on the relevant device.
+The existing lock-screen seeking problem occurs in both versions and remains a separate acceptance item. Production and a new stable/GOLDEN release remain pending while that mobile repair is prepared.
 
 ## Recovery and deployment
 
@@ -87,7 +87,7 @@ Current comparison deployment:
 - The reference console also reports the existing keep-alive Audio `NotAllowedError`. That Audio error alone is not interpreted as a YouTube rejection event: the exact original code has no `onAutoplayBlocked` observer.
 - This establishes that the exact original startup also did not visibly advance in the control browser. It does not prove audible behavior on the owner's phone or that a different origin would behave identically.
 - Proof screenshot: `music-povodny-start-porovnanie-20261004.jpg`.
-- Owner comparison on the same iPhone remains pending. The main requested autoplay behavior is unresolved, and no stable tag or production update was made.
+- Subsequent owner comparison on the same iPhone is complete as recorded above. The prior app changes are accepted with the shared hard-refresh limitation; lock-screen seeking is the next task. No stable/GOLDEN tag or production update was made.
 
 ## Primary reference
 

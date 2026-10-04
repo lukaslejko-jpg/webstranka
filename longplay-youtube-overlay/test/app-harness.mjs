@@ -34,9 +34,26 @@ class ClassList {
 
 export function createApp(options = {}) {
   const { ready = true, denyStorageReads = false, denyStorageWrites = false,
-    searchResults = searched, loadState = 1 } = options;
+    searchResults = searched, loadState = 1, mediaSession = false,
+    unsupportedMediaActions = [], locationSearch = '?mobile=1' } = options;
   let clock = 0, sequence = 0, player;
   const timers = new Map(), elements = new Map(), calls = [];
+  const seekCalls = [], audioCalls = [], mediaActions = new Map(), mediaRegistrations = [], positionStates = [];
+  const unsupported = new Set(unsupportedMediaActions);
+  class MediaMetadata {
+    constructor(metadata) { Object.assign(this, metadata); }
+  }
+  const fakeMediaSession = {
+    metadata: null,
+    playbackState: 'none',
+    setActionHandler(action, handler) {
+      mediaRegistrations.push({ action, handler });
+      if (unsupported.has(action)) throw new Error(`Unsupported media action: ${action}`);
+      if (handler === null) mediaActions.delete(action);
+      else mediaActions.set(action, handler);
+    },
+    setPositionState(state) { positionStates.push(state ? { ...state } : undefined); },
+  };
   let deferSearchResponses = false;
   const searchRequests = [];
   // Reusing this Map with createApp({ storage }) simulates a full page reload:
@@ -163,11 +180,14 @@ export function createApp(options = {}) {
     getPlayerState() { return this.state; }
     getCurrentTime() { return this.time; }
     getDuration() { return this.duration; }
-    seekTo() {}
+    seekTo(seconds, allowSeekAhead) {
+      // Commands do not invent a confirmed playback position or alter pause state.
+      seekCalls.push({ seconds, allowSeekAhead });
+    }
   }
   class Audio {
-    play() { return Promise.resolve(); }
-    pause() {}
+    play() { audioCalls.push('play'); return Promise.resolve(); }
+    pause() { audioCalls.push('pause'); }
   }
   class LocalURL extends URL {
     static createObjectURL() { return 'blob:local-test-audio'; }
@@ -183,9 +203,9 @@ export function createApp(options = {}) {
       title: item.title, artist: item.artist, duration: item.duration, artwork: item.art })) }),
   });
   const context = vm.createContext({
-    console, document, Audio, Blob, URL: LocalURL, URLSearchParams,
-    location: { search: '?mobile=1', origin: 'https://music.test' },
-    navigator: {},
+    console, document, Audio, Blob, URL: LocalURL, URLSearchParams, MediaMetadata,
+    location: { search: locationSearch, origin: 'https://music.test' },
+    navigator: mediaSession ? { mediaSession: fakeMediaSession } : {},
     localStorage: {
       getItem: key => {
         if (denyStorageReads) throw new Error('SecurityError: storage is denied');
@@ -241,6 +261,13 @@ export function createApp(options = {}) {
 
   return {
     calls, elements, storage, views, filters, searchRequests, get player() { return player; },
+    seekCalls, audioCalls, mediaActions, mediaRegistrations, positionStates,
+    mediaSession: mediaSession ? fakeMediaSession : undefined,
+    mediaAction(action, details = {}) {
+      const handler = mediaActions.get(action);
+      assert.equal(typeof handler, 'function', `Missing Media Session action: ${action}`);
+      return handler(details);
+    },
     get cards() { return renderedCards; },
     get activeView() { return views.find(button => button.classList.contains('active'))?.dataset.view; },
     async search(query = 'fixture search') {
