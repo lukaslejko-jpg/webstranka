@@ -40,13 +40,32 @@ The new mobile ownership tests failed before the helper/parent-session correctio
 
 JavaScript syntax and whitespace checks pass. Exact source comparisons confirm that `start`, `next`, `prev`, `tick` and YouTube initialization remain byte-identical to Preview05. HTML/CSS differ only in the script cache identifier. The immutable vendor and historical original-source reference are unchanged. Independent navigation review exercised pending selections and late requests and found the duplicate-only loading gap, which is now covered by the bounded continuation and its regression tests.
 
-Deployment and live-browser results are recorded below after execution. No claim of successful native iPhone seeking or background continuity is made before the owner's device test.
+Deployment and live-browser results are recorded below. No claim of successful native iPhone seeking or background continuity is made before the owner's device test.
 
 Required phone acceptance: play a song in the updated main preview, lock for at least two minutes, verify that the timeline advances steadily, seek to a clearly different audible passage with both the timeline and the relative controls, Pause/Resume, and let a song cross its end while locked. This checks the real audio and background continuation as well as the indicator. Removing the competing helper may expose a browser background-playback restriction; that remains a concrete test risk, not a confirmed success.
 
 For navigation, switch among Home, Search, Favorites and Recently played while results are loading; revisit previous results and scroll to load more. A section must remain selected until another explicit action, and playing Favorites must retain its queue while Search/Home are browsed. Check restoration of the last displayed list and its unread loaded tracks.
 
 Stable/GOLDEN designation and production promotion stay pending the requested device acceptance. The prior Safari startup comparison was already accepted; unconditional hard-refresh autoplay is not being introduced.
+
+## Verified Preview06 deployment
+
+- Application commit: `29fe8492df7c79b0b520ddf2924626ef6c85761c`.
+- Render deployment: `dep-db19o82d0e5s73ep0mu0`, live, finished `2026-10-04T18:34:34.21642Z`.
+- Verified acceptance URL: https://music-mobile-favorites-preview.onrender.com/?mobile=1&v=20261004-6
+- The existing preview remains on the free plan, with auto-deploy off. No other service was deployed.
+- Live HTML and JavaScript returned HTTP 200 and matched the tested files byte for byte. Script SHA-256: `d7d76636cf18486c6a0815d967a158764e81b1ea782b5975457262822d80072d`; HTML SHA-256: `5226ff84a60e758fa9e89c32a761869224b396d8939350bb9e186cbc65e2f7fa`.
+- `/health` returned `ok:true` and the pinned original-core identifier. The historical reference and production application still matched the original `1639536` bytes, SHA-256 `7228b807413e684c9267e1548d8a1b0752f4c6d237809ad511f022865f38a9b9`. The production deployment ID was independently rechecked and remains `dep-datdogc9v7es738aofdg`.
+
+Live browser checks:
+
+1. The page loaded build `20261004-6`, restored the selected Favorites song, and retained exactly one YouTube iframe.
+2. A manual Queen search returned 25 tracks. Selecting Home then loaded 14 recommendations and remained on Home after the response arrived. The Queen query and existing playback queue were preserved.
+3. Returning to Search restored exactly the same 25 tracks in the same order. Scrolling loaded 49 tracks while the active Favorites queue remained unchanged.
+4. Favorites and Recently played displayed their own lists. A full reload restored all 49 Search cards, the query and heading, and the exact saved inner-scroll position of 2009 pixels. Returning to Home recovered its separate 14-track cache.
+5. No new application-script warning/error was captured. The cloud browser still reported the already-known autoplay block and separate browser-extension errors. These UI checks do not claim audible playback or native iPhone controls.
+
+Screenshot: `music-mobile-preview06-navigation.jpg`, taken with Home selected after the checks. It documents the browsing UI, not a physical lock-screen seek. Native clock accuracy, audible seek, Pause/Resume and background continuation remain pending owner acceptance before any stable/GOLDEN designation or production promotion.
 
 ## Primary technical sources
 
