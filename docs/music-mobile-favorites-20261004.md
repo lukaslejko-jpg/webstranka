@@ -22,8 +22,14 @@ The live Favorites tab assigns items from likes but does not set the playlist us
 - Baseline reproduction: confirmed with empty and stale playback queues. In the live UI, selecting Queen – Bohemian Rhapsody from Favorites after searching for a-ha displays Queen below the player while the actual YouTube frame loads a-ha – Take On Me.
 - Regression tests: 10/10 pass against the full patched overlay script. The same tests against the downloaded live baseline fail 8/10 and pass the two playback-preservation cases. Command: `node --test longplay-youtube-overlay/test/favorites-playback.test.mjs`.
 - Independent source review: passed; no blocking regression identified.
-- Separate preview and actual player check: pending.
-- Production deployment: pending.
+- Preview service: srv-db17m8navr4c73alkop0, plan free, auto-deploy disabled.
+- Preview URL: https://music-mobile-favorites-preview.onrender.com/?mobile=1
+- Preview deployment: dep-db17m9navr4c73alktgg, status live; exact tested commit a29b5f9c6aa758b45cfa00d6bc14bbad34ff6efa.
+- Served preview JavaScript matches the locally tested file byte for byte; health endpoint succeeds; no Render application error logs were returned.
+- Real browser selection check: search Queen, save two favorites, search a-ha, open Favorites, select the second favorite. Both the application title and the YouTube iframe identify fJ9rUzIMcZQ (Queen official), instead of the stale a-ha search result.
+- Two real Next clicks alternate only between the two selected favorites: vbvyNnw8Qjg (Live Aid) and fJ9rUzIMcZQ (official). The same iframe element remains present.
+- Runtime limitation: YouTube metadata and playlist selection load, but the media stream stalls at time 0 with readyState 0 in this cloud browser on both the original and preview versions, including after a direct click inside the player. No error is reported by the video element. Audible playback, timed transitions, and physical iPhone/background behavior could not be verified. The cause of this environment limitation is not asserted.
+- Production deployment: NOT performed. APP_CHANGE_SAFETY_RULES.md requires a real playback test before production. The original mobile service and deployment branch remain at the recovery point; an iPhone playback check is still needed before promotion.
 - New GOLDEN designation: not requested; requires owner acceptance under repository rules.
 
 ## Rollback
