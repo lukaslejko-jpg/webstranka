@@ -3,6 +3,8 @@
 Date: 2026-10-04. Candidate: MOBILE-PREVIEW-20261004-03.
 Status: PREVIEW. Owner verification of automatic audible playback after refresh is required before acceptance or production deployment.
 
+Owner result: FAILED AUTOSTART RETEST. The owner followed the steps and reported that the song still did not start automatically. The singleton startup hypothesis did not resolve the symptom. Do not promote or label this candidate stable. The next evidence-gathering step is recorded in [music-mobile-startup-diagnostics-20261004.md](music-mobile-startup-diagnostics-20261004.md).
+
 ## Owner feedback and recovery points
 
 The owner tested the second preview and reported that the requested changes worked, except that refreshing the page no longer automatically started the last song as before.

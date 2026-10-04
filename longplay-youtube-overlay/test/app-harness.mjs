@@ -75,9 +75,21 @@ export function createApp(options = {}) {
       }
     }
     get innerHTML() { return this.html || ''; }
-    setAttribute(name, value) { this.attributes.set(name, String(value)); }
-    getAttribute(name) { return this.attributes.get(name) ?? null; }
-    removeAttribute(name) { this.attributes.delete(name); }
+    setAttribute(name, value) {
+      this.attributes.set(name, String(value));
+      if (name.startsWith('data-')) this.dataset[name.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = String(value);
+    }
+    getAttribute(name) {
+      if (name.startsWith('data-')) {
+        const value = this.dataset[name.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())];
+        return value === undefined ? null : String(value);
+      }
+      return this.attributes.get(name) ?? null;
+    }
+    removeAttribute(name) {
+      this.attributes.delete(name);
+      if (name.startsWith('data-')) delete this.dataset[name.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())];
+    }
     closest(selector) { return selector === '[data-like]' && this.dataset.like !== undefined ? this : null; }
     addEventListener(name, handler) { this.listeners.set(name, handler); }
     querySelector(selector) { return selector === '.browse' ? browse : selector === '.player' ? playerElement : null; }
@@ -250,6 +262,11 @@ export function createApp(options = {}) {
     fireState(state) {
       player.state = state;
       player.config.events.onStateChange({ data: state, target: player });
+    },
+    fireAutoplayBlocked() {
+      assert.equal(typeof player.config.events.onAutoplayBlocked, 'function',
+        'The player must register the explicit autoplay-blocked diagnostic event');
+      player.config.events.onAutoplayBlocked({ target: player });
     },
     fireWindow: (name, event) => dispatch(windowListeners, name, event),
     fireDocument: (name, event) => dispatch(documentListeners, name, event),
