@@ -14,6 +14,12 @@ The owner confirmed the other requested changes but reported no automatic playba
 - Previous documentation head: 39c0f36f60f2e0a83c0966b69b33570e0b64edb4.
 - Production: https://music-mobile-307.onrender.com/?mobile=1; service srv-datcj8d9fdbs73b7iv3g; commit 163953618b01c714b5773830648415be0726fa47; deployment dep-datdogc9v7es738aofdg. Production is unchanged.
 
+Current diagnostic preview:
+- Application commit: 9ad89a42c57fdba8ae4c2c5c8ab9c4c09b2913d3.
+- Deployment: dep-db18lc0u01pc73dbbf6g.
+- Render status: live; finished 2026-10-04T17:20:06.708544Z.
+- Same preview service and address, with production and stable designation still pending.
+
 ## Evidence from the actual baseline
 
 - The complete app script in GOLDEN 447441d68b672a3d82c91561521dee531b188229 is byte-for-byte identical to the current mobile production script.
@@ -53,7 +59,10 @@ The script cache version is `20261004-4`. Existing Play/Pause and saved-list beh
 - JavaScript syntax and whitespace checks passed.
 - Full-script suite: 47/47 passed, comprising the previous 42 regressions plus 5 targeted diagnostic tests with multiple readiness, state and interaction cases.
 - Independent review: ready for diagnostic preview; no concrete blockers. No playback, pause or queue commands were added.
-- Live diagnostic preview observation: pending deployment.
+- Live diagnostic preview: browser loaded `tesla-app.js?v=20261004-4`, and fetched HTML/JavaScript matched the committed application byte for byte. `/health` returned `ok: true` with the unchanged LongPlay core and YouTube overlay.
+- A full refresh restored the saved Favorites list and last selected song. The actual YouTube event triggered the visible message `Prehliadač zablokoval automatické spustenie. Ťukni na ▶.` The observed diagnostic attributes were build `20261004-4`, result `blocked`, state `-1`, and no startup error. This is direct evidence of rejected automatic playback in the cloud browser; it is not yet evidence of the same cause on the owner's iPhone.
+- A subsequent manual Play cleared the diagnostic message and changed the observation result to `cancelled`, retaining the selected song and list. This check verifies the diagnostic clears correctly, not audible media playback.
+- Screenshot of the actual blocked message: `music-dovod-automatickeho-startu-20261004-4.jpg`.
 
 ## Primary API references and interpretation
 
