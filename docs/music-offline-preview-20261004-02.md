@@ -1,6 +1,6 @@
 # Music Offline — Preview 02: skladby dostupné priamo na skúšku
 
-Status: **preview; čaká na fyzickú skúšku na iPhone**. Toto nie je nový GOLDEN bod pôvodnej Music.
+Status: **preview; používateľ 4. 10. 2026 potvrdil „Funguje“**. Toto nie je nový GOLDEN bod pôvodnej Music. Potvrdenie nie je samostatná technická telemetria iPhone; nižšie zostáva presne rozlíšené, čo overil cloudový prehliadač.
 
 ## Dôvod a rozsah
 
