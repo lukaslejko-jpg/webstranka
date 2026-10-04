@@ -1,6 +1,12 @@
 # Music mobile — connect lock-screen seeking to YouTube
 
 Date: 2026-10-04. Candidate: **MOBILE-PREVIEW-20261004-05**.
+
+## Owner result: rejected as a lock-screen fix
+
+The owner tested Preview05 and reported that seeking from about one second to fifteen seconds only moves the system indicator. It alternates between fifteen and zero once per second, while the song does not audibly seek. Both the timeline and relative controls show an inaccurate position. The owner also reproduced Search switching back from Home after a response arrives.
+
+The 58 passing script tests below demonstrated callback registration and application commands; they did not demonstrate native iPhone ownership, a stable system clock, or an audible seek. Preview05 is not an accepted lock-screen checkpoint. The next correction and its separate acceptance boundary are recorded in [music-mobile-navigation-native-20261004.md](music-mobile-navigation-native-20261004.md).
 Status: implementation, technical verification and preview deployment checks passed; real iPhone lock-screen acceptance pending.
 
 ## Problem and observed evidence

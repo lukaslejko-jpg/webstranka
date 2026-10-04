@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createApp, expectAppQueue, expectPlaylist, expectRestoredPlaylist,
   favorites, searched } from './app-harness.mjs';
 
-const BUILD = '20261004-5';
+const BUILD = '20261004-6';
 const BLOCKED = 'Prehliadač zablokoval automatické spustenie. Ťukni na ▶.';
 const storedSession = () => new Map([
   ['teslaYT:likes', JSON.stringify(favorites)],

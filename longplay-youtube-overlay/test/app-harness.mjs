@@ -39,13 +39,17 @@ export function createApp(options = {}) {
   let clock = 0, sequence = 0, player;
   const timers = new Map(), elements = new Map(), calls = [];
   const seekCalls = [], audioCalls = [], mediaActions = new Map(), mediaRegistrations = [], positionStates = [];
+  const metadataWrites = [], playbackStateWrites = [];
+  let metadata = null, playbackState = 'none';
   const unsupported = new Set(unsupportedMediaActions);
   class MediaMetadata {
     constructor(metadata) { Object.assign(this, metadata); }
   }
   const fakeMediaSession = {
-    metadata: null,
-    playbackState: 'none',
+    get metadata() { return metadata; },
+    set metadata(value) { metadata = value; metadataWrites.push(value); },
+    get playbackState() { return playbackState; },
+    set playbackState(value) { playbackState = value; playbackStateWrites.push(value); },
     setActionHandler(action, handler) {
       mediaRegistrations.push({ action, handler });
       if (unsupported.has(action)) throw new Error(`Unsupported media action: ${action}`);
@@ -114,7 +118,9 @@ export function createApp(options = {}) {
     focus() {}
     setPointerCapture() {}
     insertBefore() {}
-    getBoundingClientRect() { return { left: 0, width: 1000 }; }
+    getBoundingClientRect() {
+      return this.id === 'browse' && options.browseRect ? options.browseRect : { left: 0, width: 1000 };
+    }
   }
   const elementIds = ['remoteApp', 'desktopApp', 'qrBtn', 'qrBox', 'qrImg', 'grid',
     'queue', 'status', 'heading', 'q', 'searchForm', 'clearSearch', 'go', 'main',
@@ -205,6 +211,7 @@ export function createApp(options = {}) {
   const context = vm.createContext({
     console, document, Audio, Blob, URL: LocalURL, URLSearchParams, MediaMetadata,
     location: { search: locationSearch, origin: 'https://music.test' },
+    ...(options.windowHeight === undefined ? {} : { innerHeight: options.windowHeight }),
     navigator: mediaSession ? { mediaSession: fakeMediaSession } : {},
     localStorage: {
       getItem: key => {
@@ -261,7 +268,7 @@ export function createApp(options = {}) {
 
   return {
     calls, elements, storage, views, filters, searchRequests, get player() { return player; },
-    seekCalls, audioCalls, mediaActions, mediaRegistrations, positionStates,
+    seekCalls, audioCalls, mediaActions, mediaRegistrations, positionStates, metadataWrites, playbackStateWrites, browse,
     mediaSession: mediaSession ? fakeMediaSession : undefined,
     mediaAction(action, details = {}) {
       const handler = mediaActions.get(action);
@@ -281,7 +288,12 @@ export function createApp(options = {}) {
       browse.scrollTop = browse.scrollHeight - browse.clientHeight;
       return browse.listeners.get('scroll')?.({ type: 'scroll', target: browse });
     },
+    scrollToPosition(top) {
+      browse.scrollTop = top;
+      return browse.listeners.get('scroll')?.({ type: 'scroll', target: browse });
+    },
     view: view => click(views.find(button => button.dataset.view === view)),
+    filter: filter => click(filters.find(button => button.dataset.filter === filter)),
     card: index => click(renderedCards[index]),
     like: index => click(renderedLikes[index]),
     button: id => click(elements.get(id)),
