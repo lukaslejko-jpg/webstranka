@@ -1,0 +1,12 @@
+{
+  "name": "music-offline-preview",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated Music Offline preview based on Kasette 1.4.0",
+  "license": "BSD-3-Clause",
+  "scripts": {
+    "validate": "node scripts/validate.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}
