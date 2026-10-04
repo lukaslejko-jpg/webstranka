@@ -1,8 +1,8 @@
 # Music Offline — samostatná skúšobná aplikácia
 
-**MUSIC-OFFLINE-PREVIEW-20261004-02 — čaká na skúšku na iPhone.**
+**MUSIC-OFFLINE-PREVIEW-20261004-03 — rozšírenie o YouTube odkaz; nasadenie podlieha skutočnému testu konverznej služby.**
 
-Samostatná PWA založená na Kasette 1.4.0. Vie priamo stiahnuť tri skúšobné skladby do zariadenia aj importovať vlastné hudobné súbory. Webový server poskytuje aplikáciu a tento konkrétny balík hudby; importovaná hudba sa na server neposiela.
+Samostatná PWA založená na Kasette 1.4.0. Má formulár na uloženie zvuku z YouTube odkazu cez oddelenú konverznú službu, tri skúšobné skladby aj import vlastných hudobných súborov. Uložená hudba zostáva v zariadení. Vlastné importované súbory sa na server neposielajú; pri sťahovaní z YouTube server dostane vložený odkaz a pripraví MP3.
 
 ## Pôvod a licencia
 
@@ -18,10 +18,20 @@ Samostatná PWA založená na Kasette 1.4.0. Vie priamo stiahnuť tri skúšobn�
 1. Prvé otvorenie vykonaj v Safari s internetom.
 2. Zdieľať → Pridať na plochu. Otvor Music Offline vlastnou ikonou ešte pred vytváraním knižnice.
 3. Počkaj na zelený stav „Pripravené na offline“.
-4. Stlač „Stiahnuť 3 skladby na skúšku“ a počkaj na „Uložené 3/3 skladby“. Balík má 2 451 989 bajtov, približne 2,5 MB. Vlastné MP3/M4A možno naďalej pridať cez Súbory.
-5. Otvor skúšobné skladby, spusti prvú, zapni režim Lietadlo a vypni aj Wi-Fi. Odskúšaj pokračovanie, posun, zamknutie aj nové otvorenie aplikácie.
+4. V overenom Preview 03 vlož YouTube odkaz a stlač „Stiahnuť do mobilu“. Počkaj na „Skladba je uložená offline“. Vlastné MP3/M4A možno naďalej pridať cez Súbory; skúšobný balík sa sťahuje samostatným tlačidlom.
+5. Stlač „Otvoriť uloženú skladbu“ a potom Play. Zapni režim Lietadlo a vypni aj Wi-Fi. Odskúšaj pokračovanie, posun, zamknutie aj nové otvorenie aplikácie.
 
-Preview 02 je na https://music-offline-307.onrender.com/. Pri aktualizácii existujúcej ikony môže byť najprv zobrazený TEST 01. Po hlásení o novšej verzii aplikáciu obnov s internetom; cieľový údaj je TEST 02. Aplikáciu ani jej dáta nemaž.
+Adresa existujúcej offline aplikácie je https://music-offline-307.onrender.com/. Preview 02 zostáva návratovým bodom. Nasadený stav určuje release dokument, nie samotná prítomnosť nového kódu vo vetve. Po schválenej aktualizácii a hlásení o novšej verzii aplikáciu obnov s internetom. Aplikáciu ani jej dáta nemaž.
+
+## Stiahnutie z YouTube
+
+`public/youtube-download.js` komunikuje iba s izolovanou službou nakonfigurovanou v `public/download-config.js`. Jej presný HTTPS origin musí zodpovedať `connect-src` v HTML a povolenému CORS originu na serveri. Prázdna konfigurácia sa pred zverejnením nahradí overenou adresou služby.
+
+Prevod sa spúšťa jediným explicitným POST na `/api/jobs`. Stav sa zisťuje cez `/api/jobs/{id}`; hotový MP3 sa prenáša z `/api/jobs/{id}/audio`. Klient overuje povolené YouTube URL, identitu úlohy/videa, metadáta, limit 30 MB, MIME, dĺžku aj SHA-256. Celá sieťová operácia má limit päť minút. Zrušenie preruší požiadavky a odošle DELETE známej úlohy.
+
+MP3 sa najprv uloží do existujúceho IndexedDB pod `youtube-{videoId}`, až potom sa zapíšu metadáta knižnice. Chyba úložiska nemôže vyhlásiť skladbu za uloženú. Opakovaná požiadavka overí už uložené bajty a zabráni duplicitám. Rozpracovaná úloha a text URL sa pamätajú oddeleným kľúčom `music-offline:youtube-download`; obnovenie stránky samo nespúšťa sieťové požiadavky. Používateľ môže výslovne pokračovať alebo úlohu zrušiť.
+
+Postup a dokončenie aktualizujú iba stavové prvky karty. Nevyvolávajú prehrávanie, zmenu fronty, navigáciu ani nový render zobrazenia. Otvorenie skladby je samostatné tlačidlo. Dostupnosť závisí od zdroja; aplikácia nezaručuje stiahnutie ľubovoľného videa a nežiada účtové cookies.
 
 ## Skúšobné skladby na stiahnutie
 
@@ -72,4 +82,4 @@ Súbor `public/release.json` a rovnaké číslo v HTML, offline module a service
 
 Node testy service workera simulujú nedostupnú sieť; nie sú náhradou za fyzický test režimu Lietadlo na iPhone. Cloudový Chromium takisto nepreukazuje funkčnosť zamknutej obrazovky v iOS. Verejné hlásenie Kasette #5 o automatickom pokračovaní pri zamknutí zostáva dôvodom na túto akceptáciu: https://github.com/nico-alvz/kasette/issues/5.
 
-Presný stav nasadenia a overení: `../docs/music-offline-preview-20261004-02.md`. Predchádzajúci záznam Preview 01 a jeho pevný checkpoint zostávajú zachované.
+Presný stav nového nasadenia a overení: `../docs/music-offline-youtube-20261004-03.md`. Predchádzajúce záznamy Preview 01/02 a ich pevné checkpointy zostávajú zachované.

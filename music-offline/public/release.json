@@ -1,8 +1,8 @@
 {
   "name": "Music Offline",
-  "release": "MUSIC-OFFLINE-PREVIEW-20261004-02",
-  "version": "20261004-02",
-  "status": "preview-awaiting-iphone-test",
+  "release": "MUSIC-OFFLINE-PREVIEW-20261004-03",
+  "version": "20261004-03",
+  "status": "draft-source-verification-blocked",
   "upstream": "nico-alvz/kasette",
   "upstreamCommit": "ee170285664f14f7e044fd7d0f683c6d0751f469",
   "upstreamVersion": "1.4.0",

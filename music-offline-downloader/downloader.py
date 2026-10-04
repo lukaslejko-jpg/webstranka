@@ -24,12 +24,19 @@ VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 JOB_ID = re.compile(r"^[0-9a-f]{32}$")
 YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"}
 TERMINAL = {"ready", "failed", "cancelled"}
+SAFE_FAILURE_REASONS = {"bot_confirmation", "login_required", "http_403", "http_429",
+                        "age_confirmation", "rate_limited", "access_forbidden", "too_large",
+                        "timeout", "source_unavailable"}
+SAFE_FAILURE_STAGES = {"probe", "download"}
 
 
 class DownloadError(Exception):
-    def __init__(self, code: str, status: int = 400, retry_after: int | None = None):
+    def __init__(self, code: str, status: int = 400, retry_after: int | None = None,
+                 *, reason: str | None = None, stage: str | None = None):
         super().__init__(code)
         self.code, self.status, self.retry_after = code, status, retry_after
+        self.reason = reason if reason in SAFE_FAILURE_REASONS else None
+        self.stage = stage if stage in SAFE_FAILURE_STAGES else None
 
 
 def canonical_video(value: object) -> tuple[str, str]:
@@ -109,6 +116,8 @@ class Job:
     expires: float
     state: str = "queued"
     error: str | None = None
+    reason: str | None = None
+    stage: str | None = None
     result: Result | None = None
     task: asyncio.Task | None = None
     executing: bool = False
@@ -121,6 +130,11 @@ class Job:
                 "expiresAt": int(self.expires * 1000)}
         if self.error:
             data["error"] = self.error
+        if self.state == "failed":
+            if self.reason:
+                data["reason"] = self.reason
+            if self.stage:
+                data["stage"] = self.stage
         if self.state == "ready" and self.result:
             result = self.result
             data.update(title=result.title, artist=result.artist,
@@ -236,6 +250,7 @@ class JobManager:
             job.state, job.error = "failed", "timeout"
         except DownloadError as error:
             job.state, job.error = "failed", error.code
+            job.reason, job.stage = error.reason, error.stage
         except Exception:
             job.state, job.error = "failed", "conversion_failed"
         finally:
@@ -297,6 +312,33 @@ def classify_source_failure(stderr: str) -> str:
     if "timed out" in text or "timeout" in text:
         return "timeout"
     return "source_unavailable"
+
+
+def diagnosed_source_failure(stderr: str, stage: str) -> DownloadError:
+    """Return only fixed categories; stderr itself must never reach API/logs."""
+    text = stderr.lower()
+    # This message also contains "sign in"; retain its more specific cause.
+    if "not a bot" in text:
+        reason = "bot_confirmation"
+    elif "sign in" in text or "login required" in text:
+        reason = "login_required"
+    elif "http error 429" in text:
+        reason = "http_429"
+    elif "http error 403" in text:
+        reason = "http_403"
+    elif "confirm your age" in text:
+        reason = "age_confirmation"
+    elif "too many requests" in text:
+        reason = "rate_limited"
+    elif "forbidden" in text:
+        reason = "access_forbidden"
+    elif any(x in text for x in ("max-filesize", "larger than max", "file is larger")):
+        reason = "too_large"
+    elif "timed out" in text or "timeout" in text:
+        reason = "timeout"
+    else:
+        reason = "source_unavailable"
+    return DownloadError(classify_source_failure(stderr), reason=reason, stage=stage)
 
 
 async def stop_process(process: asyncio.subprocess.Process) -> None:
@@ -420,7 +462,7 @@ async def download_video(job: Job, config: Config) -> Result:
     code, raw, stderr = await run_command(job, config, ytdlp_base() + [
         "--skip-download", "--dump-single-json", "-f", "bestaudio/best", job.source_url], config.probe_timeout)
     if code:
-        raise DownloadError(classify_source_failure(stderr))
+        raise diagnosed_source_failure(stderr, "probe")
     try:
         info = json.loads(raw)
     except (ValueError, UnicodeError):
@@ -449,7 +491,7 @@ async def download_video(job: Job, config: Config) -> Result:
         "--print", "before_dl:MUSIC_STAGE downloading", "--print", "post_process:MUSIC_STAGE converting",
     ], config.overall_timeout, capture_limit=65536, stages=True)
     if code:
-        raise DownloadError(classify_source_failure(stderr))
+        raise diagnosed_source_failure(stderr, "download")
     path = job.directory / "audio.mp3"
     if not path.is_file() or path.is_symlink():
         raise DownloadError("source_unavailable")

@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#131120">
   <meta name="description" content="Music Offline — vlastné skladby uložené v telefóne. Samostatná skúšobná aplikácia.">
-  <meta name="music-offline-version" content="20261004-02">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="music-offline-version" content="20261004-03">
+  <!-- Only the isolated Music conversion service may be contacted externally. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' https://music-offline-downloader-307.onrender.com; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -111,6 +112,25 @@
     .cta-ic .svg { width: 26px; height: 26px; }
     .cta-t { font-size: 1rem; font-weight: 700; }
     .cta-d { color: var(--txt2); font-size: .8rem; margin-top: 2px; }
+
+    .youtube-card { padding: 20px 18px; margin: 0 0 22px; border-radius: 15px;
+      border: 1px solid color-mix(in srgb, var(--accent) 58%, var(--line));
+      background: color-mix(in srgb, var(--accent) 12%, var(--surf)); }
+    .youtube-card h2 { font-size: 1.15rem; line-height: 1.35; margin: 0 0 8px; }
+    .youtube-card p { font-size: .86rem; color: var(--txt2); line-height: 1.5; margin: 0 0 16px; }
+    .youtube-card label { display: block; font-size: .78rem; font-weight: 600; margin-bottom: 7px; }
+    .youtube-input { width: 100%; min-width: 0; margin-bottom: 12px; padding: 13px 12px;
+      border: 1px solid var(--line); border-radius: 9px; background: var(--bg0); color: var(--txt);
+      font-family: inherit; font-size: 16px; line-height: 1.35; }
+    .youtube-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .youtube-card .youtube-status { margin: 14px 0 0; overflow-wrap: anywhere; }
+    .youtube-card .youtube-error { color: var(--txt); font-weight: 600; }
+    .youtube-secondary { display: block; width: 100%; margin-top: 12px; padding: 12px;
+      border: 1px solid var(--line); border-radius: 9px; color: var(--txt); font-weight: 600;
+      font-size: .84rem; line-height: 1.4; background: var(--surf); }
+    .youtube-open { border-color: var(--accent); color: var(--accent); }
+    .youtube-card .youtube-rights { margin: 14px 0 0; font-size: .71rem; }
+    .youtube-card [hidden] { display: none; }
 
     .sample-card { padding: 18px; margin: 0 0 22px; border-radius: 15px;
       border: 1px solid color-mix(in srgb, var(--accent) 48%, var(--line));
@@ -401,7 +421,7 @@
   <div id="app">
     <div id="offlineStatus" data-ready="false">
       <span id="offlineStatusText" role="status">Pripravujem offline aplikáciu…</span>
-      <button id="offlineHelpButton" type="button" aria-label="Návod a verzia Music Offline">TEST 02 · Návod</button>
+      <button id="offlineHelpButton" type="button" aria-label="Návod a verzia Music Offline">TEST 03 · Návod</button>
     </div>
     <div id="view"></div>
     <div id="mini"></div>
@@ -416,13 +436,14 @@
     <ol>
       <li>Na iPhone otvor túto adresu v <strong>Safari</strong>. Cez <strong>Zdieľať → Pridať na plochu</strong> pridaj aplikáciu.</li>
       <li>Otvor ju novou ikonou <strong>Music Offline</strong> a počkaj na stav <strong>Pripravené na offline</strong>.</li>
-      <li>Na úvodnej obrazovke stlač <strong>Stiahnuť 3 skladby na skúšku</strong>. Počkaj na <strong>Uložené 3/3 skladby</strong>. Potrebuješ internet a približne 2,5 MB miesta.</li>
-      <li>Stlač <strong>Otvoriť skúšobné skladby</strong> a spusti prvú. Zapni režim Lietadlo, vypni aj Wi-Fi a odskúšaj pokračovanie pri zamknutej obrazovke.</li>
+      <li>Do poľa <strong>Odkaz na YouTube</strong> vlož odkaz na jedno video a stlač <strong>Stiahnuť do mobilu</strong>. Aplikáciu nechaj otvorenú, kým sa nezobrazí <strong>Skladba je uložená offline.</strong></li>
+      <li>Stlač <strong>Otvoriť uloženú skladbu</strong> a potom jej tlačidlo Play. Zapni režim Lietadlo, vypni aj Wi-Fi a odskúšaj prehrávanie pri zamknutej obrazovke.</li>
     </ol>
-    <p>Vlastné MP3 alebo M4A pridáš cez <strong>Pridať skladby</strong> zo Súborov. Skúšobný balík obsahuje tri klavírne nahrávky; obľúbené skladby z online Music sa sem automaticky nesťahujú. <a href="./sample-credits.html" target="_blank" rel="noopener">Skladby a licencie</a>.</p>
+    <p>Sťahovanie potrebuje internet. Dostupnosť videa závisí od zdroja; súkromné alebo chránené videá sa nemusia dať stiahnuť. Ukladaj iba obsah, ktorý máš právo stiahnuť.</p>
+    <p>Vlastné MP3 alebo M4A pridáš cez <strong>Pridať skladby</strong> zo Súborov. Tlačidlom <strong>Stiahnuť 3 skladby na skúšku</strong> získaš aj skúšobný balík troch klavírnych nahrávok, približne 2,5 MB. <a href="./sample-credits.html" target="_blank" rel="noopener">Skladby a licencie</a>.</p>
     <p>Hudba sa ukladá do tejto aplikácie v zariadení. Pôvodné súbory si ponechaj; v Nastaveniach si môžeš vytvoriť aj zálohu knižnice.</p>
     <p id="offlineStorageStatus"></p>
-    <p class="offline-version">MUSIC-OFFLINE-PREVIEW-20261004-02<br>Základ: Kasette 1.4.0 · <a href="./LICENSE-kasette.txt" target="_blank" rel="noopener">BSD-3-Clause licencia</a></p>
+    <p class="offline-version">MUSIC-OFFLINE-PREVIEW-20261004-03<br>Základ: Kasette 1.4.0 · <a href="./LICENSE-kasette.txt" target="_blank" rel="noopener">BSD-3-Clause licencia</a></p>
     <button id="offlineHelpClose" type="button">Rozumiem</button>
   </dialog>
 

@@ -59,7 +59,7 @@ test('installed shell opens root and versioned index with network unavailable', 
   await h.event('install');
   await h.event('activate');
   h.offline();
-  for (const path of ['/', '/?v=20261004-02', '/index.html?v=test']) {
+  for (const path of ['/', '/?v=20261004-03', '/index.html?v=test']) {
     const response = await h.event('fetch', { request: { url: origin + path, method: 'GET', mode: 'navigate' } });
     assert.equal(response.body, 'asset:./index.html');
   }
@@ -76,7 +76,7 @@ test('activation deletes old owned caches and preserves unrelated app caches', a
   await h.event('activate');
   assert(h.stores.has('unrelated-app-cache'));
   assert(!h.stores.has('music-offline-shell-old'));
-  assert(h.stores.has('music-offline-shell-20261004-02'));
+  assert(h.stores.has('music-offline-shell-20261004-03'));
 });
 
 test('readiness detects missing assets and rejects an incomplete installation', async () => {
@@ -88,7 +88,7 @@ test('readiness detects missing assets and rejects an incomplete installation', 
   const msg = { data: { type: 'MUSIC_OFFLINE_STATUS' }, ports: [{ postMessage: value => { reply = value; } }] };
   await h.event('message', msg);
   assert.equal(reply.ready, true);
-  h.stores.get('music-offline-shell-20261004-02').delete(origin + '/app.js');
+  h.stores.get('music-offline-shell-20261004-03').delete(origin + '/app.js');
   await h.event('message', msg);
   assert.equal(reply.ready, false);
 });

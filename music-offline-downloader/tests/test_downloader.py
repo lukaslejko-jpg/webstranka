@@ -10,7 +10,8 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import create_app
 from downloader import (Config, DownloadError, Job, JobManager, RateLimiter, Result,
-                        canonical_video, check_temporary_size, classify_source_failure, run_command)
+                        canonical_video, check_temporary_size, classify_source_failure,
+                        diagnosed_source_failure, run_command)
 
 
 SOURCE = "https://www.youtube.com/watch?v=YE7VzlLtp-4"
@@ -57,6 +58,26 @@ class URLTests(unittest.TestCase):
         self.assertEqual(classify_source_failure("HTTP Error 429: Too Many Requests"), "source_blocked")
         self.assertEqual(classify_source_failure("File is larger than max-filesize"), "too_large")
         self.assertEqual(classify_source_failure("private video"), "source_unavailable")
+
+    def test_safe_failure_diagnostics_and_bot_precedence(self):
+        cases = [
+            ("HTTP Error 403. Sign in to confirm you're not a bot. https://secret.invalid/?token=secret", "bot_confirmation"),
+            ("Sign in to view this video", "login_required"),
+            ("HTTP Error 403: Forbidden", "http_403"),
+            ("HTTP Error 429: Too Many Requests", "http_429"),
+            ("Private video https://secret.invalid/?token=secret", "source_unavailable"),
+        ]
+        for text, expected in cases:
+            with self.subTest(expected=expected):
+                error = diagnosed_source_failure(text, "probe")
+                self.assertEqual(error.reason, expected)
+                self.assertEqual(error.stage, "probe")
+                self.assertEqual(error.code, classify_source_failure(text))
+                self.assertNotIn("secret", str(error))
+        self.assertEqual(diagnosed_source_failure("HTTP Error 403", "download").stage, "download")
+        unsafe = DownloadError("source_blocked", reason="raw-secret", stage="raw-secret")
+        self.assertIsNone(unsafe.reason)
+        self.assertIsNone(unsafe.stage)
 
 
 class ManagerTests(unittest.IsolatedAsyncioTestCase):
@@ -138,11 +159,14 @@ class ManagerTests(unittest.IsolatedAsyncioTestCase):
     async def test_failure_removes_partial_files_and_does_not_publish_ready(self):
         async def failing(job, _config):
             (job.directory / "audio.part").write_bytes(b"partial")
-            raise DownloadError("source_blocked")
+            raise diagnosed_source_failure("Sign in to confirm you're not a bot; token=secret", "probe")
         self.manager.runner = failing
         job = await self.manager.create(SOURCE, "peer")
         await job.task
         self.assertEqual(job.public()["error"], "source_blocked")
+        self.assertEqual(job.public()["reason"], "bot_confirmation")
+        self.assertEqual(job.public()["stage"], "probe")
+        self.assertNotIn("secret", json.dumps(job.public()))
         self.assertEqual(job.state, "failed")
         self.assertFalse(job.directory.exists())
         self.assertNotIn("filePath", job.public())

@@ -6,6 +6,7 @@ import { putAudio, getAudio, putArt, getArt, delTrack, storageEstimate } from ".
 import { readMeta } from "./meta.js";
 import { LANGUAGES, detectLocale, isSupportedLocale, translate, translateCount } from "./i18n.js";
 import { SAMPLE_TRACKS, downloadSample, isStoredSample } from "./samples.js";
+import { YouTubeDownloadClient, parseYouTubeUrl, validYouTubeJobId, isStoredYouTubeAudio } from "./youtube-download.js";
 
 // ───────────────────────── themes ─────────────────────────
 const ACCENTS = [
@@ -93,6 +94,9 @@ let libraryTab = "songs";
 const SAMPLE_PLAYLIST = "samples:bach-v1";
 const savedSamples = new Set();
 let sampleBusy = false, sampleMessage = "", sampleError = false;
+const LS_YOUTUBE = "music-offline:youtube-download";
+let youtubeUrl = "", youtubeJob = null, youtubeState = "idle", youtubeError = null;
+let youtubeActive = null, youtubeSavedId = null;
 
 const $ = (s, r = document) => r.querySelector(s);
 const audio = $("#audio");
@@ -602,6 +606,165 @@ audio.addEventListener("loadedmetadata", () => {
   updateProgressUI();
 });
 
+// Download UI is independent of playback and the current view. Async progress
+// only updates this card's text/buttons; it never renders or navigates a view.
+function youtubeMessage() {
+  if (youtubeError) {
+    const keys = {
+      INVALID_URL: "youtubeInvalidUrl", INVALID_REQUEST: "youtubeInvalidUrl",
+      NETWORK_ERROR: "youtubeNetworkError", SOURCE_UNAVAILABLE: "youtubeUnavailable",
+      SOURCE_BLOCKED: "youtubeRestricted", UNSUPPORTED_SOURCE: "youtubeRestricted",
+      RATE_LIMITED: "youtubeBusy", BUSY: "youtubeBusy", DURATION_LIMIT: "youtubeTooLarge",
+      TOO_LARGE: "youtubeTooLarge", TIMEOUT: "youtubeTimeout", JOB_EXPIRED: "youtubeExpired",
+      JOB_NOT_FOUND: "youtubeExpired", INVALID_AUDIO: "youtubeIntegrityError",
+      QUOTA: "youtubeStorageError", SERVICE_NOT_READY: "youtubeServiceNotReady",
+    };
+    return i18n(keys[youtubeError] || "youtubeServiceError");
+  }
+  const keys = {
+    idle: "youtubeIdle", checking: "youtubePreparing", queued: "youtubeQueued",
+    preparing: "youtubePreparing", downloading: "youtubeDownloading", converting: "youtubeConverting",
+    transferring: "youtubeTransferring", saving: "youtubeSaving", done: "youtubeDone",
+    existing: "youtubeAlreadySaved", cancelled: "youtubeCancelled", resume: "youtubeResumeHint",
+  };
+  return i18n(keys[youtubeState] || "youtubeIdle");
+}
+function youtubeCard() {
+  const busy = !!youtubeActive, saved = !!youtubeSavedId && !!lib.tracks[youtubeSavedId];
+  return `<section class="youtube-card" aria-label="${i18n("youtubeHeading")}">
+    <h2>${i18n("youtubeHeading")}</h2>
+    <p>${i18n("youtubeDescription")}</p>
+    <form data-youtube-form novalidate>
+      <label for="youtubeUrl">${i18n("youtubeUrlLabel")}</label>
+      <input id="youtubeUrl" data-youtube-url class="youtube-input" type="text" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="2048" placeholder="${i18n("youtubeUrlPlaceholder")}" value="${esc(youtubeUrl)}">
+      <button class="sample-button youtube-submit" type="submit" ${busy ? "disabled" : ""}>${ic("download")}<span>${i18n("youtubeDownload")}</span></button>
+    </form>
+    <p class="youtube-status ${youtubeError ? "youtube-error" : ""}" role="status" aria-live="polite">${esc(youtubeMessage())}</p>
+    <button class="youtube-secondary youtube-resume" data-act="resumeyoutube" type="button" ${busy || !youtubeJob ? "hidden" : ""}>${i18n("youtubeResume")}</button>
+    <button class="youtube-secondary youtube-cancel" data-act="cancelyoutube" type="button" ${!busy && !youtubeJob ? "hidden" : ""}>${i18n(busy ? "youtubeCancel" : "youtubeForget")}</button>
+    <button class="youtube-secondary youtube-open" data-act="openyoutube" type="button" ${!saved ? "hidden" : ""}>${i18n("youtubeOpen")}</button>
+    <p class="youtube-rights">${i18n("youtubeRights")}</p>
+  </section>`;
+}
+function refreshYouTubeCards() {
+  for (const card of document.querySelectorAll(".youtube-card")) {
+    const status = card.querySelector(".youtube-status");
+    status.textContent = youtubeMessage();
+    status.classList.toggle("youtube-error", !!youtubeError);
+    card.querySelector(".youtube-submit").disabled = !!youtubeActive;
+    card.querySelector(".youtube-resume").hidden = !!youtubeActive || !youtubeJob;
+    const cancel = card.querySelector(".youtube-cancel");
+    cancel.hidden = !youtubeActive && !youtubeJob;
+    cancel.textContent = i18n(youtubeActive ? "youtubeCancel" : "youtubeForget");
+    card.querySelector(".youtube-open").hidden = !youtubeSavedId || !lib.tracks[youtubeSavedId];
+  }
+}
+function saveYouTubeDraft() {
+  try { localStorage.setItem(LS_YOUTUBE, JSON.stringify({ url: youtubeUrl, job: youtubeJob })); }
+  catch { /* Draft persistence is optional; committed audio uses a separate write. */ }
+}
+function loadYouTubeDraft() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_YOUTUBE) || "null");
+    if (typeof saved?.url === "string") youtubeUrl = saved.url.slice(0, 2048);
+    if (validYouTubeJobId(saved?.job?.id)) {
+      const parsed = parseYouTubeUrl(saved.job.url);
+      if (parsed.videoId === saved.job.videoId) {
+        youtubeJob = { id: saved.job.id, ...parsed };
+        youtubeState = "resume";
+      }
+    }
+  } catch {}
+  // Never start network work just because the app was reopened offline.
+}
+function commitYouTubeLibrary(meta) {
+  const id = `youtube-${meta.videoId}`;
+  const track = { ...lib.tracks[id], id, title: meta.title, artist: meta.artist,
+    album: "", duration: meta.durationMs, hasArt: false,
+    lastPlayedAt: lib.tracks[id]?.lastPlayedAt || 0,
+    sourceUrl: `https://www.youtube.com/watch?v=${meta.videoId}`, sourceId: meta.videoId,
+    bytes: meta.bytes, sha256: meta.sha256,
+  };
+  const updated = { ...lib, tracks: { ...lib.tracks, [id]: track },
+    playlists: lib.playlists.map(p => p.id === SYS ? { ...p, trackIds: [...new Set([...p.trackIds, id])] } : p),
+  };
+  // Publish only after both the Blob transaction and durable metadata succeed.
+  localStorage.setItem(LS_LIB, JSON.stringify(updated));
+  lib = updated;
+  return id;
+}
+async function downloadYouTube(resume = false) {
+  if (youtubeActive) return;
+  let parsed, client;
+  const recovered = resume ? youtubeJob : null;
+  try {
+    parsed = parseYouTubeUrl(recovered?.url || youtubeUrl);
+    client = new YouTubeDownloadClient();
+  } catch (error) {
+    youtubeError = error.code || "INVALID_URL";
+    refreshYouTubeCards();
+    return;
+  }
+  if (!resume && youtubeJob) { void client.cancel(youtubeJob.id); youtubeJob = null; }
+  const operation = { controller: new AbortController(), client };
+  youtubeActive = operation;
+  youtubeError = null; youtubeState = "checking"; youtubeSavedId = null;
+  const active = () => youtubeActive === operation && !operation.controller.signal.aborted;
+  saveYouTubeDraft();
+  refreshYouTubeCards();
+  requestOfflineStorage();
+  try {
+    const id = `youtube-${parsed.videoId}`, existing = lib.tracks[id];
+    const stored = existing && await getAudio(id);
+    if (existing && await isStoredYouTubeAudio(existing, stored)) {
+      if (!active()) return;
+      youtubeSavedId = id; youtubeState = "existing"; youtubeJob = null;
+      saveYouTubeDraft();
+      return;
+    }
+    if (!active()) return;
+    const result = await client.download(parsed.url, {
+      signal: operation.controller.signal, resumeJobId: recovered?.id || null,
+      onJob(job) { if (active()) { youtubeJob = job; saveYouTubeDraft(); } },
+      onState(state) { if (active()) { youtubeState = state; refreshYouTubeCards(); } },
+      getStoredAudio: meta => getAudio(`youtube-${meta.videoId}`),
+    });
+    if (!active()) return;
+    youtubeState = "saving";
+    refreshYouTubeCards();
+    if (!result.reused) await putAudio(id, result.blob);
+    if (!active()) return;
+    youtubeSavedId = commitYouTubeLibrary(result.meta);
+    youtubeState = "done"; youtubeJob = null;
+    saveYouTubeDraft();
+  } catch (error) {
+    if (!active()) return;
+    youtubeError = error?.name === "QuotaExceededError" ? "QUOTA" : error?.code || "SERVICE_ERROR";
+    // Only a saved, unfinished job can be explicitly resumed. Permanent
+    // source failures and expired/cancelled jobs start fresh on another click.
+    if (!["NETWORK_ERROR", "INVALID_AUDIO", "QUOTA"].includes(youtubeError)) youtubeJob = null;
+    youtubeState = "failed";
+    saveYouTubeDraft();
+  } finally {
+    if (youtubeActive === operation) {
+      youtubeActive = null;
+      refreshYouTubeCards();
+    }
+  }
+}
+function cancelYouTube() {
+  if (youtubeActive) {
+    youtubeActive.controller.abort();
+    // Once transport finished, its abort listener has already been removed.
+    if (youtubeState === "saving" && youtubeJob) void youtubeActive.client.cancel(youtubeJob.id);
+  }
+  else if (youtubeJob) { try { void new YouTubeDownloadClient().cancel(youtubeJob.id); } catch {} }
+  youtubeActive = null; youtubeJob = null; youtubeSavedId = null;
+  youtubeState = "cancelled"; youtubeError = null;
+  saveYouTubeDraft();
+  refreshYouTubeCards();
+}
+
 // Explicit sample downloads use the same local audio store as imported files.
 // They never select a view, start playback, or alter the current queue.
 function sampleCard() {
@@ -1014,6 +1177,7 @@ function greet() {
 function viewHome() {
   const tracks = allTracks();
   let html = `<h1 class="h-greet">${greet()}</h1>`;
+  html += youtubeCard();
   html += `<div class="sample-slot">${sampleCard()}</div>`;
 
   if (!tracks.length) {
@@ -1086,6 +1250,7 @@ function viewLibrary() {
     <h1 class="h-greet">${i18n("yourLibrary")}</h1>
     <button class="icon-btn" data-act="libadd" aria-label="${i18n("ariaAdd")}">${ic("plus")}</button>
   </div>`;
+  html += youtubeCard();
   html += `<div class="sample-slot">${sampleCard()}</div>`;
   if (settings.playlistsEnabled) html += `<div class="chips">${["songs", "playlists"].map(tab =>
     `<button class="chip ${libraryTab === tab ? "on" : ""}" data-act="librarytab" data-tab="${tab}" aria-pressed="${libraryTab === tab}">${i18n(tab)}</button>`
@@ -1566,6 +1731,18 @@ document.addEventListener("click", (e) => {
     case "downloadsamples":
       void downloadSamples();
       break;
+    case "resumeyoutube":
+      void downloadYouTube(true);
+      break;
+    case "cancelyoutube":
+      cancelYouTube();
+      break;
+    case "openyoutube":
+      if (youtubeSavedId && lib.tracks[youtubeSavedId]) {
+        searchQ = lib.tracks[youtubeSavedId].title;
+        navTo("search");
+      }
+      break;
     case "opensamples":
       try {
         commitSampleLibrary();
@@ -1751,6 +1928,17 @@ document.addEventListener("click", (e) => {
   }
 });
 
+document.addEventListener("input", (event) => {
+  if (!event.target.matches?.("[data-youtube-url]")) return;
+  youtubeUrl = event.target.value;
+  saveYouTubeDraft();
+});
+document.addEventListener("submit", (event) => {
+  if (!event.target.matches?.("[data-youtube-form]")) return;
+  event.preventDefault();
+  void downloadYouTube();
+});
+
 document.addEventListener("change", (event) => {
   if (event.target.id !== "languageSelect") return;
   const locale = event.target.value;
@@ -1888,6 +2076,7 @@ async function repairImportedMetadata() {
 
 // ───────────────────────── startup ─────────────────────────
 loadAll();
+loadYouTubeDraft();
 applyTheme();
 render();
 history.pushState(null, ""); // initial guard to catch the Back button

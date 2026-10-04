@@ -1,6 +1,6 @@
 # Music Offline — Preview 03: sťahovanie z odkazu YouTube
 
-Status: **implementácia a skúška uskutočniteľnosti; ešte nejde o potvrdenú funkčnú verziu**.
+Status: **implementácia pripravená, prvý skutočný Render pokus zablokoval zdroj; frontend sa nezverejňuje ako funkčná verzia**.
 
 ## Požiadavka
 
@@ -61,6 +61,26 @@ Prvá lokálna kontrola po oprave CA dôvery získala cez yt-dlp skutočný titu
 Pred prvým serverovým nasadením prešlo 14/14 backend testov a kontrola reálne nainštalovaných runtime závislostí. Testy zahŕňajú aj konkrétnu opravenú chybu, pri ktorej potomok procesu mohol po odchode rodiča držať rúry otvorené a zablokovať časový limit. Kontrola zachováva časový limit až po skončenie procesu aj čítačiek a ukončuje celú skupinu.
 
 Kvóta 6 úloh/hodinu sa viaže na pozorovanú IP spojenia; za Render proxy ju môžu používatelia zdieľať. Nie je označená za spoľahlivú kvótu na každé zariadenie. Celkový limit je 30/hodinu.
+
+## Nasadenie servera a prvý výsledok
+
+- Samostatná služba: `srv-db1c2ilg1s2s739gbntg`, názov `music-offline-downloader-307`.
+- Adresa: https://music-offline-downloader-307.onrender.com.
+- Plán: `free`, región `frankfurt`, runtime `python`, auto-deploy vypnutý.
+- Prvý runtime commit: `7dfaeecc2871fcd0f352ae31f963f2d560bb8176`.
+- Prvý deploy: `dep-db1c2jlg1s2s739gbr60`, `live` od `2026-10-04T21:13:43.653099Z`.
+- `/health` vrátil HTTP 200 a správnu službu/verziu.
+- Skutočný `POST /api/jobs` s vyššie uvedeným verejným videom vrátil HTTP 202. Úloha následne skončila `state: failed`, `error: source_blocked`; MP3 nevzniklo.
+
+Prvý kontrakt nerozlišoval presnú príčinu odmietnutia. Pridali sa preto len pevne určené diagnostické kategórie `reason` a fáza `stage` (`probe`/`download`). Surová správa zdroja, adresy a tokeny sa nezverejňujú. Druhý kontrolný pokus má určiť presnú kategóriu, nie skúšať obchádzanie zdrojovej kontroly.
+
+## Dokončená implementácia klienta
+
+Prešlo 135/135 frontendových testov; validátor skontroloval 16 JS súborov a všetkých 24 offline shell assetov. Backend po doplnení diagnostiky má 15/15 testov. Pokryté sú zápis audia pred metadátami, obnovenie rozpracovanej úlohy, zrušenie aj počas zápisu, kvóta úložiska, poškodené audio, identita videa a zachovanie rozpracovaného vyhľadávania/prehrávania.
+
+Konfigurácia klienta obsahuje presnú adresu vytvorenej služby. `connect-src` povoľuje len vlastný origin a tento server. Nový frontend ostáva iba na izolovanej vývojovej vetve, kým nie je potvrdené skutočné získanie MP3. Verzia v `release.json` má stav `draft-source-verification-blocked`, nie úspešný checkpoint.
+
+Po prvom pokuse sa nezmenil offline deploy `dep-db1bkb8u01pc73dn86qg`: verejný `release.json` stále vracia `20261004-02`. Obe online Music06 vracajú HTTP 200 a pôvodný SHA-256 `tesla-app.js` `d7d76636cf18486c6a0815d967a158764e81b1ea782b5975457262822d80072d`. Cloudový prehliadač ďalej ukazuje pôvodný zoznam troch Bachových skladieb.
 
 ## Primárne zdroje
 

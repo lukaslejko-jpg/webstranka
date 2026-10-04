@@ -26,6 +26,8 @@ Všetky `/api/` požiadavky vyžadujú presný hlavičkový `Origin` z `ALLOWED_
 
 Chyba hotovej úlohy je reťazec: `{id,state:"failed",error:"source_blocked",...}`. HTTP chyby vracajú `{error:"code"}`. Kódy: `invalid_url`, `invalid_request`, `origin_not_allowed`, `rate_limited`, `busy`, `job_expired`, `not_ready`, `cancelled`, `timeout`, `source_blocked`, `source_unavailable`, `unsupported_source`, `duration_limit`, `too_large`, `conversion_failed`. `rate_limited` a `busy` obsahujú hlavičku `Retry-After` v sekundách.
 
+Pri neúspešnom zdrojovom subprocess-e môže úloha navyše uviesť iba pevné diagnostické kategórie `reason` a `stage`. `stage` je `probe` alebo `download`; `reason` je `bot_confirmation`, `login_required`, `http_403`, `http_429`, `age_confirmation`, `rate_limited`, `access_forbidden`, `too_large`, `timeout` alebo `source_unavailable`. Text stderr, adresy zo zdroja ani prihlasovacie údaje sa do diagnostiky nevracajú a nelogujú. Rozpoznanie „not a bot“ má prednosť pred všeobecným „sign in“. Existujúce pole `error` sa tým nemení.
+
 ## Hranice preview
 
 - Jedna aktívna úloha a najviac dve čakajúce. Najviac 12 dočasných záznamov.

@@ -1,5 +1,5 @@
 // Offline readiness and optional storage persistence. No audio playback owner.
-const VERSION = "20261004-02";
+const VERSION = "20261004-03";
 const status = document.querySelector("#offlineStatus");
 const label = document.querySelector("#offlineStatusText");
 const help = document.querySelector("#offlineHelp");
