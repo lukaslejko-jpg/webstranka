@@ -617,7 +617,7 @@ function youtubeMessage() {
       RATE_LIMITED: "youtubeBusy", BUSY: "youtubeBusy", DURATION_LIMIT: "youtubeTooLarge",
       TOO_LARGE: "youtubeTooLarge", TIMEOUT: "youtubeTimeout", JOB_EXPIRED: "youtubeExpired",
       JOB_NOT_FOUND: "youtubeExpired", INVALID_AUDIO: "youtubeIntegrityError",
-      QUOTA: "youtubeStorageError", SERVICE_NOT_READY: "youtubeServiceNotReady",
+      QUOTA: "youtubeStorageError", PROVIDER_UNAVAILABLE: "youtubeServiceError", SERVICE_NOT_READY: "youtubeServiceNotReady",
     };
     return i18n(keys[youtubeError] || "youtubeServiceError");
   }
