@@ -9,6 +9,7 @@ RUN git clone --depth 1 https://github.com/imputnet/cobalt.git /src
 RUN corepack enable
 RUN pnpm install --prod --frozen-lockfile
 RUN pnpm deploy --filter=@imput/cobalt-api --prod /prod/api
+RUN cp -a /src/.git /prod/api/.git
 
 FROM base AS api
 WORKDIR /app
