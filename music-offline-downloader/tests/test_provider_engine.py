@@ -13,6 +13,7 @@ from provider_engine import (
     ProviderFailure,
     ProviderResult,
     Ahm7Provider,
+    NewistyProvider,
     YoinkuProvider,
     TunelioProvider,
     configured_providers,
@@ -26,7 +27,7 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
             "PROVIDER_ORDER": "ahm7,tunelio,yoinku,unknown",
             "TUNELIO_API_KEY": "tnl-test",
         }, clear=True):
-            self.assertEqual(configured_providers(), ["ahm7", "tunelio"])
+            self.assertEqual(configured_providers(), ["newisty", "ahm7", "tunelio"])
 
     async def test_router_falls_back_after_retryable_provider_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -74,6 +75,35 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
                 )
             self.assertEqual(result.provider, "tunelio")
             tunelio.assert_awaited_once()
+
+    async def test_newisty_contract_queues_audio_mp3_without_key(self):
+        import httpx
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp) / "audio.mp3"
+            requests = []
+            async def handler(request):
+                requests.append(request)
+                if request.url.path.endswith("/start"):
+                    return httpx.Response(200, json={"status": True, "data": {"job_id": "job-1"}})
+                if request.url.path.endswith("/progress/job-1"):
+                    return httpx.Response(200, json={"status": True, "data": {"status": "done"}})
+                return httpx.Response(200, headers={"Content-Disposition": 'attachment; filename="Newisty test.mp3"'}, content=b"ID3-test")
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as client:
+                with patch("provider_engine._probe_mp3", new=AsyncMock(return_value=(1200, "mp3"))), patch("asyncio.sleep", new=AsyncMock()):
+                    result = await NewistyProvider().download(
+                        client,
+                        "https://www.youtube.com/watch?v=YE7VzlLtp-4",
+                        destination,
+                        30_000_000,
+                        1200,
+                        5,
+                    )
+            self.assertEqual(result.provider, "newisty")
+            self.assertEqual(result.title, "Newisty test")
+            self.assertEqual(requests[0].url.path, "/api/video-downloader/start")
+            self.assertEqual(requests[0].content, b'{"url":"https://www.youtube.com/watch?v=YE7VzlLtp-4","format":"audio-mp3"}')
+            self.assertEqual(destination.read_bytes(), b"ID3-test")
 
     async def test_ahm7_contract_uses_audio_url_without_key(self):
         import httpx
