@@ -19,6 +19,8 @@ import time
 from typing import Awaitable, Callable
 from urllib.parse import parse_qs, urlsplit
 
+from provider_engine import ProviderFailure, download_with_providers, configured_providers
+
 
 VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 JOB_ID = re.compile(r"^[0-9a-f]{32}$")
@@ -104,6 +106,7 @@ class Result:
     size: int
     sha256: str
     path: Path
+    provider: str = ""
 
 
 @dataclass
@@ -141,6 +144,8 @@ class Job:
                         durationMs=result.duration_ms, bytes=result.size,
                         sha256=result.sha256, sourceUrl=self.source_url,
                         filePath=f"/api/jobs/{self.id}/audio")
+            if result.provider:
+                data["provider"] = result.provider
         return data
 
 
@@ -458,7 +463,48 @@ def ytdlp_base() -> list[str]:
             "--extractor-retries", "1", "--concurrent-fragments", "1"]
 
 
+async def download_via_providers(job: Job, config: Config) -> Result:
+    try:
+        provider_result = await download_with_providers(
+            job.source_url,
+            job.directory / "audio.mp3",
+            max_bytes=config.max_mp3_bytes,
+            max_duration=config.max_duration,
+            timeout=config.overall_timeout,
+        )
+    except ProviderFailure as error:
+        if error.code == "no_provider_configured":
+            raise DownloadError("provider_unavailable", stage="download") from None
+        if "rate_limited" in error.code:
+            raise DownloadError("source_blocked", reason="rate_limited", stage="download", status=429, retry_after=60) from None
+        if "invalid_credentials" in error.code:
+            raise DownloadError("provider_unavailable", stage="download") from None
+        if "too_large" in error.code:
+            raise DownloadError("too_large", stage="download") from None
+        if "duration_limit" in error.code:
+            raise DownloadError("duration_limit", stage="download") from None
+        if "timeout" in error.code:
+            raise DownloadError("timeout", stage="download") from None
+        raise DownloadError("source_blocked", reason="source_unavailable", stage="download") from None
+    path = provider_result.path
+    if path != job.directory / "audio.mp3":
+        raise DownloadError("conversion_failed")
+    # The provider output is already MP3 and has been independently ffprobed.
+    return Result(
+        provider_result.title[:300] or "Skladba",
+        provider_result.artist[:200] or "YouTube",
+        provider_result.duration_ms,
+        provider_result.size,
+        provider_result.sha256,
+        path,
+        provider_result.provider,
+    )
+
+
 async def download_video(job: Job, config: Config) -> Result:
+    if configured_providers():
+        job.state = "downloading"
+        return await download_via_providers(job, config)
     code, raw, stderr = await run_command(job, config, ytdlp_base() + [
         "--skip-download", "--dump-single-json", "-f", "bestaudio/best", job.source_url], config.probe_timeout)
     if code:
@@ -523,4 +569,4 @@ async def download_video(job: Job, config: Config) -> Result:
                 entry.unlink()
     title = str(info.get("track") or info.get("title") or "Skladba")[:300]
     artist = str(info.get("artist") or info.get("uploader") or info.get("channel") or "YouTube")[:200]
-    return Result(title, artist, round(seconds * 1000), size, digest.hexdigest(), path)
+    return Result(title, artist, round(seconds * 1000), size, digest.hexdigest(), path, "yt-dlp")
