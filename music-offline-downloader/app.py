@@ -89,6 +89,32 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
         return FileResponse(Path(__file__).with_name("test.html"), media_type="text/html",
                             headers={"Cache-Control": "no-store"})
 
+    @application.get("/api/debug/piped/{video_id}")
+    async def debug_piped(video_id: str):
+        import httpx
+        from provider_engine import PipedProvider
+        results = []
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            for instance in PipedProvider.instances():
+                item = {"instance": instance}
+                try:
+                    response = await client.get(f"{instance}/streams/{video_id}")
+                    item["http_status"] = response.status_code
+                    try:
+                        data = response.json()
+                        item["json_type"] = type(data).__name__
+                        if isinstance(data, dict):
+                            item["keys"] = sorted(data.keys())
+                            streams = data.get("audioStreams")
+                            item["audio_stream_count"] = len(streams) if isinstance(streams, list) else None
+                            item["error"] = data.get("error") or data.get("message") or data.get("code")
+                    except Exception:
+                        item["body_prefix"] = response.text[:160]
+                except Exception as exc:
+                    item["error_type"] = type(exc).__name__
+                results.append(item)
+        return {"video_id": video_id, "instances": results}
+
     @application.get("/health")
     async def health():
         return {"status": "ok", "service": "music-offline-downloader", "version": "20261004-03"}
