@@ -255,7 +255,9 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
                     status, _, payload = await asgi_request(app, "/api/jobs", "POST", {"url": SOURCE}, origin)
                     self.assertEqual((status, payload["error"]), (403, "origin_not_allowed"))
                 status, _, payload = await asgi_request(app, "/api/jobs", "POST", {"url": SOURCE}, "https://test")
-                self.assertEqual((status, payload["error"]), (400, "invalid_request"))
+                self.assertEqual(status, 202)
+                self.assertEqual(payload["state"], "preparing")
+                await app.state.jobs.cancel(payload["id"])
                 origin = "https://music-offline-307.onrender.com"
                 for data, expected in [({"url": SOURCE, "options": "--cookies"}, 400), ({"url": "a" * 5000}, 413),
                                        ({"url": "https://127.0.0.1/private"}, 400)]:
