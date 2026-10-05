@@ -97,11 +97,13 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
             requests = []
             async def handler(request):
                 requests.append(request)
-                return httpx.Response(200, json={
-                    "status": "tunnel",
-                    "url": "https://cdn.example/audio.mp3",
-                    "filename": "Cobalt test skladba.mp3",
-                })
+                if request.url.host == "cobalt.example":
+                    return httpx.Response(200, json={
+                        "status": "tunnel",
+                        "url": "https://cdn.example/audio.mp3",
+                        "filename": "Cobalt test skladba.mp3",
+                    })
+                return httpx.Response(200, content=b"ID3-test")
             transport = httpx.MockTransport(handler)
             async with httpx.AsyncClient(transport=transport) as client:
                 with patch.object(CobaltProvider, "base_url", "https://cobalt.example"), \
