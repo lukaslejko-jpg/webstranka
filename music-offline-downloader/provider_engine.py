@@ -140,6 +140,78 @@ async def _finalize(provider: str, destination: Path, title: str, max_duration: 
     )
 
 
+class NewistyProvider:
+    """No-key queued downloader using Newisty's public video-downloader API."""
+    name = "newisty"
+    base = "https://newisty.com/api/video-downloader"
+
+    async def download(self, client: httpx.AsyncClient, source_url: str, destination: Path,
+                       max_bytes: int, max_duration: int, timeout: float) -> ProviderResult:
+        try:
+            response = await client.post(
+                f"{self.base}/start",
+                json={"url": source_url, "format": "audio-mp3"},
+            )
+        except httpx.TimeoutException:
+            raise ProviderFailure(self.name, "timeout") from None
+        except httpx.HTTPError:
+            raise ProviderFailure(self.name, "network_error") from None
+        if response.status_code >= 400:
+            raise _provider_error(self.name, response)
+        try:
+            data = _json_object(response.json())
+            payload = _json_object(data["data"])
+            if data.get("status") is not True:
+                raise ValueError
+            job_id = str(payload["job_id"])
+        except (ValueError, KeyError, TypeError):
+            raise ProviderFailure(self.name, "invalid_response") from None
+
+        deadline = time.monotonic() + max(5.0, min(35.0, timeout - 5.0))
+        state = None
+        while time.monotonic() < deadline:
+            await asyncio.sleep(2)
+            try:
+                progress = await client.get(f"{self.base}/progress/{job_id}")
+            except httpx.TimeoutException:
+                raise ProviderFailure(self.name, "timeout") from None
+            except httpx.HTTPError:
+                raise ProviderFailure(self.name, "network_error") from None
+            if progress.status_code == 404:
+                continue
+            if progress.status_code >= 400:
+                raise _provider_error(self.name, progress)
+            try:
+                pdata = _json_object(progress.json())
+                state = _json_object(pdata["data"]).get("status")
+            except (ValueError, KeyError, TypeError):
+                raise ProviderFailure(self.name, "invalid_response") from None
+            if state == "done":
+                break
+            if state == "failed":
+                raise ProviderFailure(self.name, "upstream_failed", retryable=True)
+        else:
+            raise ProviderFailure(self.name, "timeout", retryable=True)
+
+        try:
+            result = await client.get(f"{self.base}/download/{job_id}")
+        except httpx.TimeoutException:
+            raise ProviderFailure(self.name, "timeout") from None
+        except httpx.HTTPError:
+            raise ProviderFailure(self.name, "network_error") from None
+        if result.status_code >= 400:
+            raise _provider_error(self.name, result)
+        if len(result.content) > max_bytes:
+            raise ProviderFailure(self.name, "too_large", retryable=False)
+        if not result.content:
+            raise ProviderFailure(self.name, "empty_file", retryable=True)
+        destination.write_bytes(result.content)
+        filename = result.headers.get("content-disposition", "")
+        match = re.search(r'filename="?([^";]+)', filename, re.I)
+        title = Path(match.group(1)).stem if match else "YouTube audio"
+        return await _finalize(self.name, destination, title, max_duration, timeout)
+
+
 class Ahm7Provider:
     """No-key fallback using AHM7's documented public downloader API."""
     name = "ahm7"
@@ -238,8 +310,9 @@ def configured_providers() -> list[str]:
     configured = [x.strip().lower() for x in os.getenv("PROVIDER_ORDER", "ahm7,yoinku,tunelio").split(",") if x.strip()]
     # AHM7 is the no-key fallback and must remain first even if an older
     # Render environment still contains a legacy PROVIDER_ORDER value.
-    order = ["ahm7"] + [x for x in configured if x != "ahm7"]
+    order = ["newisty", "ahm7"] + [x for x in configured if x not in {"newisty", "ahm7"}]
     available = {
+        "newisty": True,
         "ahm7": True,
         "yoinku": bool(os.getenv("YOINKU_API_KEY")),
         "tunelio": bool(os.getenv("TUNELIO_API_KEY")),
@@ -261,7 +334,9 @@ async def download_with_providers(source_url: str, destination: Path, *,
     async with httpx.AsyncClient(timeout=timeout_cfg, follow_redirects=True) as client:
         failures: list[str] = []
         for name in names:
-            if name == "ahm7":
+            if name == "newisty":
+                provider = NewistyProvider()
+            elif name == "ahm7":
                 provider = Ahm7Provider()
             elif name == "yoinku":
                 provider = YoinkuProvider(os.environ["YOINKU_API_KEY"])
