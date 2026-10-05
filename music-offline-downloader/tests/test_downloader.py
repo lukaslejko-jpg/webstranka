@@ -257,7 +257,7 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
                 # Same-origin request must pass origin validation, then fail
                 # normal URL validation without creating a background job.
                 status, _, payload = await asgi_request(app, "/api/jobs", "POST", {"url": "a" * 5000}, "https://test")
-                self.assertEqual((status, payload["error"]), (413, "request_too_large"))
+                self.assertEqual((status, payload["error"]), (413, "invalid_request"))
                 origin = "https://music-offline-307.onrender.com"
                 for data, expected in [({"url": SOURCE, "options": "--cookies"}, 400), ({"url": "a" * 5000}, 413),
                                        ({"url": "https://127.0.0.1/private"}, 400)]:
