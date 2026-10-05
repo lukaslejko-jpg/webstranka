@@ -140,6 +140,132 @@ async def _finalize(provider: str, destination: Path, title: str, max_duration: 
     )
 
 
+async def _convert_to_mp3(source: Path, destination: Path, timeout: float) -> None:
+    """Convert a provider audio stream (M4A/WebM/etc.) to a real MP3."""
+    process = await asyncio.create_subprocess_exec(
+        "ffmpeg", "-y", "-v", "error", "-i", str(source),
+        "-vn", "-codec:a", "libmp3lame", "-q:a", "2", str(destination),
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    try:
+        _, stderr = await asyncio.wait_for(process.communicate(), timeout=max(5.0, timeout))
+    except asyncio.TimeoutError:
+        process.kill()
+        await process.wait()
+        raise ProviderFailure("piped", "conversion_timeout", retryable=True) from None
+    if process.returncode != 0 or not destination.exists() or destination.stat().st_size <= 0:
+        detail = stderr.decode("utf-8", "ignore")[-120:] if stderr else ""
+        logger.warning("piped_conversion_failed detail=%s", detail)
+        raise ProviderFailure("piped", "conversion_failed", retryable=True)
+
+
+class PipedProvider:
+    """No-key fallback via Piped's unauthenticated /streams endpoint.
+
+    Piped resolves YouTube server-side and exposes an audio stream URL, so the
+    Render instance does not have to contact YouTube directly.
+    """
+
+    name = "piped"
+    default_instances = (
+        "https://pipedapi.ducks.party",
+        "https://api.piped.private.coffee",
+        "https://pipedapi.qwik.space",
+        "https://pipedapi.eu.projectsegfau.lt",
+        "https://api.piped.projectsegfau.lt",
+    )
+
+    @classmethod
+    def instances(cls) -> list[str]:
+        configured = os.getenv("PIPED_INSTANCES", "")
+        values = [x.strip().rstrip("/") for x in configured.split(",") if x.strip()]
+        return values or list(cls.default_instances)
+
+    @staticmethod
+    def _video_id(source_url: str) -> str:
+        from urllib.parse import parse_qs, urlparse
+        parsed = urlparse(source_url)
+        host = (parsed.hostname or "").lower()
+        if host in {"youtu.be", "www.youtu.be"}:
+            video_id = parsed.path.strip("/").split("/")[0]
+        elif host.endswith("youtube.com") or host.endswith("youtube-nocookie.com"):
+            if parsed.path == "/watch":
+                video_id = parse_qs(parsed.query).get("v", [""])[0]
+            elif parsed.path.startswith("/shorts/") or parsed.path.startswith("/embed/"):
+                video_id = parsed.path.split("/")[2]
+            else:
+                video_id = ""
+        else:
+            video_id = ""
+        if not re.fullmatch(r"[A-Za-z0-9_-]{6,20}", video_id or ""):
+            raise ProviderFailure(PipedProvider.name, "invalid_source", retryable=False)
+        return video_id
+
+    @staticmethod
+    def _select_audio(streams: Any) -> tuple[str, str]:
+        if not isinstance(streams, list):
+            raise ValueError
+        candidates = [
+            item for item in streams
+            if isinstance(item, dict)
+            and item.get("url")
+            and item.get("videoOnly") is not True
+        ]
+        if not candidates:
+            raise ValueError
+
+        def score(item: dict) -> tuple[int, int]:
+            mime = str(item.get("mimeType") or "").lower()
+            # Prefer M4A/MP4 audio because ffmpeg handles it cleanly; bitrate
+            # breaks ties and also works when instances only expose Opus.
+            preferred = 1 if ("audio/mp4" in mime or "m4a" in str(item.get("format") or "").lower()) else 0
+            try:
+                bitrate = int(item.get("bitrate") or 0)
+            except (TypeError, ValueError):
+                bitrate = 0
+            return preferred, bitrate
+
+        best = max(candidates, key=score)
+        return str(best["url"]), str(best.get("mimeType") or "")
+
+    async def download(self, client: httpx.AsyncClient, source_url: str, destination: Path,
+                       max_bytes: int, max_duration: int, timeout: float) -> ProviderResult:
+        video_id = self._video_id(source_url)
+        last_error: ProviderFailure | None = None
+
+        for instance in self.instances():
+            source_path = destination.with_name(destination.stem + ".piped-source")
+            try:
+                response = await client.get(f"{instance}/streams/{video_id}")
+                if response.status_code >= 400:
+                    last_error = _provider_error(self.name, response)
+                    continue
+                try:
+                    data = _json_object(response.json())
+                    audio_url, _ = self._select_audio(data.get("audioStreams"))
+                    title = str(data.get("title") or "YouTube audio")
+                except (ValueError, KeyError, TypeError):
+                    last_error = ProviderFailure(self.name, "no_audio_stream", retryable=True)
+                    continue
+
+                await _download_file(client, audio_url, source_path, max_bytes)
+                await _convert_to_mp3(source_path, destination, min(30.0, timeout))
+                return await _finalize(self.name, destination, title, max_duration, timeout)
+            except ProviderFailure as error:
+                last_error = error
+            except httpx.TimeoutException:
+                last_error = ProviderFailure(self.name, "timeout", retryable=True)
+            except httpx.HTTPError:
+                last_error = ProviderFailure(self.name, "network_error", retryable=True)
+            finally:
+                source_path.unlink(missing_ok=True)
+                if last_error and destination.exists():
+                    destination.unlink(missing_ok=True)
+
+        raise last_error or ProviderFailure(self.name, "no_instance_available", retryable=True)
+
+
 class NewistyProvider:
     """No-key queued downloader using Newisty's public video-downloader API."""
     name = "newisty"
@@ -307,11 +433,12 @@ class TunelioProvider:
 
 
 def configured_providers() -> list[str]:
-    configured = [x.strip().lower() for x in os.getenv("PROVIDER_ORDER", "ahm7,yoinku,tunelio").split(",") if x.strip()]
-    # AHM7 is the no-key fallback and must remain first even if an older
-    # Render environment still contains a legacy PROVIDER_ORDER value.
-    order = ["newisty", "ahm7"] + [x for x in configured if x not in {"newisty", "ahm7"}]
+    configured = [x.strip().lower() for x in os.getenv("PROVIDER_ORDER", "piped,newisty,ahm7,yoinku,tunelio").split(",") if x.strip()]
+    # Piped is the first no-key provider because it resolves the YouTube stream
+    # outside the Render instance. Keep Newisty/AHM7 as subsequent fallbacks.
+    order = ["piped", "newisty", "ahm7"] + [x for x in configured if x not in {"piped", "newisty", "ahm7"}]
     available = {
+        "piped": True,
         "newisty": True,
         "ahm7": True,
         "yoinku": bool(os.getenv("YOINKU_API_KEY")),
@@ -334,7 +461,9 @@ async def download_with_providers(source_url: str, destination: Path, *,
     async with httpx.AsyncClient(timeout=timeout_cfg, follow_redirects=True) as client:
         failures: list[str] = []
         for name in names:
-            if name == "newisty":
+            if name == "piped":
+                provider = PipedProvider()
+            elif name == "newisty":
                 provider = NewistyProvider()
             elif name == "ahm7":
                 provider = Ahm7Provider()
