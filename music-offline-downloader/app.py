@@ -3,6 +3,7 @@
 from contextlib import asynccontextmanager
 import json
 import os
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -57,6 +58,11 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
     application.add_middleware(CORSMiddleware, allow_origins=list(config.allowed_origins),
                                allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type"],
                                expose_headers=["Content-Length", "Retry-After"], allow_credentials=False)
+
+    @application.get("/test")
+    async def test_page():
+        return FileResponse(Path(__file__).with_name("test.html"), media_type="text/html",
+                            headers={"Cache-Control": "no-store"})
 
     @application.get("/health")
     async def health():
