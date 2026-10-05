@@ -16,6 +16,7 @@ from provider_engine import (
     NewistyProvider,
     YoinkuProvider,
     TunelioProvider,
+    PipedProvider,
     configured_providers,
     download_with_providers,
 )
@@ -27,7 +28,7 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
             "PROVIDER_ORDER": "ahm7,tunelio,yoinku,unknown",
             "TUNELIO_API_KEY": "tnl-test",
         }, clear=True):
-            self.assertEqual(configured_providers(), ["newisty", "ahm7", "tunelio"])
+            self.assertEqual(configured_providers(), ["piped", "newisty", "ahm7", "tunelio"])
 
     async def test_router_falls_back_after_retryable_provider_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -39,7 +40,13 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
                 "PROVIDER_ORDER": "yoinku,tunelio",
                 "YOINKU_API_KEY": "yk-test",
                 "TUNELIO_API_KEY": "tnl-test",
-            }, clear=True),             patch("provider_engine.YoinkuProvider.download", new=AsyncMock(
+            }, clear=True),             patch("provider_engine.PipedProvider.download", new=AsyncMock(
+                side_effect=ProviderFailure("piped", "forbidden", retryable=True)
+            )),             patch("provider_engine.NewistyProvider.download", new=AsyncMock(
+                side_effect=ProviderFailure("newisty", "forbidden", retryable=True)
+            )),             patch("provider_engine.Ahm7Provider.download", new=AsyncMock(
+                side_effect=ProviderFailure("ahm7", "forbidden", retryable=True)
+            )),             patch("provider_engine.YoinkuProvider.download", new=AsyncMock(
                 side_effect=ProviderFailure("yoinku", "rate_limited", retryable=True)
             )),             patch("provider_engine.TunelioProvider.download", new=AsyncMock(return_value=expected)):
                 result = await download_with_providers(
@@ -65,7 +72,13 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
                 "PROVIDER_ORDER": "yoinku,tunelio",
                 "YOINKU_API_KEY": "yk-test",
                 "TUNELIO_API_KEY": "tnl-test",
-            }, clear=True),             patch("provider_engine.YoinkuProvider.download", new=yoinku),             patch("provider_engine.TunelioProvider.download", new=tunelio):
+            }, clear=True),             patch("provider_engine.PipedProvider.download", new=AsyncMock(
+                side_effect=ProviderFailure("piped", "forbidden", retryable=True)
+            )),             patch("provider_engine.NewistyProvider.download", new=AsyncMock(
+                side_effect=ProviderFailure("newisty", "forbidden", retryable=True)
+            )),             patch("provider_engine.Ahm7Provider.download", new=AsyncMock(
+                side_effect=ProviderFailure("ahm7", "forbidden", retryable=True)
+            )),             patch("provider_engine.YoinkuProvider.download", new=yoinku),             patch("provider_engine.TunelioProvider.download", new=tunelio):
                 result = await download_with_providers(
                     "https://www.youtube.com/watch?v=YE7VzlLtp-4",
                     destination,
@@ -75,6 +88,43 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
                 )
             self.assertEqual(result.provider, "tunelio")
             tunelio.assert_awaited_once()
+
+    async def test_piped_contract_resolves_audio_stream_without_key(self):
+        import httpx
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp) / "audio.mp3"
+            requests = []
+            async def handler(request):
+                requests.append(request)
+                if request.url.path.endswith("/streams/YE7VzlLtp-4"):
+                    return httpx.Response(200, json={
+                        "title": "Piped test skladba",
+                        "audioStreams": [{
+                            "mimeType": "audio/mp4",
+                            "format": "M4A",
+                            "bitrate": 128000,
+                            "videoOnly": False,
+                            "url": "https://cdn.example/audio.m4a",
+                        }],
+                    })
+                return httpx.Response(200, content=b"M4A-test")
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as client:
+                with patch("provider_engine._convert_to_mp3", new=AsyncMock()), \
+                     patch("provider_engine._probe_mp3", new=AsyncMock(return_value=(1200, "mp3"))):
+                    result = await PipedProvider().download(
+                        client,
+                        "https://www.youtube.com/watch?v=YE7VzlLtp-4",
+                        destination,
+                        30_000_000,
+                        1200,
+                        5,
+                    )
+            self.assertEqual(result.provider, "piped")
+            self.assertEqual(result.title, "Piped test skladba")
+            self.assertEqual(requests[0].url.host, "pipedapi.ducks.party")
+            self.assertEqual(requests[0].url.path, "/streams/YE7VzlLtp-4")
+            self.assertNotIn("authorization", requests[0].headers)
 
     async def test_newisty_contract_queues_audio_mp3_without_key(self):
         import httpx
