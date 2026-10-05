@@ -12,9 +12,7 @@ import hashlib
 import os
 from pathlib import Path
 import re
-import shlex
 from typing import Any
-from urllib.parse import urlencode
 
 import httpx
 
@@ -165,7 +163,6 @@ class YoinkuProvider:
             filename = data.get("filename") or "music.mp3"
         except (ValueError, KeyError, TypeError):
             raise ProviderFailure(self.name, "invalid_response") from None
-        destination = destination.with_name(_clean_filename(filename).removesuffix(".mp3") + ".mp3")
         await _download_file(client, url, destination, max_bytes)
         return await _finalize(self.name, destination, Path(filename).stem, max_duration, timeout)
 
