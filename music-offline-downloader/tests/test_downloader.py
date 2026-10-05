@@ -218,6 +218,7 @@ class ManagerTests(unittest.IsolatedAsyncioTestCase):
 async def asgi_request(application, path, method="GET", data=None, origin=None, extra_headers=()):
     body = json.dumps(data).encode() if data is not None else b""
     headers = [(b"content-type", b"application/json")]
+    headers.append((b"host", b"test"))
     if origin:
         headers.append((b"origin", origin.encode()))
     headers.extend(extra_headers)
@@ -253,6 +254,8 @@ class HTTPTests(unittest.IsolatedAsyncioTestCase):
                 for origin in (None, "https://attacker.example"):
                     status, _, payload = await asgi_request(app, "/api/jobs", "POST", {"url": SOURCE}, origin)
                     self.assertEqual((status, payload["error"]), (403, "origin_not_allowed"))
+                status, _, payload = await asgi_request(app, "/api/jobs", "POST", {"url": SOURCE}, "https://test")
+                self.assertEqual((status, payload["error"]), (400, "invalid_request"))
                 origin = "https://music-offline-307.onrender.com"
                 for data, expected in [({"url": SOURCE, "options": "--cookies"}, 400), ({"url": "a" * 5000}, 413),
                                        ({"url": "https://127.0.0.1/private"}, 400)]:
