@@ -1,0 +1,37 @@
+name: TEST03 live provider probe
+
+on:
+  push:
+    branches:
+      - feature/music-offline-multiprovider-20261005
+
+jobs:
+  probe:
+    if: contains(github.event.head_commit.message, 'TEST03 live probe')
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Probe live downloader
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://music-offline-multiprovider-test.onrender.com'
+          JOB="$(curl -fsS -X POST "$BASE/api/jobs" -H 'Content-Type: application/json' --data '{"url":"https://www.youtube.com/watch?v=YE7VzlLtp-4"}')"
+          echo "CREATE=$JOB"
+          ID="$(python -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<<"$JOB")"
+          for i in $(seq 1 80); do
+            sleep 3
+            BODY="$(curl -fsS "$BASE/api/jobs/$ID")"
+            echo "POLL=$BODY"
+            STATE="$(python -c 'import json,sys; print(json.load(sys.stdin).get("state",""))' <<<"$BODY")"
+            if [ "$STATE" = "ready" ]; then
+              echo "TEST03 RESULT: READY"
+              exit 0
+            fi
+            if [ "$STATE" = "failed" ] || [ "$STATE" = "cancelled" ]; then
+              echo "TEST03 RESULT: FAILED"
+              exit 1
+            fi
+          done
+          echo "TEST03 RESULT: TIMEOUT"
+          exit 1
