@@ -235,7 +235,10 @@ class TunelioProvider:
 
 
 def configured_providers() -> list[str]:
-    order = [x.strip().lower() for x in os.getenv("PROVIDER_ORDER", "ahm7,yoinku,tunelio").split(",") if x.strip()]
+    configured = [x.strip().lower() for x in os.getenv("PROVIDER_ORDER", "ahm7,yoinku,tunelio").split(",") if x.strip()]
+    # AHM7 is the no-key fallback and must remain first even if an older
+    # Render environment still contains a legacy PROVIDER_ORDER value.
+    order = ["ahm7"] + [x for x in configured if x != "ahm7"]
     available = {
         "ahm7": True,
         "yoinku": bool(os.getenv("YOINKU_API_KEY")),
