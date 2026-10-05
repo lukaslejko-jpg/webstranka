@@ -9,12 +9,17 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 import hashlib
+import logging
 import os
+import time
 from pathlib import Path
 import re
 from typing import Any
 
 import httpx
+
+
+logger = logging.getLogger("music-offline-downloader")
 
 
 class ProviderFailure(Exception):
@@ -215,17 +220,28 @@ async def download_with_providers(source_url: str, destination: Path, *,
     if not names:
         raise ProviderFailure("router", "no_provider_configured", retryable=False)
 
-    timeout_cfg = httpx.Timeout(timeout, connect=min(timeout, 20))
+    # Keep each provider attempt bounded. The previous implementation allowed one
+    # provider to consume the whole 240s job timeout before fallback could run.
+    provider_timeout = min(45.0, timeout)
+    timeout_cfg = httpx.Timeout(provider_timeout, connect=min(provider_timeout, 20))
     async with httpx.AsyncClient(timeout=timeout_cfg, follow_redirects=True) as client:
         failures: list[str] = []
         for name in names:
             provider = YoinkuProvider(os.environ["YOINKU_API_KEY"]) if name == "yoinku" else TunelioProvider(os.environ["TUNELIO_API_KEY"])
+            started = time.monotonic()
+            logger.info("provider_start provider=%s", name)
             try:
-                return await provider.download(
-                    client, source_url, destination, max_bytes, max_duration, timeout
+                result = await provider.download(
+                    client, source_url, destination, max_bytes, max_duration, provider_timeout
                 )
+                logger.info("provider_success provider=%s elapsed=%.1fs size=%d",
+                            name, time.monotonic() - started, result.size)
+                return result
             except ProviderFailure as error:
+                elapsed = time.monotonic() - started
                 failures.append(f"{name}:{error.code}")
+                logger.warning("provider_failed provider=%s code=%s retryable=%s elapsed=%.1fs",
+                               name, error.code, error.retryable, elapsed)
                 if destination.exists():
                     destination.unlink(missing_ok=True)
                 if not error.retryable:
