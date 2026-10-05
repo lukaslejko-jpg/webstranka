@@ -32,12 +32,16 @@ small{color:#888;display:block;margin-top:18px;line-height:1.45}
 </main>
 <script>
 const input=document.getElementById('url'),start=document.getElementById('start'),cancel=document.getElementById('cancel'),status=document.getElementById('status'),result=document.getElementById('result'),meta=document.getElementById('meta'),audio=document.getElementById('audio'),download=document.getElementById('download');
-let currentId=null,timer=null;
+let currentId=null,timer=null,startedAt=0;
 function show(t,c=''){status.textContent=t;status.className=c}
 function stop(){if(timer)clearTimeout(timer);timer=null}
 async function poll(id){
  try{
   const r=await fetch('/api/jobs/'+encodeURIComponent(id)),d=await r.json();
+  if(!r.ok){
+   stop();start.disabled=false;cancel.hidden=true;
+   show('API CHYBA HTTP '+r.status+'\n'+(d.error||JSON.stringify(d))+'\nJob: '+id,'err');return
+  }
   if(d.state==='ready'){
    stop();start.disabled=false;cancel.hidden=true;
    show('HOTOVO\nProvider: '+(d.provider||'neznámy')+'\nNázov: '+(d.title||'Skladba')+'\nDĺžka: '+(d.durationMs?Math.round(d.durationMs/1000):'?')+' s','ok');
@@ -47,12 +51,18 @@ async function poll(id){
    stop();start.disabled=false;cancel.hidden=true;
    show('NEÚSPEŠNÉ\nStav: '+d.state+'\nChyba: '+(d.error||'neznáma')+(d.reason?'\nDôvod: '+d.reason:'')+(d.stage?'\nFáza: '+d.stage:''),'err');return
   }
-  show('Spracovanie…\nStav: '+d.state+'\nJob: '+id);timer=setTimeout(()=>poll(id),1200)
+  if(!d.state){
+   stop();start.disabled=false;cancel.hidden=true;
+   show('NEČAKANÁ ODPOVEĎ API\n'+JSON.stringify(d,null,2)+'\nJob: '+id,'err');return
+  }
+  const elapsed=startedAt?Math.round((Date.now()-startedAt)/1000):0;
+  show('Spracovanie… '+elapsed+' s\nStav: '+d.state+'\nJob: '+id);
+  timer=setTimeout(()=>poll(id),1200)
  }catch(e){stop();start.disabled=false;cancel.hidden=true;show('Chyba komunikácie: '+e.message,'err')}
 }
 start.addEventListener('click',async()=>{
  stop();result.style.display='none';audio.removeAttribute('src');const url=input.value.trim();
- if(!url)return show('Zadaj YouTube URL.','err');start.disabled=true;cancel.hidden=false;show('Zakladám testovací job…');
+ if(!url)return show('Zadaj YouTube URL.','err');start.disabled=true;cancel.hidden=false;startedAt=Date.now();show('Zakladám testovací job…');
  try{
   const r=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})}),d=await r.json();
   if(!r.ok)throw new Error(d.error||('HTTP '+r.status));currentId=d.id;await poll(currentId)
