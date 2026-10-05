@@ -55,6 +55,18 @@ def _json_object(value: Any) -> dict:
 
 def _provider_error(provider: str, response: httpx.Response) -> ProviderFailure:
     status = response.status_code
+    # Cobalt deliberately uses HTTP 400 for application-level errors. Preserve
+    # its machine-readable error code so the router/logs show the real cause
+    # instead of collapsing every YouTube failure into generic http_400.
+    if provider == "cobalt" and status == 400:
+        try:
+            payload = response.json()
+            code = str((payload.get("error") or {}).get("code") or "").strip()
+            if code:
+                logger.warning("cobalt_error code=%s context=%s", code, (payload.get("error") or {}).get("context"))
+                return ProviderFailure(provider, code, retryable=True)
+        except (ValueError, TypeError, AttributeError):
+            pass
     if status == 401:
         return ProviderFailure(provider, "invalid_credentials", retryable=False)
     if status == 403:
