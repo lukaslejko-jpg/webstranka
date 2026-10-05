@@ -110,7 +110,9 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
                 return httpx.Response(200, content=b"M4A-test")
             transport = httpx.MockTransport(handler)
             async with httpx.AsyncClient(transport=transport) as client:
-                with patch("provider_engine._convert_to_mp3", new=AsyncMock()), \
+                async def fake_convert(source, target, timeout):
+                    target.write_bytes(b"ID3-test")
+                with patch("provider_engine._convert_to_mp3", new=fake_convert), \
                      patch("provider_engine._probe_mp3", new=AsyncMock(return_value=(1200, "mp3"))):
                     result = await PipedProvider().download(
                         client,
