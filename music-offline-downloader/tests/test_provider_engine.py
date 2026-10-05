@@ -17,6 +17,7 @@ from provider_engine import (
     YoinkuProvider,
     TunelioProvider,
     PipedProvider,
+    CobaltProvider,
     configured_providers,
     download_with_providers,
 )
@@ -28,7 +29,7 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
             "PROVIDER_ORDER": "ahm7,tunelio,yoinku,unknown",
             "TUNELIO_API_KEY": "tnl-test",
         }, clear=True):
-            self.assertEqual(configured_providers(), ["piped", "newisty", "ahm7", "tunelio"])
+            self.assertEqual(configured_providers(), ["cobalt", "piped", "newisty", "ahm7", "tunelio"])
 
     async def test_router_falls_back_after_retryable_provider_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -88,6 +89,37 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
                 )
             self.assertEqual(result.provider, "tunelio")
             tunelio.assert_awaited_once()
+
+    async def test_cobalt_contract_requests_audio_mp3_without_key(self):
+        import httpx
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp) / "audio.mp3"
+            requests = []
+            async def handler(request):
+                requests.append(request)
+                return httpx.Response(200, json={
+                    "status": "tunnel",
+                    "url": "https://cdn.example/audio.mp3",
+                    "filename": "Cobalt test skladba.mp3",
+                })
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as client:
+                with patch.object(CobaltProvider, "base_url", "https://cobalt.example"), \
+                     patch("provider_engine._probe_mp3", new=AsyncMock(return_value=(1200, "mp3"))):
+                    result = await CobaltProvider().download(
+                        client,
+                        "https://www.youtube.com/watch?v=YE7VzlLtp-4",
+                        destination,
+                        30_000_000,
+                        1200,
+                        5,
+                    )
+            self.assertEqual(result.provider, "cobalt")
+            self.assertEqual(result.title, "Cobalt test skladba")
+            self.assertEqual(requests[0].url.path, "/")
+            self.assertEqual(requests[0].json()["audioFormat"], "mp3")
+            self.assertEqual(requests[0].json()["downloadMode"], "audio")
+            self.assertNotIn("authorization", requests[0].headers)
 
     async def test_piped_contract_resolves_audio_stream_without_key(self):
         import httpx
