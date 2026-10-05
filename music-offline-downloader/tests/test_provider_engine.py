@@ -12,6 +12,7 @@ if str(sys_path) not in sys.path:
 from provider_engine import (
     ProviderFailure,
     ProviderResult,
+    Ahm7Provider,
     YoinkuProvider,
     TunelioProvider,
     configured_providers,
@@ -22,10 +23,10 @@ from provider_engine import (
 class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
     async def test_configured_order_uses_only_keys_that_exist(self):
         with patch.dict(os.environ, {
-            "PROVIDER_ORDER": "tunelio,yoinku,unknown",
+            "PROVIDER_ORDER": "ahm7,tunelio,yoinku,unknown",
             "TUNELIO_API_KEY": "tnl-test",
         }, clear=True):
-            self.assertEqual(configured_providers(), ["tunelio"])
+            self.assertEqual(configured_providers(), ["ahm7", "tunelio"])
 
     async def test_router_falls_back_after_retryable_provider_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -73,6 +74,40 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
                 )
             self.assertEqual(result.provider, "tunelio")
             tunelio.assert_awaited_once()
+
+    async def test_ahm7_contract_uses_audio_url_without_key(self):
+        import httpx
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp) / "audio.mp3"
+            requests = []
+            async def handler(request):
+                requests.append(request)
+                if request.url.host == "ahm7xmakki.com":
+                    return httpx.Response(200, json={
+                        "success": True,
+                        "mediaInfo": {
+                            "title": "AHM7 test skladba",
+                            "audioUrl": "https://cdn.example/audio.mp3",
+                        },
+                    })
+                return httpx.Response(200, content=b"ID3-test")
+            transport = httpx.MockTransport(handler)
+            async with httpx.AsyncClient(transport=transport) as client:
+                with patch("provider_engine._probe_mp3", new=AsyncMock(return_value=(1200, "mp3"))):
+                    result = await Ahm7Provider().download(
+                        client,
+                        "https://www.youtube.com/watch?v=YE7VzlLtp-4",
+                        destination,
+                        30_000_000,
+                        1200,
+                        5,
+                    )
+            self.assertEqual(result.provider, "ahm7")
+            self.assertEqual(result.title, "AHM7 test skladba")
+            self.assertEqual(requests[0].url.path, "/api/alldl")
+            self.assertEqual(requests[0].url.params["url"], "https://www.youtube.com/watch?v=YE7VzlLtp-4")
+            self.assertNotIn("authorization", requests[0].headers)
+            self.assertEqual(destination.read_bytes(), b"ID3-test")
 
     async def test_yoinku_contract_uses_mp3_format_and_downloads_file(self):
         import httpx
