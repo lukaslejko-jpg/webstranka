@@ -91,6 +91,10 @@ class Config:
     def from_env(cls) -> "Config":
         origins = tuple(x.strip().rstrip("/") for x in os.getenv(
             "ALLOWED_ORIGINS", "https://music-offline-307.onrender.com").split(",") if x.strip())
+        # TEST03 is an isolated Render service; keep its own public test page
+        # explicitly allowed even if Render env vars are stale.
+        if "https://music-offline-multiprovider-test.onrender.com" not in origins:
+            origins = origins + ("https://music-offline-multiprovider-test.onrender.com",)
         if not origins or any(urlsplit(x).scheme != "https" or urlsplit(x).path or
                               urlsplit(x).query or urlsplit(x).fragment or
                               urlsplit(x).username or urlsplit(x).password for x in origins):
