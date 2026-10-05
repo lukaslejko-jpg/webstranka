@@ -44,7 +44,12 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
             same_origin = False
             host = request.headers.get("host")
             if origin and host:
-                same_origin = origin.rstrip("/") == f"{request.url.scheme}://{host}".rstrip("/")
+                # Render terminates TLS before forwarding to Uvicorn, so
+                # request.url.scheme can be http while the browser origin is https.
+                same_origin = origin.rstrip("/") in {
+                    f"https://{host}".rstrip("/"),
+                    f"http://{host}".rstrip("/"),
+                }
             if origin not in config.allowed_origins and not same_origin:
                 return JSONResponse({"error": "origin_not_allowed"}, status_code=403,
                                     headers={"Cache-Control": "no-store"})
