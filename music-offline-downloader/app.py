@@ -37,7 +37,15 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
     @application.middleware("http")
     async def boundaries(request: Request, call_next):
         if request.url.path.startswith("/api/"):
-            if request.headers.get("origin") not in config.allowed_origins:
+            origin = request.headers.get("origin")
+            # Same-origin requests are always legitimate for this API. This also
+            # keeps the isolated TEST03 service usable without depending on a
+            # separately synchronized ALLOWED_ORIGINS value.
+            same_origin = False
+            host = request.headers.get("host")
+            if origin and host:
+                same_origin = origin.rstrip("/") == f"{request.url.scheme}://{host}".rstrip("/")
+            if origin not in config.allowed_origins and not same_origin:
                 return JSONResponse({"error": "origin_not_allowed"}, status_code=403,
                                     headers={"Cache-Control": "no-store"})
             length = request.headers.get("content-length")
