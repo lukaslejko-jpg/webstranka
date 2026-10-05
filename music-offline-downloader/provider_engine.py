@@ -177,13 +177,22 @@ class CobaltProvider:
             "disableMetadata": False,
         }
         try:
-            response = await client.post(
-                self.base_url + "/",
-                json=payload,
-                headers={"Accept": "application/json", "Content-Type": "application/json"},
-                timeout=max(10.0, timeout),
-            )
-            if response.status_code >= 400:
+            response = None
+            # Render Free services can sleep; the first gateway 502/503 can arrive
+            # while the self-hosted Cobalt instance is waking. Retry long enough
+            # to cover the documented cold-start window.
+            for attempt in range(5):
+                response = await client.post(
+                    self.base_url + "/",
+                    json=payload,
+                    headers={"Accept": "application/json", "Content-Type": "application/json"},
+                    timeout=max(15.0, timeout),
+                )
+                if response.status_code < 500:
+                    break
+                if attempt < 4:
+                    await asyncio.sleep(15)
+            if response is None or response.status_code >= 400:
                 raise _provider_error(self.name, response)
             data = _json_object(response.json())
             status = str(data.get("status") or "")
