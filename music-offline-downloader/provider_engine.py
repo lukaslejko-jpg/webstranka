@@ -160,6 +160,53 @@ async def _convert_to_mp3(source: Path, destination: Path, timeout: float) -> No
         raise ProviderFailure("piped", "conversion_failed", retryable=True)
 
 
+class CobaltProvider:
+    """Self-hosted Cobalt API; no third-party API key required."""
+
+    name = "cobalt"
+    base_url = os.getenv("COBALT_API_URL", "https://music-offline-cobalt-render.onrender.com").rstrip("/")
+
+    async def download(self, client: httpx.AsyncClient, source_url: str, destination: Path,
+                       max_bytes: int, max_duration: int, timeout: float) -> ProviderResult:
+        payload = {
+            "url": source_url,
+            "audioFormat": "mp3",
+            "audioBitrate": "128",
+            "downloadMode": "audio",
+            "filenameStyle": "pretty",
+            "disableMetadata": False,
+        }
+        try:
+            response = await client.post(
+                self.base_url + "/",
+                json=payload,
+                headers={"Accept": "application/json", "Content-Type": "application/json"},
+                timeout=max(10.0, timeout),
+            )
+            if response.status_code >= 400:
+                raise _provider_error(self.name, response)
+            data = _json_object(response.json())
+            status = str(data.get("status") or "")
+            if status not in {"tunnel", "redirect"}:
+                if status == "error":
+                    code = str((data.get("error") or {}).get("code") or "provider_error")
+                    raise ProviderFailure(self.name, code, retryable=True)
+                raise ProviderFailure(self.name, "provider_error", retryable=True)
+            media_url = data.get("url")
+            if not isinstance(media_url, str) or not media_url:
+                raise ProviderFailure(self.name, "missing_media_url", retryable=True)
+            filename = str(data.get("filename") or "YouTube audio.mp3")
+            title = Path(filename).stem or "YouTube audio"
+            await _download_file(client, media_url, destination, max_bytes)
+            return await _finalize(self.name, destination, title, max_duration, timeout)
+        except ProviderFailure:
+            raise
+        except httpx.TimeoutException:
+            raise ProviderFailure(self.name, "timeout", retryable=True) from None
+        except (httpx.HTTPError, ValueError, TypeError):
+            raise ProviderFailure(self.name, "network_error", retryable=True) from None
+
+
 class PipedProvider:
     """No-key fallback via Piped's unauthenticated /streams endpoint.
 
@@ -433,11 +480,11 @@ class TunelioProvider:
 
 
 def configured_providers() -> list[str]:
-    configured = [x.strip().lower() for x in os.getenv("PROVIDER_ORDER", "piped,newisty,ahm7,yoinku,tunelio").split(",") if x.strip()]
-    # Piped is the first no-key provider because it resolves the YouTube stream
-    # outside the Render instance. Keep Newisty/AHM7 as subsequent fallbacks.
-    order = ["piped", "newisty", "ahm7"] + [x for x in configured if x not in {"piped", "newisty", "ahm7"}]
+    configured = [x.strip().lower() for x in os.getenv("PROVIDER_ORDER", "cobalt,piped,newisty,ahm7,yoinku,tunelio").split(",") if x.strip()]
+    # Self-hosted Cobalt is the primary no-key provider; keep other fallbacks after it.
+    order = ["cobalt", "piped", "newisty", "ahm7"] + [x for x in configured if x not in {"cobalt", "piped", "newisty", "ahm7"}]
     available = {
+        "cobalt": True,
         "piped": True,
         "newisty": True,
         "ahm7": True,
@@ -461,7 +508,9 @@ async def download_with_providers(source_url: str, destination: Path, *,
     async with httpx.AsyncClient(timeout=timeout_cfg, follow_redirects=True) as client:
         failures: list[str] = []
         for name in names:
-            if name == "piped":
+            if name == "cobalt":
+                provider = CobaltProvider()
+            elif name == "piped":
                 provider = PipedProvider()
             elif name == "newisty":
                 provider = NewistyProvider()
