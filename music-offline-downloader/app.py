@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import json
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,13 +44,18 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
             # separately synchronized ALLOWED_ORIGINS value.
             same_origin = False
             host = request.headers.get("host")
-            if origin and host:
-                # Render terminates TLS before forwarding to Uvicorn, so
-                # request.url.scheme can be http while the browser origin is https.
-                same_origin = origin.rstrip("/") in {
-                    f"https://{host}".rstrip("/"),
-                    f"http://{host}".rstrip("/"),
+            forwarded_host = request.headers.get("x-forwarded-host")
+            if origin:
+                origin_host = urlsplit(origin).hostname
+                candidate_hosts = {
+                    h.split(":", 1)[0].strip().lower()
+                    for h in (host, forwarded_host)
+                    if h
                 }
+                # Render may terminate TLS and/or rewrite Host before Uvicorn.
+                # For an API request, an Origin with the same hostname as the
+                # public request is same-origin regardless of http/https.
+                same_origin = bool(origin_host and origin_host.lower() in candidate_hosts)
             if origin not in config.allowed_origins and not same_origin:
                 return JSONResponse({"error": "origin_not_allowed"}, status_code=403,
                                     headers={"Cache-Control": "no-store"})
