@@ -514,7 +514,7 @@ async def download_with_providers(source_url: str, destination: Path, *,
     # provider to consume the whole 240s job timeout before fallback could run.
     provider_timeout = min(45.0, timeout)
     timeout_cfg = httpx.Timeout(provider_timeout, connect=min(provider_timeout, 20))
-    async with httpx.AsyncClient(timeout=timeout_cfg, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=timeout_cfg, follow_redirects=True, trust_env=False) as client:
         failures: list[str] = []
         for name in names:
             if name == "cobalt":
