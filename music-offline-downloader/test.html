@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Music Offline — TEST03</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+body{margin:0;min-height:100vh;background:#111;color:#eee;display:grid;place-items:center}
+main{width:min(720px,calc(100% - 32px));padding:28px;box-sizing:border-box;border:1px solid #333;border-radius:18px;background:#191919}
+h1{margin:0 0 6px;font-size:24px}.tag{color:#aaa;margin-bottom:24px}
+label{display:block;margin-bottom:8px;font-weight:600}
+input{width:100%;box-sizing:border-box;padding:13px 14px;border-radius:10px;border:1px solid #444;background:#0d0d0d;color:#fff;font-size:15px}
+button,a.button{margin-top:14px;display:inline-block;border:0;border-radius:10px;padding:12px 16px;background:#eee;color:#111;font-weight:700;cursor:pointer;text-decoration:none}
+button.secondary{background:#333;color:#eee;margin-left:8px}button:disabled{opacity:.5;cursor:wait}
+#status{margin-top:22px;padding:14px;border-radius:10px;background:#0d0d0d;white-space:pre-wrap}
+#result{margin-top:14px;display:none}audio{width:100%;margin-top:12px}
+.ok{color:#9be29b}.err{color:#ff9d9d}
+small{color:#888;display:block;margin-top:18px;line-height:1.45}
+</style>
+</head>
+<body>
+<main>
+<h1>Music Offline — TEST03</h1>
+<div class="tag">Izolovaný test multi-provider YouTube → MP3</div>
+<label for="url">YouTube URL</label>
+<input id="url" value="https://www.youtube.com/watch?v=YE7VzlLtp-4" autocomplete="off" spellcheck="false">
+<div><button id="start">Testovať download</button><button id="cancel" class="secondary" hidden>Zrušiť</button></div>
+<div id="status">Pripravené na test.</div>
+<div id="result"><div id="meta"></div><audio id="audio" controls preload="none"></audio><a id="download" class="button" download>Stiahnuť MP3</a></div>
+<small>TEST03 je izolovaný od schválenej Music06 a Offline TEST02. API kľúče sa v tejto stránke nikdy nezobrazujú.</small>
+</main>
+<script>
+const input=document.getElementById('url'),start=document.getElementById('start'),cancel=document.getElementById('cancel'),status=document.getElementById('status'),result=document.getElementById('result'),meta=document.getElementById('meta'),audio=document.getElementById('audio'),download=document.getElementById('download');
+let currentId=null,timer=null;
+function show(t,c=''){status.textContent=t;status.className=c}
+function stop(){if(timer)clearTimeout(timer);timer=null}
+async function poll(id){
+ try{
+  const r=await fetch('/api/jobs/'+encodeURIComponent(id)),d=await r.json();
+  if(d.state==='ready'){
+   stop();start.disabled=false;cancel.hidden=true;
+   show('HOTOVO\nProvider: '+(d.provider||'neznámy')+'\nNázov: '+(d.title||'Skladba')+'\nDĺžka: '+(d.durationMs?Math.round(d.durationMs/1000):'?')+' s','ok');
+   audio.src=d.filePath;download.href=d.filePath;result.style.display='block';meta.textContent=(d.title||'Skladba')+' — '+(d.artist||'YouTube');return
+  }
+  if(d.state==='failed'||d.state==='cancelled'){
+   stop();start.disabled=false;cancel.hidden=true;
+   show('NEÚSPEŠNÉ\nStav: '+d.state+'\nChyba: '+(d.error||'neznáma')+(d.reason?'\nDôvod: '+d.reason:'')+(d.stage?'\nFáza: '+d.stage:''),'err');return
+  }
+  show('Spracovanie…\nStav: '+d.state+'\nJob: '+id);timer=setTimeout(()=>poll(id),1200)
+ }catch(e){stop();start.disabled=false;cancel.hidden=true;show('Chyba komunikácie: '+e.message,'err')}
+}
+start.addEventListener('click',async()=>{
+ stop();result.style.display='none';audio.removeAttribute('src');const url=input.value.trim();
+ if(!url)return show('Zadaj YouTube URL.','err');start.disabled=true;cancel.hidden=false;show('Zakladám testovací job…');
+ try{
+  const r=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})}),d=await r.json();
+  if(!r.ok)throw new Error(d.error||('HTTP '+r.status));currentId=d.id;await poll(currentId)
+ }catch(e){start.disabled=false;cancel.hidden=true;show('Chyba: '+e.message,'err')}
+});
+cancel.addEventListener('click',async()=>{
+ if(!currentId)return;stop();try{await fetch('/api/jobs/'+encodeURIComponent(currentId),{method:'DELETE'})}catch{}
+ start.disabled=false;cancel.hidden=true;show('Job zrušen.');currentId=null
+});
+</script>
+</body></html>
