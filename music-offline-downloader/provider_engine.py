@@ -140,6 +140,36 @@ async def _finalize(provider: str, destination: Path, title: str, max_duration: 
     )
 
 
+class Ahm7Provider:
+    """No-key fallback using AHM7's documented public downloader API."""
+    name = "ahm7"
+
+    async def download(self, client: httpx.AsyncClient, source_url: str, destination: Path,
+                       max_bytes: int, max_duration: int, timeout: float) -> ProviderResult:
+        try:
+            response = await client.get(
+                os.getenv("AHM7_API_BASE", "https://ahm7xmakki.com/api/alldl"),
+                params={"url": source_url},
+            )
+        except httpx.TimeoutException:
+            raise ProviderFailure(self.name, "timeout") from None
+        except httpx.HTTPError:
+            raise ProviderFailure(self.name, "network_error") from None
+        if response.status_code >= 400:
+            raise _provider_error(self.name, response)
+        try:
+            data = _json_object(response.json())
+            media = _json_object(data["mediaInfo"])
+            if data.get("success") is not True:
+                raise ValueError
+            url = media["audioUrl"]
+            title = media.get("title") or "YouTube audio"
+        except (ValueError, KeyError, TypeError):
+            raise ProviderFailure(self.name, "invalid_response") from None
+        await _download_file(client, url, destination, max_bytes)
+        return await _finalize(self.name, destination, str(title), max_duration, timeout)
+
+
 class YoinkuProvider:
     name = "yoinku"
 
@@ -205,8 +235,9 @@ class TunelioProvider:
 
 
 def configured_providers() -> list[str]:
-    order = [x.strip().lower() for x in os.getenv("PROVIDER_ORDER", "yoinku,tunelio").split(",") if x.strip()]
+    order = [x.strip().lower() for x in os.getenv("PROVIDER_ORDER", "ahm7,yoinku,tunelio").split(",") if x.strip()]
     available = {
+        "ahm7": True,
         "yoinku": bool(os.getenv("YOINKU_API_KEY")),
         "tunelio": bool(os.getenv("TUNELIO_API_KEY")),
     }
@@ -227,7 +258,12 @@ async def download_with_providers(source_url: str, destination: Path, *,
     async with httpx.AsyncClient(timeout=timeout_cfg, follow_redirects=True) as client:
         failures: list[str] = []
         for name in names:
-            provider = YoinkuProvider(os.environ["YOINKU_API_KEY"]) if name == "yoinku" else TunelioProvider(os.environ["TUNELIO_API_KEY"])
+            if name == "ahm7":
+                provider = Ahm7Provider()
+            elif name == "yoinku":
+                provider = YoinkuProvider(os.environ["YOINKU_API_KEY"])
+            else:
+                provider = TunelioProvider(os.environ["TUNELIO_API_KEY"])
             started = time.monotonic()
             logger.info("provider_start provider=%s", name)
             try:
