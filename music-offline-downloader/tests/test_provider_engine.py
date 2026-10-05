@@ -119,8 +119,10 @@ class ProviderEngineTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result.provider, "cobalt")
             self.assertEqual(result.title, "Cobalt test skladba")
             self.assertEqual(requests[0].url.path, "/")
-            self.assertEqual(requests[0].json()["audioFormat"], "mp3")
-            self.assertEqual(requests[0].json()["downloadMode"], "audio")
+            import json
+            payload = json.loads(requests[0].content)
+            self.assertEqual(payload["audioFormat"], "mp3")
+            self.assertEqual(payload["downloadMode"], "audio")
             self.assertNotIn("authorization", requests[0].headers)
 
     async def test_piped_contract_resolves_audio_stream_without_key(self):
