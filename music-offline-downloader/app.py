@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from downloader import Config, DownloadError, JobManager
 
@@ -83,6 +84,12 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
     application.add_middleware(CORSMiddleware, allow_origins=cors_origins,
                                allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type"],
                                expose_headers=["Content-Length", "Retry-After"], allow_credentials=False)
+
+    # TEST03 serves the existing Music Offline UI from the same origin as the API.
+    # This keeps the experiment isolated and makes the public Render root usable.
+    ui_dir = Path(__file__).resolve().parent.parent / "music-offline" / "public"
+    if ui_dir.is_dir():
+        application.mount("/", StaticFiles(directory=ui_dir, html=True), name="music-offline-ui")
 
     @application.get("/test")
     async def test_page():
