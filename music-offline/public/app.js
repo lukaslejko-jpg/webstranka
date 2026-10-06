@@ -620,14 +620,21 @@ function youtubeMessage() {
       JOB_NOT_FOUND: "youtubeExpired", INVALID_AUDIO: "youtubeIntegrityError",
       QUOTA: "youtubeStorageError", PROVIDER_UNAVAILABLE: "youtubeServiceError", SERVICE_NOT_READY: "youtubeServiceNotReady",
     };
-    return i18n(keys[youtubeError] || "youtubeServiceError");
+    return `${i18n(keys[youtubeError] || "youtubeServiceError")} Do mobilu sa nič neuložilo.`;
   }
-  const keys = {
-    idle: "youtubeIdle", checking: "youtubePreparing", queued: "youtubeQueued",
-    preparing: "youtubePreparing", downloading: "youtubeDownloading", converting: "youtubeConverting",
-    transferring: "youtubeTransferring", saving: "youtubeSaving", done: "youtubeDone",
-    existing: "youtubeAlreadySaved", cancelled: "youtubeCancelled", resume: "youtubeResumeHint",
+  const labels = {
+    checking: "Kontrolujem zdroj…",
+    queued: "Čakám na spracovanie zdroja…",
+    preparing: "Získavam audio zo zdroja…",
+    downloading: "Získavam audio zo zdroja…",
+    converting: "Pripravujem audio pre Music Offline…",
+    transferring: "Prenášam audio do mobilu…",
+    saving: "Ukladám do Music Offline v tomto zariadení…",
+    done: "Uložené v Music Offline v tomto zariadení.",
+    existing: "Skladba už je uložená v Music Offline.",
   };
+  if (labels[youtubeState]) return labels[youtubeState];
+  const keys = { idle: "youtubeIdle", cancelled: "youtubeCancelled", resume: "youtubeResumeHint" };
   return i18n(keys[youtubeState] || "youtubeIdle");
 }
 function youtubeCard() {
