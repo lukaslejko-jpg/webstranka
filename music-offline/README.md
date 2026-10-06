@@ -147,3 +147,28 @@ Bez zmeny vyššie uvedeného toku doplniť:
 - zachovanie už importovaných dát pri migrácii úložiska.
 
 Tento plán **nie je nasadený ani overený**.
+
+
+## HIT — TEST03 MULTI knižnica — 6. 10. 2026
+
+**Stav: HOTOVÉ / FYZICKY OVERENÉ NA IPHONE.**
+
+Railway služba `music-offline-test03-multi`, deployment `51d2df18-0fe8-41f6-b643-2a9e430f269b`, URL `https://music-offline-test03-multi-test.up.railway.app`.
+
+Používateľ fyzicky potvrdil:
+- vyhľadávanie a výber online výsledku,
+- otvorenie Palladium,
+- multi-import troch MP4,
+- súčasné zachovanie troch položiek bez prepisovania,
+- kompaktné rozloženie 2 karty na riadok,
+- samostatné prehrávanie videí.
+
+Overené položky na obrazovke: 117,8 MB, 1629 MB a 490,7 MB. Náhľady obrázkov nie sú v tomto HIT stave vyriešené; ide o známu UI chybu, ktorá neblokuje prehrávanie.
+
+**Rollback:** deployment `51d2df18-0fe8-41f6-b643-2a9e430f269b`. Ďalšie UI zmeny nesmú byť označené za HIT pred novým device testom.
+
+### SCHVÁLENÝ PLÁN UI
+- filter Všetko / Audio / Video a lokálne vyhľadávanie,
+- vymazanie jednotlivej položky s potvrdením,
+- online výsledky v kompaktnom skrolovateľnom paneli nad obsahom,
+- obnovenie náhľadov bez zmeny overeného media storage/playback toku.
