@@ -83,3 +83,105 @@ Súbor `public/release.json` a rovnaké číslo v HTML, offline module a service
 Node testy service workera simulujú nedostupnú sieť; nie sú náhradou za fyzický test režimu Lietadlo na iPhone. Cloudový Chromium takisto nepreukazuje funkčnosť zamknutej obrazovky v iOS. Verejné hlásenie Kasette #5 o automatickom pokračovaní pri zamknutí zostáva dôvodom na túto akceptáciu: https://github.com/nico-alvz/kasette/issues/5.
 
 Presný stav nového nasadenia a overení: `../docs/music-offline-youtube-20261004-03.md`. Predchádzajúce záznamy Preview 01/02 a ich pevné checkpointy zostávajú zachované.
+
+## Incident TEST03 — 6. 10. 2026 / povinný release postup
+
+Pri úpravách TEST03 vznikla regresia, pri ktorej sa načítal iba statický shell a stav „Pripravujem offline aplikáciu…“, ale frontend sa nevykreslil. Následné úspešné Render deploye boli nesprávne komunikované ako funkčné verzie. Render `LIVE` potvrdzuje nasadenie procesu, nie funkčnosť browserovej aplikácie.
+
+Povinný postup pre ďalšie TEST03 zmeny:
+
+1. Zachovať posledný používateľom potvrdený known-good snapshot a jeho presný commit/deployment.
+2. Meniť jednu izolovanú vec.
+3. Pred deployom skontrolovať frontendový modulový reťazec a syntax/runtime; backend unit testy samy nestačia.
+4. Po deployi overiť HTTP, načítanie modulov, štart JS a render hlavného UI.
+5. Pri štartovacej chybe zobraziť diagnostiku `window.onerror` a `unhandledrejection` priamo v testovacom UI namiesto hádania cache/SW príčiny.
+6. Zmenu označiť za funkčnú až po E2E/device teste relevantnej funkcie. Ak agent nemá možnosť fyzického iPhone/Safari testu, stav je iba **NASADENÉ — ČAKÁ NA DEVICE TEST**.
+7. Testovací link používateľovi neposielať ako „funkčný“ pred splnením bodov vyššie.
+8. Pri regresii rollbackovať celý snapshot, nie kombináciu jednotlivých súborov.
+
+### Stav incidentu
+
+- Akceptované Music a TEST02 zostávajú nedotknuté.
+- TEST03 je experimentálna vetva; jej úspešný Render build/deploy sa nesmie zamieňať s používateľsky overenou funkčnosťou.
+- Commit `fe6badc16b791f2461ae3398fe381bf186e6dbcc` bol počas incidentu označený ako údajný known-good podľa časovej korelácie, ale následný device test na čistom origine funkčnosť nepotvrdil. Preto sa **nesmie evidovať ako overený known-good** bez nového dôkazu.
+
+
+## HIT — Palladium → Music Offline import — 6. 10. 2026
+
+**Stav: HOTOVÉ / FYZICKY OVERENÉ NA IPHONE.**
+
+Chránený funkčný tok TEST03:
+
+1. Music TEST03 vyhľadá skladbu a po výbere automaticky priradí YouTube URL.
+2. Tlačidlo „Stiahnuť do mobilu“ otvorí Palladium cez `palladium://download?url=...`.
+3. Palladium stiahne médiá lokálne na iPhone. Cloudový downloader sa pre tento tok nepoužíva.
+4. Používateľ uloží/vyberie hotový súbor cez iOS Súbory / Stiahnuté.
+5. Music TEST03 tlačidlom „Importovať zo Stiahnutých“ prevezme súbor do lokálneho IndexedDB.
+6. Importovaný MP4 sa prehráva priamo v Music TEST03.
+
+Fyzický device test 6. 10. 2026:
+- súbor: `SLOVENSKÁ MEGA DIDŽINA 2026 - Deejay-jany.mp4`
+- veľkosť zobrazená v Music: 490,7 MB
+- dĺžka zobrazená prehrávačom: 3:12:19
+- výsledok: import, lokálne uloženie a prehrávanie v Music na iPhone potvrdené používateľom.
+
+Railway testovací frontend:
+- služba: `music-offline-ui-test`
+- URL: `https://music-offline-ui-test-test.up.railway.app`
+- deployment fyzicky overeného importného stavu: `2bcc067f-7299-499a-82ed-e8dd6a8d6811`
+
+### Ochrana HIT verzie
+
+- Stable Music 06 a akceptovaný TEST02 sa týmto experimentom nemenia.
+- Za HIT sa považuje iba vyššie uvedený fyzicky overený tok.
+- Dva následné pokusy rozšíriť Railway UI na viacero kompaktných kariet boli bezpečnostnou vrstvou zastavené pred zápisom; **nie sú nasadené a nie sú súčasťou HIT verzie**.
+- Pred ďalšou zmenou musí byť možné vrátiť sa na deployment `2bcc067f-7299-499a-82ed-e8dd6a8d6811` alebo na ekvivalentný presný snapshot jeho zdroja.
+
+### SCHVÁLENÝ PLÁN — ďalšia izolovaná zmena
+
+Bez zmeny vyššie uvedeného toku doplniť:
+- viacero uložených audio/video súborov namiesto jediného `latest`,
+- výber/import viacerých súborov,
+- kompaktné karty, na mobile prednostne 2 karty na riadok,
+- názov, typ Audio/Video, veľkosť a lokálne prehrávanie každej položky,
+- zachovanie už importovaných dát pri migrácii úložiska.
+
+Tento plán **nie je nasadený ani overený**.
+
+
+## HIT — TEST03 MULTI knižnica — 6. 10. 2026
+
+**Stav: HOTOVÉ / FYZICKY OVERENÉ NA IPHONE.**
+
+Railway služba `music-offline-test03-multi`, deployment `51d2df18-0fe8-41f6-b643-2a9e430f269b`, URL `https://music-offline-test03-multi-test.up.railway.app`.
+
+Používateľ fyzicky potvrdil:
+- vyhľadávanie a výber online výsledku,
+- otvorenie Palladium,
+- multi-import troch MP4,
+- súčasné zachovanie troch položiek bez prepisovania,
+- kompaktné rozloženie 2 karty na riadok,
+- samostatné prehrávanie videí.
+
+Overené položky na obrazovke: 117,8 MB, 1629 MB a 490,7 MB. Náhľady obrázkov nie sú v tomto HIT stave vyriešené; ide o známu UI chybu, ktorá neblokuje prehrávanie.
+
+**Rollback:** deployment `51d2df18-0fe8-41f6-b643-2a9e430f269b`. Ďalšie UI zmeny nesmú byť označené za HIT pred novým device testom.
+
+### SCHVÁLENÝ PLÁN UI
+- filter Všetko / Audio / Video a lokálne vyhľadávanie,
+- vymazanie jednotlivej položky s potvrdením,
+- online výsledky v kompaktnom skrolovateľnom paneli nad obsahom,
+- obnovenie náhľadov bez zmeny overeného media storage/playback toku.
+
+
+## HIT — TEST03 UI scroll/filter/delete — 6. 10. 2026
+
+**Stav: HOTOVÉ / FYZICKY OVERENÉ NA IPHONE používateľom.**
+
+Railway služba `music-offline-test03-ui`, deployment `67f2b4e6-3c40-45a4-bf5c-5db46068c8da`, URL `https://music-offline-test03-ui-test.up.railway.app`.
+
+Potvrdený stav nadväzuje na TEST03 MULTI a zachováva tok Music → vyhľadanie → výber výsledku → Palladium → uloženie → viacnásobný import → lokálne prehrávanie. UI navyše obsahuje filter Všetko / Audio / Video, lokálne vyhľadávanie v knižnici a vymazanie jednotlivej položky. Výsledky online vyhľadávania sú po oprave súčasťou toku dokumentu, majú vlastnú skrolovateľnú výšku 360 px a zobrazujú počet výsledkov; už nemajú používať absolútny overlay nad knižnicou. Ikona koša bola zmenšená.
+
+**Známy nedoriešený bod:** reálne obrázky/náhľady online výsledkov ešte nie sú potvrdené; nesmú sa uvádzať ako hotové.
+
+**Rollback:** Railway deployment `67f2b4e6-3c40-45a4-bf5c-5db46068c8da`. Stable Music 06 a TEST02 zostávajú nedotknuté.

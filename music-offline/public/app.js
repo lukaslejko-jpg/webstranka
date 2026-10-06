@@ -96,6 +96,7 @@ const savedSamples = new Set();
 let sampleBusy = false, sampleMessage = "", sampleError = false;
 const LS_YOUTUBE = "music-offline:youtube-download";
 let youtubeUrl = "", youtubeJob = null, youtubeState = "idle", youtubeError = null;
+let youtubeSearchQ = "", youtubeSearchResults = [], youtubeSearchBusy = false, youtubeSearchError = "", youtubeSelectedResult = null;
 let youtubeActive = null, youtubeSavedId = null;
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -617,23 +618,39 @@ function youtubeMessage() {
       RATE_LIMITED: "youtubeBusy", BUSY: "youtubeBusy", DURATION_LIMIT: "youtubeTooLarge",
       TOO_LARGE: "youtubeTooLarge", TIMEOUT: "youtubeTimeout", JOB_EXPIRED: "youtubeExpired",
       JOB_NOT_FOUND: "youtubeExpired", INVALID_AUDIO: "youtubeIntegrityError",
-      QUOTA: "youtubeStorageError", SERVICE_NOT_READY: "youtubeServiceNotReady",
+      QUOTA: "youtubeStorageError", PROVIDER_UNAVAILABLE: "youtubeServiceError", SERVICE_NOT_READY: "youtubeServiceNotReady",
     };
-    return i18n(keys[youtubeError] || "youtubeServiceError");
+    return `${i18n(keys[youtubeError] || "youtubeServiceError")} Do mobilu sa nič neuložilo.`;
   }
-  const keys = {
-    idle: "youtubeIdle", checking: "youtubePreparing", queued: "youtubeQueued",
-    preparing: "youtubePreparing", downloading: "youtubeDownloading", converting: "youtubeConverting",
-    transferring: "youtubeTransferring", saving: "youtubeSaving", done: "youtubeDone",
-    existing: "youtubeAlreadySaved", cancelled: "youtubeCancelled", resume: "youtubeResumeHint",
+  const labels = {
+    checking: "Kontrolujem zdroj…",
+    queued: "Čakám na spracovanie zdroja…",
+    preparing: "Získavam audio zo zdroja…",
+    downloading: "Získavam audio zo zdroja…",
+    converting: "Pripravujem audio pre Music Offline…",
+    transferring: "Prenášam audio do mobilu…",
+    saving: "Ukladám do Music Offline v tomto zariadení…",
+    done: "Uložené v Music Offline v tomto zariadení.",
+    existing: "Skladba už je uložená v Music Offline.",
   };
+  if (labels[youtubeState]) return labels[youtubeState];
+  const keys = { idle: "youtubeIdle", cancelled: "youtubeCancelled", resume: "youtubeResumeHint" };
   return i18n(keys[youtubeState] || "youtubeIdle");
 }
 function youtubeCard() {
   const busy = !!youtubeActive, saved = !!youtubeSavedId && !!lib.tracks[youtubeSavedId];
   return `<section class="youtube-card" aria-label="${i18n("youtubeHeading")}">
     <h2>${i18n("youtubeHeading")}</h2>
-    <p>${i18n("youtubeDescription")}</p>
+    <p>Najprv vyhľadaj skladbu alebo interpreta. Potom vyber výsledok na stiahnutie.</p>
+    <form data-youtube-search-form novalidate>
+      <label for="youtubeSearch">Vyhľadať skladbu</label>
+      <div style="display:flex;gap:10px;align-items:stretch">
+        <input id="youtubeSearch" data-youtube-search class="youtube-input" type="search" enterkeyhint="search" autocomplete="off" maxlength="120" placeholder="Názov skladby alebo interpret" value="${esc(youtubeSearchQ)}">
+        <button class="youtube-secondary" type="submit" ${youtubeSearchBusy ? "disabled" : ""}>Hľadať</button>
+      </div>
+    </form>
+    <div data-youtube-results style="margin:12px 0">${youtubeSearchResults.map((r,i)=>`<div style="margin:8px 0"><button type="button" data-youtube-result="${i}" class="youtube-secondary" style="display:block;width:100%;text-align:left"><strong>${esc(r.title || r.name || "Skladba")}</strong><br><span>${esc(r.author || r.channel || r.artist || "")}</span></button>${youtubeSelectedResult === r ? `<div data-youtube-selected style="padding:12px 8px"><button class="sample-button youtube-submit" data-youtube-selected-download type="button" ${busy ? "disabled" : ""}>${ic("download")}<span>${i18n("youtubeDownload")}</span></button><p class="youtube-status ${youtubeError ? "youtube-error" : ""}" role="status" aria-live="polite">${esc(youtubeMessage())}</p></div>` : ""}</div>`).join("")}${youtubeSearchError ? `<p class="youtube-status youtube-error">${esc(youtubeSearchError)}</p>` : ""}</div>
+    <details style="margin-top:14px"><summary>Vložiť YouTube odkaz ručne</summary>
     <form data-youtube-form novalidate>
       <label for="youtubeUrl">${i18n("youtubeUrlLabel")}</label>
       <input id="youtubeUrl" data-youtube-url class="youtube-input" type="text" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="2048" placeholder="${i18n("youtubeUrlPlaceholder")}" value="${esc(youtubeUrl)}">
@@ -645,6 +662,28 @@ function youtubeCard() {
     <button class="youtube-secondary youtube-open" data-act="openyoutube" type="button" ${!saved ? "hidden" : ""}>${i18n("youtubeOpen")}</button>
     <p class="youtube-rights">${i18n("youtubeRights")}</p>
   </section>`;
+}
+async function searchYouTubeMusic() {
+  const q = youtubeSearchQ.trim();
+  if (q.length < 2 || youtubeSearchBusy) return;
+  youtubeSearchBusy = true; youtubeSearchError = ""; youtubeSearchResults = []; render();
+  try {
+    const r = await fetch("/api/search?q=" + encodeURIComponent(q), { cache: "no-store" });
+    const data = await r.json();
+    if (!r.ok) throw new Error("search");
+    const items = Array.isArray(data) ? data : (data.items || data.results || data.videos || []);
+    youtubeSearchResults = items.slice(0, 8);
+    if (!youtubeSearchResults.length) youtubeSearchError = "Nenašli sa žiadne výsledky.";
+  } catch { youtubeSearchError = "Vyhľadávanie je momentálne nedostupné."; }
+  finally { youtubeSearchBusy = false; render(); }
+}
+function chooseYouTubeSearchResult(index) {
+  const r = youtubeSearchResults[index]; if (!r) return;
+  const id = r.videoId || r.video_id || r.id;
+  const url = r.url || r.link || (id ? `https://www.youtube.com/watch?v=${id}` : "");
+  if (!url) { youtubeSearchError = "Výsledok nemá použiteľný odkaz."; render(); return; }
+  youtubeUrl = url; youtubeSelectedResult = r; youtubeError = null; youtubeState = "idle"; saveYouTubeDraft(); render();
+  requestAnimationFrame(() => document.querySelector("[data-youtube-selected]")?.scrollIntoView({ behavior: "smooth", block: "center" }));
 }
 function refreshYouTubeCards() {
   for (const card of document.querySelectorAll(".youtube-card")) {
@@ -1929,14 +1968,23 @@ document.addEventListener("click", (e) => {
 });
 
 document.addEventListener("input", (event) => {
-  if (!event.target.matches?.("[data-youtube-url]")) return;
-  youtubeUrl = event.target.value;
-  saveYouTubeDraft();
+  if (event.target.matches?.("[data-youtube-url]")) {
+    youtubeUrl = event.target.value; saveYouTubeDraft(); return;
+  }
+  if (event.target.matches?.("[data-youtube-search]")) youtubeSearchQ = event.target.value;
 });
 document.addEventListener("submit", (event) => {
+  if (event.target.matches?.("[data-youtube-search-form]")) {
+    event.preventDefault(); void searchYouTubeMusic(); return;
+  }
   if (!event.target.matches?.("[data-youtube-form]")) return;
-  event.preventDefault();
-  void downloadYouTube();
+  event.preventDefault(); void downloadYouTube();
+});
+document.addEventListener("click", (event) => {
+  const result = event.target.closest?.("[data-youtube-result]");
+  if (result) { chooseYouTubeSearchResult(Number(result.dataset.youtubeResult)); return; }
+  const download = event.target.closest?.("[data-youtube-selected-download]");
+  if (download) { void downloadYouTube(); return; }
 });
 
 document.addEventListener("change", (event) => {

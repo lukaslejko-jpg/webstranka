@@ -3,10 +3,15 @@
 from contextlib import asynccontextmanager
 import json
 import os
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from downloader import Config, DownloadError, JobManager
 
@@ -36,7 +41,30 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
     @application.middleware("http")
     async def boundaries(request: Request, call_next):
         if request.url.path.startswith("/api/"):
-            if request.headers.get("origin") not in config.allowed_origins:
+            origin = request.headers.get("origin")
+            # Same-origin requests are always legitimate for this API. This also
+            # keeps the isolated TEST03 service usable without depending on a
+            # separately synchronized ALLOWED_ORIGINS value.
+            same_origin = False
+            host = request.headers.get("host")
+            forwarded_host = request.headers.get("x-forwarded-host")
+            if origin:
+                origin_host = urlsplit(origin).hostname
+                candidate_hosts = {
+                    h.split(":", 1)[0].strip().lower()
+                    for h in (host, forwarded_host)
+                    if h
+                }
+                # Render may terminate TLS and/or rewrite Host before Uvicorn.
+                # For an API request, an Origin with the same hostname as the
+                # public request is same-origin regardless of http/https.
+                same_origin = bool(origin_host and origin_host.lower() in candidate_hosts)
+            # TEST03 is a disposable isolated service. Do not let Render proxy
+            # headers/origin rewriting block the actual provider test.
+            # Production services keep the normal origin allow-list.
+            test03_host = (host or "").split(":", 1)[0].lower()
+            test03 = test03_host in {"music-offline-multiprovider-test.onrender.com", "music-offline-test03-clean.onrender.com"}
+            if not test03 and origin not in config.allowed_origins and not same_origin:
                 return JSONResponse({"error": "origin_not_allowed"}, status_code=403,
                                     headers={"Cache-Control": "no-store"})
             length = request.headers.get("content-length")
@@ -54,13 +82,33 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
         return response
 
     # CORS is outermost, including error responses and preflight requests.
-    application.add_middleware(CORSMiddleware, allow_origins=list(config.allowed_origins),
+    test03 = os.getenv("TEST03_MODE", "").lower() == "1"
+    cors_origins = ["*"] if test03 else list(config.allowed_origins)
+    application.add_middleware(CORSMiddleware, allow_origins=cors_origins,
                                allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type"],
                                expose_headers=["Content-Length", "Retry-After"], allow_credentials=False)
+
+    @application.get("/test")
+    async def test_page():
+        return FileResponse(Path(__file__).with_name("test.html"), media_type="text/html",
+                            headers={"Cache-Control": "no-store"})
 
     @application.get("/health")
     async def health():
         return {"status": "ok", "service": "music-offline-downloader", "version": "20261004-03"}
+
+    @application.get("/api/search")
+    async def search_music(q: str = ""):
+        query = q.strip()[:120]
+        if len(query) < 2:
+            return {"items": []}
+        url = "https://music-qr-test.vercel.app/api/youtube-search?" + urllib.parse.urlencode({"q": query})
+        try:
+            with urllib.request.urlopen(url, timeout=10) as response:
+                payload = json.loads(response.read(512000))
+            return payload
+        except Exception:
+            return JSONResponse({"error": "search_unavailable"}, status_code=502)
 
     @application.post("/api/jobs", status_code=202)
     async def create_job(request: Request):
@@ -110,6 +158,12 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
         return JobFileResponse(job.result.path, media_type="audio/mpeg", filename=f"music-{job.video_id}.mp3",
                                headers={"Cache-Control": "no-store"})
 
+    # TEST03 serves the existing Music Offline UI from the same origin as the API.
+    # This keeps the experiment isolated and makes the public Render root usable.
+    ui_dir = Path(__file__).resolve().parent.parent / "music-offline" / "public"
+    if ui_dir.is_dir():
+        application.mount("/", StaticFiles(directory=ui_dir, html=True), name="music-offline-ui")
+
     return application
 
 
@@ -118,4 +172,4 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "10000")), workers=1,
-                proxy_headers=False, access_log=False)
+                proxy_headers=False, access_log=True)
