@@ -171,4 +171,4 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "10000")), workers=1,
-                proxy_headers=False, access_log=False)
+                proxy_headers=False, access_log=True)
