@@ -104,3 +104,46 @@ Povinný postup pre ďalšie TEST03 zmeny:
 - Akceptované Music a TEST02 zostávajú nedotknuté.
 - TEST03 je experimentálna vetva; jej úspešný Render build/deploy sa nesmie zamieňať s používateľsky overenou funkčnosťou.
 - Commit `fe6badc16b791f2461ae3398fe381bf186e6dbcc` bol počas incidentu označený ako údajný known-good podľa časovej korelácie, ale následný device test na čistom origine funkčnosť nepotvrdil. Preto sa **nesmie evidovať ako overený known-good** bez nového dôkazu.
+
+
+## HIT — Palladium → Music Offline import — 6. 10. 2026
+
+**Stav: HOTOVÉ / FYZICKY OVERENÉ NA IPHONE.**
+
+Chránený funkčný tok TEST03:
+
+1. Music TEST03 vyhľadá skladbu a po výbere automaticky priradí YouTube URL.
+2. Tlačidlo „Stiahnuť do mobilu“ otvorí Palladium cez `palladium://download?url=...`.
+3. Palladium stiahne médiá lokálne na iPhone. Cloudový downloader sa pre tento tok nepoužíva.
+4. Používateľ uloží/vyberie hotový súbor cez iOS Súbory / Stiahnuté.
+5. Music TEST03 tlačidlom „Importovať zo Stiahnutých“ prevezme súbor do lokálneho IndexedDB.
+6. Importovaný MP4 sa prehráva priamo v Music TEST03.
+
+Fyzický device test 6. 10. 2026:
+- súbor: `SLOVENSKÁ MEGA DIDŽINA 2026 - Deejay-jany.mp4`
+- veľkosť zobrazená v Music: 490,7 MB
+- dĺžka zobrazená prehrávačom: 3:12:19
+- výsledok: import, lokálne uloženie a prehrávanie v Music na iPhone potvrdené používateľom.
+
+Railway testovací frontend:
+- služba: `music-offline-ui-test`
+- URL: `https://music-offline-ui-test-test.up.railway.app`
+- deployment fyzicky overeného importného stavu: `2bcc067f-7299-499a-82ed-e8dd6a8d6811`
+
+### Ochrana HIT verzie
+
+- Stable Music 06 a akceptovaný TEST02 sa týmto experimentom nemenia.
+- Za HIT sa považuje iba vyššie uvedený fyzicky overený tok.
+- Dva následné pokusy rozšíriť Railway UI na viacero kompaktných kariet boli bezpečnostnou vrstvou zastavené pred zápisom; **nie sú nasadené a nie sú súčasťou HIT verzie**.
+- Pred ďalšou zmenou musí byť možné vrátiť sa na deployment `2bcc067f-7299-499a-82ed-e8dd6a8d6811` alebo na ekvivalentný presný snapshot jeho zdroja.
+
+### SCHVÁLENÝ PLÁN — ďalšia izolovaná zmena
+
+Bez zmeny vyššie uvedeného toku doplniť:
+- viacero uložených audio/video súborov namiesto jediného `latest`,
+- výber/import viacerých súborov,
+- kompaktné karty, na mobile prednostne 2 karty na riadok,
+- názov, typ Audio/Video, veľkosť a lokálne prehrávanie každej položky,
+- zachovanie už importovaných dát pri migrácii úložiska.
+
+Tento plán **nie je nasadený ani overený**.
