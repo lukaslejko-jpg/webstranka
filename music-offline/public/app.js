@@ -1960,14 +1960,22 @@ document.addEventListener("click", (e) => {
 });
 
 document.addEventListener("input", (event) => {
-  if (!event.target.matches?.("[data-youtube-url]")) return;
-  youtubeUrl = event.target.value;
-  saveYouTubeDraft();
+  if (event.target.matches?.("[data-youtube-url]")) {
+    youtubeUrl = event.target.value; saveYouTubeDraft(); return;
+  }
+  if (event.target.matches?.("[data-youtube-search]")) youtubeSearchQ = event.target.value;
 });
 document.addEventListener("submit", (event) => {
+  if (event.target.matches?.("[data-youtube-search-form]")) {
+    event.preventDefault(); void searchYouTubeMusic(); return;
+  }
   if (!event.target.matches?.("[data-youtube-form]")) return;
-  event.preventDefault();
-  void downloadYouTube();
+  event.preventDefault(); void downloadYouTube();
+});
+document.addEventListener("click", (event) => {
+  const result = event.target.closest?.("[data-youtube-result]");
+  if (!result) return;
+  chooseYouTubeSearchResult(Number(result.dataset.youtubeResult));
 });
 
 document.addEventListener("change", (event) => {
