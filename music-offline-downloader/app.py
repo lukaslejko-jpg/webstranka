@@ -3,6 +3,8 @@
 from contextlib import asynccontextmanager
 import json
 import os
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -93,6 +95,19 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
     @application.get("/health")
     async def health():
         return {"status": "ok", "service": "music-offline-downloader", "version": "20261004-03"}
+
+    @application.get("/api/search")
+    async def search_music(q: str = ""):
+        query = q.strip()[:120]
+        if len(query) < 2:
+            return {"items": []}
+        url = "https://music-qr-test.vercel.app/api/youtube-search?" + urllib.parse.urlencode({"q": query})
+        try:
+            with urllib.request.urlopen(url, timeout=10) as response:
+                payload = json.loads(response.read(512000))
+            return payload
+        except Exception:
+            return JSONResponse({"error": "search_unavailable"}, status_code=502)
 
     @application.post("/api/jobs", status_code=202)
     async def create_job(request: Request):
