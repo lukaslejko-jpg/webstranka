@@ -96,6 +96,7 @@ const savedSamples = new Set();
 let sampleBusy = false, sampleMessage = "", sampleError = false;
 const LS_YOUTUBE = "music-offline:youtube-download";
 let youtubeUrl = "", youtubeJob = null, youtubeState = "idle", youtubeError = null;
+let youtubeSearchQ = "", youtubeSearchResults = [], youtubeSearchBusy = false, youtubeSearchError = "";
 let youtubeActive = null, youtubeSavedId = null;
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -633,7 +634,16 @@ function youtubeCard() {
   const busy = !!youtubeActive, saved = !!youtubeSavedId && !!lib.tracks[youtubeSavedId];
   return `<section class="youtube-card" aria-label="${i18n("youtubeHeading")}">
     <h2>${i18n("youtubeHeading")}</h2>
-    <p>${i18n("youtubeDescription")}</p>
+    <p>Najprv vyhľadaj skladbu alebo interpreta. Potom vyber výsledok na stiahnutie.</p>
+    <form data-youtube-search-form novalidate>
+      <label for="youtubeSearch">Vyhľadať skladbu</label>
+      <div style="display:flex;gap:10px;align-items:stretch">
+        <input id="youtubeSearch" data-youtube-search class="youtube-input" type="search" enterkeyhint="search" autocomplete="off" maxlength="120" placeholder="Názov skladby alebo interpret" value="${esc(youtubeSearchQ)}">
+        <button class="youtube-secondary" type="submit" ${youtubeSearchBusy ? "disabled" : ""}>Hľadať</button>
+      </div>
+    </form>
+    <div data-youtube-results style="margin:12px 0">${youtubeSearchResults.map((r,i)=>`<button type="button" data-youtube-result="${i}" class="youtube-secondary" style="display:block;width:100%;text-align:left;margin:8px 0"><strong>${esc(r.title || r.name || "Skladba")}</strong><br><span>${esc(r.author || r.channel || r.artist || "")}</span></button>`).join("")}${youtubeSearchError ? `<p class="youtube-status youtube-error">${esc(youtubeSearchError)}</p>` : ""}</div>
+    <details style="margin-top:14px"><summary>Vložiť YouTube odkaz ručne</summary>
     <form data-youtube-form novalidate>
       <label for="youtubeUrl">${i18n("youtubeUrlLabel")}</label>
       <input id="youtubeUrl" data-youtube-url class="youtube-input" type="text" inputmode="url" enterkeyhint="go" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="2048" placeholder="${i18n("youtubeUrlPlaceholder")}" value="${esc(youtubeUrl)}">
@@ -645,6 +655,27 @@ function youtubeCard() {
     <button class="youtube-secondary youtube-open" data-act="openyoutube" type="button" ${!saved ? "hidden" : ""}>${i18n("youtubeOpen")}</button>
     <p class="youtube-rights">${i18n("youtubeRights")}</p>
   </section>`;
+}
+async function searchYouTubeMusic() {
+  const q = youtubeSearchQ.trim();
+  if (q.length < 2 || youtubeSearchBusy) return;
+  youtubeSearchBusy = true; youtubeSearchError = ""; youtubeSearchResults = []; render();
+  try {
+    const r = await fetch("/api/search?q=" + encodeURIComponent(q), { cache: "no-store" });
+    const data = await r.json();
+    if (!r.ok) throw new Error("search");
+    const items = Array.isArray(data) ? data : (data.items || data.results || data.videos || []);
+    youtubeSearchResults = items.slice(0, 8);
+    if (!youtubeSearchResults.length) youtubeSearchError = "Nenašli sa žiadne výsledky.";
+  } catch { youtubeSearchError = "Vyhľadávanie je momentálne nedostupné."; }
+  finally { youtubeSearchBusy = false; render(); }
+}
+function chooseYouTubeSearchResult(index) {
+  const r = youtubeSearchResults[index]; if (!r) return;
+  const id = r.videoId || r.video_id || r.id;
+  const url = r.url || r.link || (id ? `https://www.youtube.com/watch?v=${id}` : "");
+  if (!url) { youtubeSearchError = "Výsledok nemá použiteľný odkaz."; render(); return; }
+  youtubeUrl = url; youtubeError = null; youtubeState = "idle"; saveYouTubeDraft(); render();
 }
 function refreshYouTubeCards() {
   for (const card of document.querySelectorAll(".youtube-card")) {
