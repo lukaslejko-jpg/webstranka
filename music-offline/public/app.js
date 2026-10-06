@@ -96,7 +96,7 @@ const savedSamples = new Set();
 let sampleBusy = false, sampleMessage = "", sampleError = false;
 const LS_YOUTUBE = "music-offline:youtube-download";
 let youtubeUrl = "", youtubeJob = null, youtubeState = "idle", youtubeError = null;
-let youtubeSearchQ = "", youtubeSearchResults = [], youtubeSearchBusy = false, youtubeSearchError = "";
+let youtubeSearchQ = "", youtubeSearchResults = [], youtubeSearchBusy = false, youtubeSearchError = "", youtubeSelectedResult = null;
 let youtubeActive = null, youtubeSavedId = null;
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -642,7 +642,7 @@ function youtubeCard() {
         <button class="youtube-secondary" type="submit" ${youtubeSearchBusy ? "disabled" : ""}>Hľadať</button>
       </div>
     </form>
-    <div data-youtube-results style="margin:12px 0">${youtubeSearchResults.map((r,i)=>`<button type="button" data-youtube-result="${i}" class="youtube-secondary" style="display:block;width:100%;text-align:left;margin:8px 0"><strong>${esc(r.title || r.name || "Skladba")}</strong><br><span>${esc(r.author || r.channel || r.artist || "")}</span></button>`).join("")}${youtubeSearchError ? `<p class="youtube-status youtube-error">${esc(youtubeSearchError)}</p>` : ""}</div>
+    <div data-youtube-results style="margin:12px 0">${youtubeSearchResults.map((r,i)=>`<button type="button" data-youtube-result="${i}" class="youtube-secondary" style="display:block;width:100%;text-align:left;margin:8px 0"><strong>${esc(r.title || r.name || "Skladba")}</strong><br><span>${esc(r.author || r.channel || r.artist || "")}</span></button>`).join("")}${youtubeSearchError ? `<p class="youtube-status youtube-error">${esc(youtubeSearchError)}</p>` : ""}</div>${youtubeSelectedResult ? `<div data-youtube-selected style="margin:14px 0;padding:14px;border:1px solid currentColor;border-radius:12px"><strong>${esc(youtubeSelectedResult.title || youtubeSelectedResult.name || "Vybraná skladba")}</strong><br><span>${esc(youtubeSelectedResult.author || youtubeSelectedResult.channel || youtubeSelectedResult.artist || "")}</span><button class="sample-button youtube-submit" data-youtube-selected-download type="button" ${busy ? "disabled" : ""} style="margin-top:10px">${ic("download")}<span>${i18n("youtubeDownload")}</span></button><p class="youtube-status ${youtubeError ? "youtube-error" : ""}" role="status" aria-live="polite">${esc(youtubeMessage())}</p></div>` : ""}
     <details style="margin-top:14px"><summary>Vložiť YouTube odkaz ručne</summary>
     <form data-youtube-form novalidate>
       <label for="youtubeUrl">${i18n("youtubeUrlLabel")}</label>
@@ -675,7 +675,8 @@ function chooseYouTubeSearchResult(index) {
   const id = r.videoId || r.video_id || r.id;
   const url = r.url || r.link || (id ? `https://www.youtube.com/watch?v=${id}` : "");
   if (!url) { youtubeSearchError = "Výsledok nemá použiteľný odkaz."; render(); return; }
-  youtubeUrl = url; youtubeError = null; youtubeState = "idle"; saveYouTubeDraft(); render();
+  youtubeUrl = url; youtubeSelectedResult = r; youtubeError = null; youtubeState = "idle"; saveYouTubeDraft(); render();
+  requestAnimationFrame(() => document.querySelector("[data-youtube-selected]")?.scrollIntoView({ behavior: "smooth", block: "center" }));
 }
 function refreshYouTubeCards() {
   for (const card of document.querySelectorAll(".youtube-card")) {
@@ -1974,8 +1975,9 @@ document.addEventListener("submit", (event) => {
 });
 document.addEventListener("click", (event) => {
   const result = event.target.closest?.("[data-youtube-result]");
-  if (!result) return;
-  chooseYouTubeSearchResult(Number(result.dataset.youtubeResult));
+  if (result) { chooseYouTubeSearchResult(Number(result.dataset.youtubeResult)); return; }
+  const download = event.target.closest?.("[data-youtube-selected-download]");
+  if (download) { void downloadYouTube(); return; }
 });
 
 document.addEventListener("change", (event) => {
