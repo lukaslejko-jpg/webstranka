@@ -83,3 +83,24 @@ Súbor `public/release.json` a rovnaké číslo v HTML, offline module a service
 Node testy service workera simulujú nedostupnú sieť; nie sú náhradou za fyzický test režimu Lietadlo na iPhone. Cloudový Chromium takisto nepreukazuje funkčnosť zamknutej obrazovky v iOS. Verejné hlásenie Kasette #5 o automatickom pokračovaní pri zamknutí zostáva dôvodom na túto akceptáciu: https://github.com/nico-alvz/kasette/issues/5.
 
 Presný stav nového nasadenia a overení: `../docs/music-offline-youtube-20261004-03.md`. Predchádzajúce záznamy Preview 01/02 a ich pevné checkpointy zostávajú zachované.
+
+## Incident TEST03 — 6. 10. 2026 / povinný release postup
+
+Pri úpravách TEST03 vznikla regresia, pri ktorej sa načítal iba statický shell a stav „Pripravujem offline aplikáciu…“, ale frontend sa nevykreslil. Následné úspešné Render deploye boli nesprávne komunikované ako funkčné verzie. Render `LIVE` potvrdzuje nasadenie procesu, nie funkčnosť browserovej aplikácie.
+
+Povinný postup pre ďalšie TEST03 zmeny:
+
+1. Zachovať posledný používateľom potvrdený known-good snapshot a jeho presný commit/deployment.
+2. Meniť jednu izolovanú vec.
+3. Pred deployom skontrolovať frontendový modulový reťazec a syntax/runtime; backend unit testy samy nestačia.
+4. Po deployi overiť HTTP, načítanie modulov, štart JS a render hlavného UI.
+5. Pri štartovacej chybe zobraziť diagnostiku `window.onerror` a `unhandledrejection` priamo v testovacom UI namiesto hádania cache/SW príčiny.
+6. Zmenu označiť za funkčnú až po E2E/device teste relevantnej funkcie. Ak agent nemá možnosť fyzického iPhone/Safari testu, stav je iba **NASADENÉ — ČAKÁ NA DEVICE TEST**.
+7. Testovací link používateľovi neposielať ako „funkčný“ pred splnením bodov vyššie.
+8. Pri regresii rollbackovať celý snapshot, nie kombináciu jednotlivých súborov.
+
+### Stav incidentu
+
+- Akceptované Music a TEST02 zostávajú nedotknuté.
+- TEST03 je experimentálna vetva; jej úspešný Render build/deploy sa nesmie zamieňať s používateľsky overenou funkčnosťou.
+- Commit `fe6badc16b791f2461ae3398fe381bf186e6dbcc` bol počas incidentu označený ako údajný known-good podľa časovej korelácie, ale následný device test na čistom origine funkčnosť nepotvrdil. Preto sa **nesmie evidovať ako overený known-good** bez nového dôkazu.
