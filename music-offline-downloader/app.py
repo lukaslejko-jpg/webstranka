@@ -85,12 +85,6 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
                                allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type"],
                                expose_headers=["Content-Length", "Retry-After"], allow_credentials=False)
 
-    # TEST03 serves the existing Music Offline UI from the same origin as the API.
-    # This keeps the experiment isolated and makes the public Render root usable.
-    ui_dir = Path(__file__).resolve().parent.parent / "music-offline" / "public"
-    if ui_dir.is_dir():
-        application.mount("/", StaticFiles(directory=ui_dir, html=True), name="music-offline-ui")
-
     @application.get("/test")
     async def test_page():
         return FileResponse(Path(__file__).with_name("test.html"), media_type="text/html",
@@ -147,6 +141,12 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
 
         return JobFileResponse(job.result.path, media_type="audio/mpeg", filename=f"music-{job.video_id}.mp3",
                                headers={"Cache-Control": "no-store"})
+
+    # TEST03 serves the existing Music Offline UI from the same origin as the API.
+    # This keeps the experiment isolated and makes the public Render root usable.
+    ui_dir = Path(__file__).resolve().parent.parent / "music-offline" / "public"
+    if ui_dir.is_dir():
+        application.mount("/", StaticFiles(directory=ui_dir, html=True), name="music-offline-ui")
 
     return application
 
