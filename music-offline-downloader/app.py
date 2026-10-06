@@ -62,7 +62,8 @@ def create_app(config: Config | None = None, manager_factory=JobManager) -> Fast
             # TEST03 is a disposable isolated service. Do not let Render proxy
             # headers/origin rewriting block the actual provider test.
             # Production services keep the normal origin allow-list.
-            test03 = (host or "").split(":", 1)[0].lower() == "music-offline-multiprovider-test.onrender.com"
+            test03_host = (host or "").split(":", 1)[0].lower()
+            test03 = test03_host in {"music-offline-multiprovider-test.onrender.com", "music-offline-test03-clean.onrender.com"}
             if not test03 and origin not in config.allowed_origins and not same_origin:
                 return JSONResponse({"error": "origin_not_allowed"}, status_code=403,
                                     headers={"Cache-Control": "no-store"})
