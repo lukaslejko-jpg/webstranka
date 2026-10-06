@@ -172,3 +172,16 @@ Overené položky na obrazovke: 117,8 MB, 1629 MB a 490,7 MB. Náhľady obrázko
 - vymazanie jednotlivej položky s potvrdením,
 - online výsledky v kompaktnom skrolovateľnom paneli nad obsahom,
 - obnovenie náhľadov bez zmeny overeného media storage/playback toku.
+
+
+## HIT — TEST03 UI scroll/filter/delete — 6. 10. 2026
+
+**Stav: HOTOVÉ / FYZICKY OVERENÉ NA IPHONE používateľom.**
+
+Railway služba `music-offline-test03-ui`, deployment `67f2b4e6-3c40-45a4-bf5c-5db46068c8da`, URL `https://music-offline-test03-ui-test.up.railway.app`.
+
+Potvrdený stav nadväzuje na TEST03 MULTI a zachováva tok Music → vyhľadanie → výber výsledku → Palladium → uloženie → viacnásobný import → lokálne prehrávanie. UI navyše obsahuje filter Všetko / Audio / Video, lokálne vyhľadávanie v knižnici a vymazanie jednotlivej položky. Výsledky online vyhľadávania sú po oprave súčasťou toku dokumentu, majú vlastnú skrolovateľnú výšku 360 px a zobrazujú počet výsledkov; už nemajú používať absolútny overlay nad knižnicou. Ikona koša bola zmenšená.
+
+**Známy nedoriešený bod:** reálne obrázky/náhľady online výsledkov ešte nie sú potvrdené; nesmú sa uvádzať ako hotové.
+
+**Rollback:** Railway deployment `67f2b4e6-3c40-45a4-bf5c-5db46068c8da`. Stable Music 06 a TEST02 zostávajú nedotknuté.
