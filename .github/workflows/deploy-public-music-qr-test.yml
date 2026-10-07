@@ -1,0 +1,75 @@
+name: Restore SAFE player Music v169 production
+on:
+  push:
+    branches: [fix/music-qr-minimized-preview-20260926]
+    paths:
+      - '.github/workflows/deploy-public-music-qr-test.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  statuses: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      BASE_DPL: dpl_Bd6H4i853jeN7SstdpzLz9npZMLx
+      ARCHIVE_UID: a9507d7e63085bfc1f33cc76770de0f5aa4a282c
+      TEST_PROJECT: tesla-waze-piped
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm install --global vercel@59.25.4
+      - name: Authenticate
+        env: { GH_STATUS_TOKEN: "${{ github.token }}" }
+        run: |
+          set -euo pipefail
+          LOG=/tmp/a; timeout 300 vercel login --github >"$LOG" 2>&1 & PID=$!
+          for _ in $(seq 1 60); do URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null|tail -n1||true)"; [ -n "$URL" ]&&break; sleep 1; done
+          CODE="${URL##*user_code=}"
+          node - "$CODE" "$URL" <<'NODE' >/tmp/s.json
+          const [code,url]=process.argv.slice(2);process.stdout.write(JSON.stringify({state:'pending',context:'public-music-qr-auth',description:'Vercel code: '+code,target_url:url}));
+          NODE
+          curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary @/tmp/s.json >/dev/null
+          wait "$PID"
+      - name: Build exact 158 plus simple remote
+        run: |
+          set -euo pipefail
+          vercel api "/v8/deployments/$BASE_DPL/files/$ARCHIVE_UID?teamId=$TEAM_ID" > /tmp/raw.json
+          node -e "const fs=require('fs'),d=JSON.parse(fs.readFileSync('/tmp/raw.json','utf8')),b=d.data??d.content??d;fs.writeFileSync('/tmp/source.tgz',Buffer.from(b,'base64'))"
+          mkdir -p /tmp/base && tar -xzf /tmp/source.tgz -C /tmp/base
+          cp music-qr-preview/simple-remote-v159.js /tmp/base/simple-remote-v159.js
+          cp music-qr-preview/api/simple-remote.js /tmp/base/api/simple-remote.js
+          cp music-qr-preview/ui-cleanup-v165.js /tmp/base/ui-cleanup-v165.js
+          node <<'NODE'
+          const fs=require('fs'),p='/tmp/base/index.html';let h=fs.readFileSync(p,'utf8');
+          h=h.replace(/<script src="\/qr-link-v129\.js\?v=158"><\/script>/g,'').replace(/<script src="\/mobile-pair-v133\.js\?v=158"><\/script>/g,'');
+          h=h.replace('</body>','<script src="/ui-cleanup-v165.js?v=169"></script><script src="/simple-remote-v159.js?v=169"></script></body>').replace('name="tesla-music-build" content="158"','name="tesla-music-build" content="169-safe-player"');
+          let m=fs.readFileSync('/tmp/base/mobile-v128-music-logic.js','utf8');m=m.replace('onlyArtist:true,similar:false','onlyArtist:false,similar:true');m=m.replace('data-filter="onlyArtist" checked','data-filter="onlyArtist"').replace('data-filter="similar"> Podobná hudba','data-filter="similar" checked> Podobná hudba');fs.writeFileSync('/tmp/base/mobile-v128-music-logic.js',m);
+          fs.writeFileSync(p,h);
+          NODE
+      - name: Deploy approved v168 to Music production
+        working-directory: /tmp/base
+        run: |
+          set -euo pipefail
+          vercel project inspect "$TEST_PROJECT" --scope "$TEAM_SLUG" >/dev/null 2>&1 || vercel project add "$TEST_PROJECT" --scope "$TEAM_SLUG"
+          vercel link --yes --project "$TEST_PROJECT" --scope "$TEAM_SLUG"
+          URL="$(vercel deploy --prod --yes --archive=tgz --scope "$TEAM_SLUG")"
+          echo "PUBLIC_MUSIC_PRODUCTION=$URL"
+      - name: Alias approved deployment to public Music
+        run: vercel alias set tesla-waze-piped-jfq2aquum-lukaslejko-9932s-projects.vercel.app tesla-waze-piped.vercel.app --scope lukaslejko-9932s-projects
+
+# trigger v165 package
+
+# rerun corrected v165
+
+# trigger v166 test
+
+# trigger v167
+
+# trigger v168 real-player test
+
+# rerun v168 flexible real-player patch

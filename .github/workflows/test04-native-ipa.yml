@@ -1,0 +1,40 @@
+name: TEST04 Native IPA
+on:
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/test04-native-ipa.yml, test04-native/**]
+  push:
+    branches: [feature/music-offline-test04-native]
+    paths: [.github/workflows/test04-native-ipa.yml, test04-native/**]
+  workflow_dispatch:
+jobs:
+  package:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch Palladium 1.4.4 unsigned IPA
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          url=$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/tfourj/Palladium/releases/tags/v1.4.4 | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(a["browser_download_url"] for a in d["assets"] if a["name"].endswith(".ipa")))')
+          curl -fL "$url" -o /tmp/palladium.ipa
+      - name: Create Music Offline TEST04 package
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/test04 && mkdir /tmp/test04 && cd /tmp/test04
+          unzip -q /tmp/palladium.ipa
+          app=$(find Payload -maxdepth 1 -type d -name '*.app' | head -1)
+          /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName Music Offline' "$app/Info.plist" || /usr/libexec/PlistBuddy -c 'Add :CFBundleDisplayName string Music Offline' "$app/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Set :CFBundleName MusicOffline' "$app/Info.plist" || true
+          mkdir -p "$GITHUB_WORKSPACE/build"
+          zip -qry "$GITHUB_WORKSPACE/build/Music-Offline-TEST04-Native.ipa" Payload
+      - name: Verify IPA
+        run: |
+          unzip -t build/Music-Offline-TEST04-Native.ipa >/dev/null
+          test -s build/Music-Offline-TEST04-Native.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Music-Offline-TEST04-Native
+          path: build/Music-Offline-TEST04-Native.ipa
+          retention-days: 30

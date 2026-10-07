@@ -1,0 +1,38 @@
+name: Deploy pristine upstream LongPlay
+on:
+  push:
+    branches: [vendor/longplay-upstream-immutable-20260928]
+permissions: {contents: read, statuses: write}
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env: {TEAM_SLUG: lukaslejko-9932s-projects, TEST_PROJECT: music-tesla-youtube-test}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: npm i -g vercel@59.25.4
+      - name: Auth
+        env: {GH_STATUS_TOKEN: "${{ github.token }}"}
+        run: |
+          set -euo pipefail
+          LOG=/tmp/a; timeout 300 vercel login --github >"$LOG" 2>&1 & PID=$!
+          for _ in $(seq 1 60); do URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null|tail -1||true)"; [ -n "$URL" ]&&break;sleep 1;done
+          test -n "$URL"; CODE="${URL##*user_code=}"
+          printf '{"state":"pending","context":"longplay-pristine-auth","description":"Vercel code: %s","target_url":"%s"}' "$CODE" "$URL" >/tmp/s
+          curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary @/tmp/s >/dev/null
+          wait "$PID"
+      - name: Build pristine upstream
+        working-directory: vendor/LongPlay
+        run: npm ci --workspaces=false
+      - name: Build pristine web app
+        working-directory: vendor/LongPlay/apps/web
+        run: npm install && npm run build
+      - name: Deploy
+        working-directory: vendor/LongPlay/apps/web
+        run: |
+          vercel project add "$TEST_PROJECT" --scope "$TEAM_SLUG" 2>/dev/null||true
+          vercel project protection disable "$TEST_PROJECT" --sso --scope "$TEAM_SLUG"||true
+          vercel link --yes --project "$TEST_PROJECT" --scope "$TEAM_SLUG"
+          vercel deploy --prod --archive=tgz --scope "$TEAM_SLUG"
