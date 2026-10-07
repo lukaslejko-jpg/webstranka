@@ -73,3 +73,15 @@ Súbor `public/release.json` a rovnaké číslo v HTML, offline module a service
 Node testy service workera simulujú nedostupnú sieť; nie sú náhradou za fyzický test režimu Lietadlo na iPhone. Cloudový Chromium takisto nepreukazuje funkčnosť zamknutej obrazovky v iOS. Verejné hlásenie Kasette #5 o automatickom pokračovaní pri zamknutí zostáva dôvodom na túto akceptáciu: https://github.com/nico-alvz/kasette/issues/5.
 
 Presný stav nasadenia a overení: `../docs/music-offline-preview-20261004-02.md`. Predchádzajúci záznam Preview 01 a jeho pevný checkpoint zostávajú zachované.
+
+
+## FUNKČNÝ BASELINE — TEST03 MULTI + offline shell — 7. 10. 2026
+
+Status: **FUNKČNÁ VERZIA / CHRÁNENÝ BASELINE** podľa potvrdenia používateľa.
+
+- Branch: `baseline/test03-offline-functional-20261007`
+- Commit: `5a78a8c2f5b5d1a859630c6d862eccd2c9da9a2d`
+- Render: `https://music-offline-307.onrender.com/`
+- Deploy: `dep-db2ledt9fdbs739sdc8g` — LIVE
+- TEST03 MULTI UI, vyhľadávanie, Palladium handoff, multi-import audio/video, filtre, lokálne prehrávanie a TEST03 offline shell.
+- Ďalší experimentálny vývoj nesmie meniť tento baseline; rollback musí obnoviť celý snapshot.
