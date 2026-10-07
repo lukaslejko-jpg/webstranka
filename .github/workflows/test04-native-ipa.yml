@@ -1,5 +1,8 @@
 name: TEST04 Native IPA
 on:
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/test04-native-ipa.yml, test04-native/**]
   push:
     branches: [feature/music-offline-test04-native]
     paths: [.github/workflows/test04-native-ipa.yml, test04-native/**]
