@@ -13,9 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Fetch Palladium 1.4.4 unsigned IPA
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          url=$(curl -fsSL https://api.github.com/repos/tfourj/Palladium/releases/tags/v1.4.4 | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(a["browser_download_url"] for a in d["assets"] if a["name"].endswith(".ipa")))')
+          url=$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/tfourj/Palladium/releases/tags/v1.4.4 | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(a["browser_download_url"] for a in d["assets"] if a["name"].endswith(".ipa")))')
           curl -fL "$url" -o /tmp/palladium.ipa
       - name: Create Music Offline TEST04 package
         run: |
