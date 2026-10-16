@@ -1,0 +1,2 @@
+pywaze==1.2.4
+curl_cffi>=0.13.0
