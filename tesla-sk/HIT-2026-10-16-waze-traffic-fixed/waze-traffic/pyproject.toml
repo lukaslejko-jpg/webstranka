@@ -1,0 +1,11 @@
+[project]
+name = "tesla-waze-traffic"
+version = "0.0.1"
+requires-python = ">=3.11"
+dependencies = [
+  "pywaze==1.2.4",
+  "curl_cffi>=0.13.0"
+]
+
+[tool.vercel]
+entrypoint = "api.traffic:handler"
