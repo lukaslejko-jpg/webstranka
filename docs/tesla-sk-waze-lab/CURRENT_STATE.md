@@ -3,8 +3,8 @@
 ## Aktuálny LAB
 
 - Alias: `tesla-sk-waze-lab.vercel.app`
-- Aktuálny deployment: `dpl_DePck6EKL4qJawCHt5ep6PRjb669`
-- Deployment URL: `tesla-sk-waze-lwrc4jh94-lukaslejko-9932s-projects.vercel.app`
+- Aktuálny deployment: `dpl_EBFzNLmryk9vGohQwELE8BLMZqVT`
+- Deployment URL: `tesla-sk-waze-hykt6l3wk-lukaslejko-9932s-projects.vercel.app`
 
 Tento deployment bol nasadený po regressnom teste root/phone/Waze route/TTS.
 
@@ -214,3 +214,8 @@ Klient podporuje `POLICE` alerty a zobrazuje ich ako `🚓 Policajná hliadka` s
 - samostatný `tesla-sk-waze-lab-alerts` → HTTP 200, ale `degraded:true`, 0 alerts/0 jams.
 
 Podrobný stav: [ALERTS_STATUS.md](ALERTS_STATUS.md).
+
+
+## Kompletný audit 2026-10-18
+
+Po oprave Waze RT alert backendu a V5 klienta bol vykonaný end-to-end production audit. Výsledok: [FULL_AUDIT_2026-10-18.md](FULL_AUDIT_2026-10-18.md).
