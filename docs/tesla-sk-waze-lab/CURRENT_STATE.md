@@ -3,8 +3,8 @@
 ## Aktuálny LAB
 
 - Alias: `tesla-sk-waze-lab.vercel.app`
-- Aktuálny deployment: `dpl_BJh31WGiGLWvGH5fMVA1fHicEgpA`
-- Deployment URL: `tesla-sk-waze-qwbn5n8df-lukaslejko-9932s-projects.vercel.app`
+- Aktuálny deployment: `dpl_DePck6EKL4qJawCHt5ep6PRjb669`
+- Deployment URL: `tesla-sk-waze-lwrc4jh94-lukaslejko-9932s-projects.vercel.app`
 
 Tento deployment bol nasadený po regressnom teste root/phone/Waze route/TTS.
 
@@ -182,3 +182,25 @@ Overené po prihlásení:
 - fallback handler prítomný.
 
 Nasadenie po oprave: `dpl_BJh31WGiGLWvGH5fMVA1fHicEgpA`.
+
+
+## Production / Vercel Toolbar
+
+Aktuálny LAB alias je nasadený ako Vercel Production:
+- deployment: `dpl_DePck6EKL4qJawCHt5ep6PRjb669`
+- target: `production`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+
+Toolbar problém vznikal tým, že proxied HTML zo staršieho Preview deploymentu už obsahovalo Vercel feedback script `https://vercel.live/_next-live/feedback/feedback.js`.
+
+Oprava V4:
+- serverová vrstva pred odoslaním HTML odstráni iba Vercel feedback script,
+- GPS/Waze/Trasy/lane/closure/QR logika sa nemení,
+- Production už nepridáva Preview toolbar znova.
+
+Po nasadení overené na hlavnom alias-e:
+- root 200,
+- `vercel.live` v HTML: nie,
+- `/phone.html?room=TEST1234` 200,
+- Waze dense route 200 + `geometrySource=waze-routing-coords`,
+- TTS 200 `audio/mpeg`.
