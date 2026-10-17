@@ -3,8 +3,8 @@
 ## Aktuálny LAB
 
 - Alias: `tesla-sk-waze-lab.vercel.app`
-- Aktuálny deployment: `dpl_Bh5CcyMWYsPsg8XzrFc1bJYBmAH3`
-- Deployment URL: `tesla-sk-waze-h1j3nldvu-lukaslejko-9932s-projects.vercel.app`
+- Aktuálny deployment: `dpl_BJh31WGiGLWvGH5fMVA1fHicEgpA`
+- Deployment URL: `tesla-sk-waze-qwbn5n8df-lukaslejko-9932s-projects.vercel.app`
 
 Tento deployment bol nasadený po regressnom teste root/phone/Waze route/TTS.
 
@@ -163,3 +163,22 @@ GitHub bol prehľadaný podľa:
 - `HotspotNav`
 
 V dostupných repozitároch `lukaslejko-jpg` sa zdroj LAB aplikácie nenašiel. Preto sa táto dokumentácia uchováva v samostatnej docs vetve bez zásahu do nasadeného kódu.
+
+
+## QR fallback oprava 2026-10-18
+
+Po zistení, že pôvodný `pairBtn.onclick = openMobilePair` bol síce v HTML prítomný, ale na zariadení nereagoval, bol doplnený nezávislý capture-phase fallback handler `pair-click-fallback-v3`.
+
+Overené po prihlásení:
+- klient 200,
+- GPS fresh fix zachovaný,
+- dense Waze zachovaný,
+- Trasy zachované,
+- lane guidance zachované,
+- closure reroute zachované,
+- fast reroute zachovaný,
+- pair panel prítomný,
+- QR generator prítomný,
+- fallback handler prítomný.
+
+Nasadenie po oprave: `dpl_BJh31WGiGLWvGH5fMVA1fHicEgpA`.
