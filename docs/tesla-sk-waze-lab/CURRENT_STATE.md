@@ -204,3 +204,13 @@ Po nasadení overené na hlavnom alias-e:
 - `/phone.html?room=TEST1234` 200,
 - Waze dense route 200 + `geometrySource=waze-routing-coords`,
 - TTS 200 `audio/mpeg`.
+
+
+## Live Waze polícia / hliadky
+
+Klient podporuje `POLICE` alerty a zobrazuje ich ako `🚓 Policajná hliadka` s vlastnou ikonou a ahead warning logikou. Aktuálne však live alert backend nedodáva dáta:
+- `tesla-waze-alerts.vercel.app/api/events` → HTTP 500,
+- produkčný `/api/events` → HTTP 502 `degraded:true`,
+- samostatný `tesla-sk-waze-lab-alerts` → HTTP 200, ale `degraded:true`, 0 alerts/0 jams.
+
+Podrobný stav: [ALERTS_STATUS.md](ALERTS_STATUS.md).
