@@ -288,3 +288,48 @@ Bezprostredný rollback bod pred clean rebuild:
 - `dpl_75PStRH3V6kMuBCnJiXZMeDQA9s4`
 
 Detail: [CLEAN_LAB_GPS_2026-10-18.md](CLEAN_LAB_GPS_2026-10-18.md)
+
+
+## FULL AUDIT RELEASE — 2026-10-18 večer
+
+Táto sekcia je aktuálny source of truth po kompletnom audite.
+
+Hlavný LAB production:
+- deployment: `dpl_HuM6uhGntoq9GfVPbqfvyLkWcezt`
+- URL: `tesla-sk-waze-a23b6g8nj-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+- target: production
+
+Testovaný preview:
+- `dpl_41S9ENJffykDfRVipeyUoKnSBjFe`
+- preview/production source rozdiely: **0 z 16 súborov**
+
+Stabilný raw Waze helper:
+- project: `tesla-sk-waze-lab-raw`
+- project ID: `prj_XG565Yr7EZfez0xC63sBwfB5rXYZ`
+- deployment: `dpl_DGUF8GaKECvNK5bVJ9vfN1SzfhBy`
+- alias: `https://tesla-sk-waze-lab-raw.vercel.app/`
+- state: READY
+
+Opravené:
+- dense Waze geometry z raw coords,
+- 2 Waze alternatívne trasy,
+- `••• → Trasy`,
+- no-GPS no-center routing,
+- 2-fix accuracy-aware reroute,
+- lane guidance,
+- POLICE/camera/hazard ahead warning,
+- ROAD_CLOSED reroute,
+- `/api/waze-drive` 200,
+- QR/phone relay,
+- traffic, TTS, chargers, availability.
+
+Production `tesla-sk` ostala počas auditu nezmenená:
+- `dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`
+
+Rollback pred release:
+- `dpl_75KudV7ypV5rohArwwMiWB6Z4RU9`
+
+Kompletný report:
+[FULL_AUDIT_CLEAN_LAB_2026-10-18.md](FULL_AUDIT_CLEAN_LAB_2026-10-18.md)
