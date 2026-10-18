@@ -81,3 +81,15 @@ Aktuálny LAB:
 Dense Waze teraz opravuje chýbajúci prvý raw segment cez Waze-only connector + tail.
 Detail:
 [DEMJATA_ROUTE_START_FIX_2026-10-18.md](DEMJATA_ROUTE_START_FIX_2026-10-18.md)
+
+
+## Tesla SK first-step parity
+
+Aktuálny LAB:
+- deployment: `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+- preview: `dpl_DRRt8WZG1BGVsuFkqf8bPeXwV3h8`
+
+Pri chýbajúcej raw Waze geometrii prvého kroku sa iba tento krátky úsek kreslí rovnakým step-geometry princípom ako `tesla-sk`. Waze ostáva zdrojom routing rozhodnutia.
+
+Detail:
+[TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md](TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md)
