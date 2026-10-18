@@ -1,10 +1,12 @@
+> Povinný recovery bod: [SAFE_CHECKPOINT.md](SAFE_CHECKPOINT.md)
+
 # CURRENT STATE — 2026-10-18
 
 ## Aktuálny LAB
 
 - Alias: `tesla-sk-waze-lab.vercel.app`
-- Aktuálny deployment: `dpl_74HTaXu9d7qnswzpwf2yNijY2vLp`
-- Deployment URL: `tesla-sk-waze-kswinrdu8-lukaslejko-9932s-projects.vercel.app`
+- Aktuálny deployment: `dpl_EBFzNLmryk9vGohQwELE8BLMZqVT`
+- Deployment URL: `tesla-sk-waze-hykt6l3wk-lukaslejko-9932s-projects.vercel.app`
 
 Tento deployment bol nasadený po regressnom teste root/phone/Waze route/TTS.
 
