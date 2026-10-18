@@ -5,12 +5,12 @@ Dátum: 2026-10-18
 
 Hlavná aplikácia:
 - alias: `https://tesla-sk-waze-lab.vercel.app/`
-- deployment: `dpl_74HTaXu9d7qnswzpwf2yNijY2vLp`
+- deployment: `dpl_EBFzNLmryk9vGohQwELE8BLMZqVT`
 - target: `production`
 
 Alerts backend:
 - alias: `https://tesla-sk-waze-lab-alerts.vercel.app/`
-- deployment: `dpl_8XGsPiG5ntyRJdUhYEGL56HvRWsi`
+- deployment: `dpl_2tmAnRn8GWe8yBS3ggN1qLXoC7Ra`
 - target: `production`
 
 ## Alerts backend — oprava
@@ -167,3 +167,26 @@ Aktuálne kritické funkčné celky prešli:
 - odstránenie Vercel Toolbar
 
 Pri ďalších zmenách zachovať pravidlo: preview → regresný audit → production.
+
+
+## Delta kontrola po audite
+
+Namiesto opakovania celého auditu boli porovnané aktuálne deploymenty s poslednými auditovanými.
+
+Aktuálne aliasy:
+- main: `dpl_EBFzNLmryk9vGohQwELE8BLMZqVT`
+- alerts: `dpl_2tmAnRn8GWe8yBS3ggN1qLXoC7Ra`
+
+Rozdiely oproti staršiemu auditovanému buildu boli iba v:
+- `api/events.js` — proxy na Waze RT alerts backend,
+- `api/waze-data-dense.js` — live alerts v route bundle,
+- `api/lab-page.js` + `api/lab_login.js` — unified V5 klient/login,
+- alerts `api/health.js` — Waze RT healthcheck.
+
+Delta kontrola aktuálnej produkcie:
+- root 200, Vercel Toolbar neprítomný,
+- `/api/events` 200, `degraded:false`, live POLICE prítomný,
+- `/api/waze-data-dense` 200, 2 Waze trasy, `geometrySource=waze-routing-coords`, live alerty vložené do bundle,
+- alerts `/api/health` 200, `ok:true`, `mode:waze-rt`, `degraded:false`.
+
+Celý audit nebol opakovaný, pretože ostatné súbory ostali identické podľa SHA.
