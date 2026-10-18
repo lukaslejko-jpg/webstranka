@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_75KudV7ypV5rohArwwMiWB6Z4RU9`
-- URL: `tesla-sk-waze-64rq0ob1y-lukaslejko-9932s-projects.vercel.app`
+- `dpl_HuM6uhGntoq9GfVPbqfvyLkWcezt`
+- URL: `tesla-sk-waze-a23b6g8nj-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -118,3 +118,21 @@ Rollback bezprostredne pred clean rebuild:
 `dpl_75PStRH3V6kMuBCnJiXZMeDQA9s4`.
 
 Podrobnosti: [CLEAN_LAB_GPS_2026-10-18.md](CLEAN_LAB_GPS_2026-10-18.md)
+
+
+## FULL AUDIT SAFE POINT — 2026-10-18 večer
+
+Aktuálny povinný recovery bod:
+- main LAB: `dpl_HuM6uhGntoq9GfVPbqfvyLkWcezt`
+- tested preview: `dpl_41S9ENJffykDfRVipeyUoKnSBjFe`
+- preview vs production source: 16/16 zhodných
+- raw Waze helper: `tesla-sk-waze-lab-raw` / `dpl_DGUF8GaKECvNK5bVJ9vfN1SzfhBy`
+- rollback pred release: `dpl_75KudV7ypV5rohArwwMiWB6Z4RU9`
+
+Neodstraňovať ani neobchádzať raw helper, pokiaľ nová implementácia nepreukáže rovnakú hustú Waze geometriu a lane dáta.
+
+Produkcia `tesla-sk` je stále read-only referencia a pri tomto release ostala:
+`dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`.
+
+Audit report:
+[FULL_AUDIT_CLEAN_LAB_2026-10-18.md](FULL_AUDIT_CLEAN_LAB_2026-10-18.md)
