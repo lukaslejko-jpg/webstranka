@@ -54,3 +54,19 @@ Kompletné výsledky:
 
 Aktuálny recovery bod:
 [SAFE_CHECKPOINT.md](SAFE_CHECKPOINT.md)
+
+
+## Obnovené pôvodné zobrazenie alternatívnych trás
+
+Aktuálny LAB po UI oprave:
+- deployment: `dpl_79yKXi6QWM5x1xgUyDMMLyyE2LhX`
+- tested preview: `dpl_Gp4mwm4cG6dLXh4XEauvLyiYCdTu`
+
+Alternatívne trasy sú znovu:
+- samostatné tlačidlá dole nad trip/ETA panelom,
+- bez spoločného čierneho okna,
+- automaticky skryté po 60 sekundách,
+- znovu dostupné cez `••• → Trasy`.
+
+Detail:
+[ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md](ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md)
