@@ -70,3 +70,14 @@ Alternatívne trasy sú znovu:
 
 Detail:
 [ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md](ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md)
+
+
+## Demjata 307 — oprava začiatku Waze trasy
+
+Aktuálny LAB:
+- deployment: `dpl_2FT7pyPFTHy9cHmExEgYq95AewGY`
+- tested preview: `dpl_F259eNqB4GmudK113QcbQQWk6cve`
+
+Dense Waze teraz opravuje chýbajúci prvý raw segment cez Waze-only connector + tail.
+Detail:
+[DEMJATA_ROUTE_START_FIX_2026-10-18.md](DEMJATA_ROUTE_START_FIX_2026-10-18.md)
