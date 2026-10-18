@@ -400,3 +400,36 @@ Produkcia `tesla-sk` ostala nezmenená:
 
 Detail:
 [DEMJATA_ROUTE_START_FIX_2026-10-18.md](DEMJATA_ROUTE_START_FIX_2026-10-18.md)
+
+
+## TESLA-SK FIRST-STEP PARITY — 2026-10-18
+
+Aktuálny LAB production:
+- deployment: `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+- URL: `tesla-sk-waze-51jw8u27h-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+
+Oprava po porovnaní s `tesla-sk`:
+- renderer bol už správny,
+- problém bol v neúplnom raw Waze prvom kroku,
+- ak prvý dense Waze krok obsahuje dieru > 180 m, iba jeho vizuálna geometria používa OSRM step geometry rovnakého typu ako `tesla-sk`,
+- Waze stále rozhoduje trasu, ETA, alternatívy, reroute, alerty a ďalšie kroky.
+
+Test Demjata 307 → Vranovská 41:
+- routeName `545; 18`
+- `firstStepGeometry: tesla-sk-osrm-step`
+- `osrmFirstStepPoints: 72`
+- odstránená slučka z predchádzajúceho start connector pokusu.
+
+Testovaný preview:
+- `dpl_DRRt8WZG1BGVsuFkqf8bPeXwV3h8`
+
+Rollback:
+- `dpl_2FT7pyPFTHy9cHmExEgYq95AewGY`
+
+Produkcia `tesla-sk` ostala read-only a nezmenená:
+- `dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`
+
+Detail:
+[TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md](TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md)
