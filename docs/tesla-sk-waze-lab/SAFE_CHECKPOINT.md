@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_2FT7pyPFTHy9cHmExEgYq95AewGY`
-- URL: `tesla-sk-waze-d8grm0h2u-lukaslejko-9932s-projects.vercel.app`
+- `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+- URL: `tesla-sk-waze-51jw8u27h-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -179,3 +179,20 @@ Demjata 307 → Vranovská 41, Prešov
 
 Detail:
 [DEMJATA_ROUTE_START_FIX_2026-10-18.md](DEMJATA_ROUTE_START_FIX_2026-10-18.md)
+
+
+## FIRST-STEP PARITY SAFE POINT — 2026-10-18
+
+Aktuálny recovery bod:
+- main LAB: `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+- tested preview: `dpl_DRRt8WZG1BGVsuFkqf8bPeXwV3h8`
+- rollback: `dpl_2FT7pyPFTHy9cHmExEgYq95AewGY`
+
+Pravidlo:
+- renderer kopíruje princíp `tesla-sk`: krok sa kreslí z kompletnej step geometry,
+- Waze ostáva routing brain,
+- OSRM sa smie použiť iba ako vizuálna výplň prvého kroku pri chýbajúcej raw Waze geometrii,
+- žiadne start connector slučky.
+
+Detail:
+[TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md](TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md)
