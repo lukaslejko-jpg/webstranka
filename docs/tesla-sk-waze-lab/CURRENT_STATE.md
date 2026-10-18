@@ -3,8 +3,8 @@
 ## Aktuálny LAB
 
 - Alias: `tesla-sk-waze-lab.vercel.app`
-- Aktuálny deployment: `dpl_EBFzNLmryk9vGohQwELE8BLMZqVT`
-- Deployment URL: `tesla-sk-waze-hykt6l3wk-lukaslejko-9932s-projects.vercel.app`
+- Aktuálny deployment: `dpl_74HTaXu9d7qnswzpwf2yNijY2vLp`
+- Deployment URL: `tesla-sk-waze-kswinrdu8-lukaslejko-9932s-projects.vercel.app`
 
 Tento deployment bol nasadený po regressnom teste root/phone/Waze route/TTS.
 
@@ -219,3 +219,26 @@ Podrobný stav: [ALERTS_STATUS.md](ALERTS_STATUS.md).
 ## Kompletný audit 2026-10-18
 
 Po oprave Waze RT alert backendu a V5 klienta bol vykonaný end-to-end production audit. Výsledok: [FULL_AUDIT_2026-10-18.md](FULL_AUDIT_2026-10-18.md).
+
+
+## Kompletný regresný audit po oprave alerts
+
+Dátum: 2026-10-18
+
+Backend:
+- alerts: 200, `degraded:false`, `source:waze-rt`
+- POLICE live dáta potvrdené
+- Waze route: 200
+- 2 alternatívne trasy
+- dense geometry: `waze-routing-coords`
+- traffic delay dostupný
+- TTS: 200 `audio/mpeg`
+- phone: 200 + relay + send destination
+- icon: 200
+
+Release integrita:
+- production `dpl_74HTaXu9d7qnswzpwf2yNijY2vLp`
+- preview `dpl_4rh5scUTBLMY9YSfyayZksqsNk4R`
+- rozdiely v deploynutých súboroch: 0
+
+Tým je potvrdené, že produkcia je presne tá istá verzia, ktorá prešla preview testom.
