@@ -1,119 +1,169 @@
-# Tesla SK Waze LAB — full production audit 2026-10-18
+# Kompletný audit Tesla SK – Waze LAB
+Dátum: 2026-10-18
 
-## Production deployments
+## Produkčné deploymenty
 
-Main LAB:
-- alias: https://tesla-sk-waze-lab.vercel.app/
-- deployment: `dpl_EBFzNLmryk9vGohQwELE8BLMZqVT`
-- target: production
+Hlavná aplikácia:
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- deployment: `dpl_74HTaXu9d7qnswzpwf2yNijY2vLp`
+- target: `production`
 
 Alerts backend:
-- alias: https://tesla-sk-waze-lab-alerts.vercel.app/
-- deployment: `dpl_2tmAnRn8GWe8yBS3ggN1qLXoC7Ra`
-- target: production
+- alias: `https://tesla-sk-waze-lab-alerts.vercel.app/`
+- deployment: `dpl_8XGsPiG5ntyRJdUhYEGL56HvRWsi`
+- target: `production`
 
-## Alerts backend repair
+## Alerts backend — oprava
 
-Pôvodný `events.js` bol závislý na Apify/Blob konfigurácii a health hlásil `configured:false`.
+Pôvodný `api/events.js` používal Apify + Blob snapshot a projekt nemal potrebné tokeny:
+- `configured:false`
+- výsledok: degraded/0 alerts
+
+Existujúci `/api/events-rt` používa priamo Waze RT a funguje.
 
 Oprava:
-- `/api/events` používa funkčný `/api/events-rt`,
-- zdroj: `waze-rt`,
-- health endpoint kontroluje reálny Waze RT backend,
-- `/api/health` teraz vracia `ok:true`, `configured:true`, `degraded:false`.
+- `/api/events` bol prepojený na funkčný Waze RT zdroj,
+- hlavná aplikácia `api/events.js` bola prepojená na `tesla-sk-waze-lab-alerts.vercel.app/api/events`.
 
-Pri audite:
-- live alerts: 18,
-- POLICE: 1–2 podľa okamihu kontroly,
-- ROAD_CLOSED: 16,
-- route bundle obsahuje live alerts priamo v `events`.
-
-## End-to-end production test
-
-### Login / shell
-- root HTTP 200
-- login page dostupná
-- Vercel Toolbar: neprítomný
-- project feedback toolbar vypnutý pre production aj preview
-
-### GPS
-- `getFreshBrowserLocation`: OK
-- `getCurrentPosition`: OK
-- `watchPosition`: OK
-- `maximumAge: 0`: OK
-- žiadny fallback z `M.center()`: OK
-
-### Waze routing
-Test route: Demjata → Prešov, Vranovská.
-- dense route HTTP 200
-- 2 Waze routes
-- geometrySource: `waze-routing-coords`
-- rawCoordCount: 129
-- traffic delay: vracia sa
-- Trasy menu: OK
-- route alternatives: OK
-- fast reroute: OK
-
-### Lane guidance
-- klientská lane guidance logika: prítomná
-- testovaná route aktuálne mala `laneSteps: 0`, teda Waze pre túto konkrétnu trasu neposkytol lane dáta
-- funkcia sa nevymýšľa z geometrie
-
-### Police / alerts
-- `/api/events`: HTTP 200
+Po oprave:
+- HTTP 200
 - `degraded:false`
-- source: `waze-rt`
-- live `POLICE` eventy reálne prítomné
-- klient mapuje `POLICE` na `🚓 Policajná hliadka`
-- police/camera ahead threshold: 1500 m
-- alert corridor filtering a deduplikácia: prítomné
-- `waze-data-dense` obsahuje `events` priamo v bundle
+- `source:waze-rt`
+- počas auditu 17–18 živých alertov v oblasti Prešova
+- reálne `POLICE` eventy prítomné
 
-### Closure reroute
-- `ROAD_CLOSED` live alerty prítomné
-- klientská closure reroute logika prítomná
-- nevymýšľa obchádzku, žiada nový Waze výpočet
+Príklady počas auditu:
+- POLICE — Levočská, Prešov
+- POLICE — Petrovianska, Prešov
 
-### Traffic
-- `/api/traffic`: HTTP 200
-- source: `pywaze`
+## Produkčný klient
 
-### Chargers
-- `/api/chargers`: HTTP 200
-- source: hybrid
-- liveCount pri teste: 60
-- count pri teste: 319
-- detail availability na stationId `2625023`: HTTP 200, 5/5 available
+Klientsky build po oprave alertov je identický s posledným auditovaným unified klientom vo všetkých hlavných súboroch okrem `events.js`.
 
-### TTS / voice
-- `/api/tts`: HTTP 200
-- Content-Type: `audio/mpeg`
-- iOS persistent audio branch: prítomný
-- WebAudio branch: prítomný
+Zachované:
+- fresh GPS
+- `getCurrentPosition`
+- `watchPosition`
+- `maximumAge:0`
+- zákaz routovania z mapového stredu
+- Waze dense route
+- alternatívne Trasy
+- lane guidance
+- closure reroute
+- fast reroute
+- QR/pairing
+- phone relay
+- TTS
+- ikona
+- odstránený Vercel Toolbar
 
-### Mobile pairing
-- pair panel: prítomný
-- pôvodný `openMobilePair`: prítomný
-- nezávislý capture fallback: prítomný
-- `/phone.html`: HTTP 200
-- relay: `wss://tesla-hotspotnav-relay-test.onrender.com/ws`
-- `role=nav`: prítomné
-- mobilné odoslanie cieľa: prítomné
+## Endpoint audit
 
-### Icon
-- `/nav-icon-v8.png`: HTTP 200
-- SHA-256: `71782f254469bfd01a8b0c37404e1b9a5b18dce9b334cbffe0e5d5b30383f233`
+### /api/events
+- 200
+- degraded:false
+- source:waze-rt
+- počas posledného testu: 17 alerts
+- typy: 16 ROAD_CLOSED, 1 POLICE
 
-## Runtime errors
+### /api/waze-route-dense
+- 200
+- 2 Waze trasy
+- `geometrySource=waze-routing-coords`
+- traffic delay sa vracia
 
-V oboch projektoch sa pri audite neobjavila funkčná runtime chyba aplikácie.
+### /api/waze-data
+- 200
+- traffic live data sa vracajú
+- Waze jam segmenty prítomné
 
-Vercel hlási iba Node deprecation warning:
-`DEP0169 url.parse()`
+### /api/waze-drive
+- 200
+- degraded:false
+- ETA/distance/free-flow/delay
+- alternatives
+- closures/alertsAhead štruktúra prítomná
 
-Je to warning v runtime/dependency vrstve, nie zlyhanie funkcie. Neovplyvňuje HTTP výsledky ani aktuálne testované funkcie.
+### /api/traffic
+- 200
+- Waze live jam segmenty prítomné
 
-## Záver
+### /api/tts
+- 200
+- `audio/mpeg`
 
-Produkčný LAB je po oprave alerts backendu funkčný v testovaných kritických oblastiach:
-GPS, Waze routing, dense geometry, alternatívne trasy, fast reroute, lane support, police/live alerts, closure reroute, traffic, chargers, TTS, QR pairing, ikona a toolbar removal.
+### /phone.html
+- 200
+- relay URL prítomná
+- odoslanie cieľa do Tesly prítomné
+
+### /api/chargers
+- 200
+- live + statické nabíjačky
+- audit: liveCount 62, total count 322
+
+### /api/availability
+Test `stationId=1785387`:
+- 200
+- Greenway
+- available 1 / total 1
+- EVSE status AVAILABLE
+
+### /nav-icon-v8.png
+- 200
+- image/png
+- SHA-256 `71782f254469bfd01a8b0c37404e1b9a5b18dce9b334cbffe0e5d5b30383f233`
+
+## Polícia / hliadky
+
+Klient:
+- `POLICE` → `🚓 Policajná hliadka`
+- modrá mapová ikona
+- popup s názvom Policajná hliadka
+- route projection
+- lateral filter približne 180 m
+- ahead window približne 25–1800 m
+- police/camera warning threshold 1500 m
+- deduplikácia už zahlásených alertov
+
+Backend po oprave reálne vracia POLICE eventy.
+
+## Vercel Toolbar
+
+Na produkčnom root HTML:
+- `vercel.live` sa nenachádza
+- toolbar sa nemá zobrazovať
+
+## Runtime chyby
+
+Hlavná aplikácia:
+- bez funkčných exception skupín
+- evidovaný iba Node warning:
+  `[DEP0169] url.parse() behavior is not standardized`
+
+Alerts backend:
+- rovnaký Node deprecation warning
+- bez funkčného pádu endpointov po oprave
+
+Tento warning nie je aktuálne funkčná chyba, ale technický dlh na neskoršie odstránenie.
+
+## Vyhodnotenie
+
+Aktuálne kritické funkčné celky prešli:
+- login
+- GPS
+- Waze routing
+- dense geometria
+- alternatívne trasy
+- traffic
+- polícia/hliadky
+- closure
+- TTS
+- QR/pairing
+- mobilná stránka
+- nabíjačky
+- dostupnosť nabíjačiek
+- ikona
+- odstránenie Vercel Toolbar
+
+Pri ďalších zmenách zachovať pravidlo: preview → regresný audit → production.
