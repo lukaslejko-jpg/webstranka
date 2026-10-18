@@ -363,3 +363,40 @@ Produkcia `tesla-sk` ostala nezmenená:
 
 Detail:
 [ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md](ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md)
+
+
+## DEMJATA ROUTE START REPAIR — 2026-10-18 21:xx
+
+Aktuálny LAB production:
+- deployment: `dpl_2FT7pyPFTHy9cHmExEgYq95AewGY`
+- URL: `tesla-sk-waze-d8grm0h2u-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+
+Opravený konkrétny problém:
+- Demjata 307 → Vranovská 41, Prešov mala šikmo skrátený úvod trasy,
+- raw Waze full-route feed vynechával prvý lokálny segment,
+- `/api/waze-route-dense` teraz skladá Waze connector + Waze tail,
+- `geometry.startRepair:true` iba tam, kde prvý segment chýba.
+
+Preview:
+- `dpl_F259eNqB4GmudK113QcbQQWk6cve`
+
+Rollback:
+- `dpl_79yKXi6QWM5x1xgUyDMMLyyE2LhX`
+
+Regresia po oprave:
+- dense 200,
+- reverse dense 200,
+- waze-drive 200,
+- events 200 / live POLICE + ROAD_CLOSED,
+- traffic 200,
+- QR/phone 200,
+- TTS 200,
+- chargers + availability 200.
+
+Produkcia `tesla-sk` ostala nezmenená:
+- `dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`
+
+Detail:
+[DEMJATA_ROUTE_START_FIX_2026-10-18.md](DEMJATA_ROUTE_START_FIX_2026-10-18.md)
