@@ -244,3 +244,47 @@ Release integrita:
 - rozdiely v deploynutých súboroch: 0
 
 Tým je potvrdené, že produkcia je presne tá istá verzia, ktorá prešla preview testom.
+
+
+## CLEAN SINGLE-DEPLOYMENT LAB — GPS oprava 2026-10-18 večer
+
+Táto časť **nahrádza staršie GPS/proxy architektonické poznámky ako aktuálny source of truth**.
+
+Aktuálny LAB:
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- deployment: `dpl_75KudV7ypV5rohArwwMiWB6Z4RU9`
+- deployment URL: `tesla-sk-waze-64rq0ob1y-lukaslejko-9932s-projects.vercel.app`
+- state: READY
+- target: production
+
+Aktuálna architektúra:
+- `/` → lokálny `/api/lab-main`
+- lokálny login `/api/lab_login`
+- Waze routing cez lokálny `/api/waze_route` / Python backend
+- bez runtime proxy reťazca cez `gp8xt426q` a `lbvp4ivdx`
+
+Odstránené staré proxy vrstvy:
+- `gps-fix.js`
+- `lab-page.js`
+- `route-fallback.js`
+- `waze-route-dense.js`
+- `waze-data.js`
+- `waze-data-dense.js`
+
+GPS source of truth je aktuálna produkčná logika `tesla-sk`:
+`watchPosition → onFix → animateTo → M.setCar → followCar`
+
+GPS parametre:
+- `enableHighAccuracy: true`
+- `maximumAge: 1000`
+- `timeout: 20000`
+- bez paralelného `getCurrentPosition` pollingu
+- približne 900 ms animácia cez `requestAnimationFrame`
+
+Produkcia `tesla-sk` bola pri oprave iba čítaná a ostala na deploymente:
+- `dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`
+
+Bezprostredný rollback bod pred clean rebuild:
+- `dpl_75PStRH3V6kMuBCnJiXZMeDQA9s4`
+
+Detail: [CLEAN_LAB_GPS_2026-10-18.md](CLEAN_LAB_GPS_2026-10-18.md)
