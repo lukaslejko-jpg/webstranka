@@ -333,3 +333,33 @@ Rollback pred release:
 
 Kompletný report:
 [FULL_AUDIT_CLEAN_LAB_2026-10-18.md](FULL_AUDIT_CLEAN_LAB_2026-10-18.md)
+
+
+## ROUTE ALTERNATIVES UI RESTORE — 2026-10-18
+
+Aktuálny LAB production:
+- deployment: `dpl_79yKXi6QWM5x1xgUyDMMLyyE2LhX`
+- URL: `tesla-sk-waze-86zla04xy-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+
+Zmena oproti predchádzajúcemu release:
+- menil sa iba `api/lab-main.js`,
+- alternatívne trasy sú znovu samostatné tlačidlá dole nad trip/ETA panelom,
+- odstránený spoločný čierny route panel,
+- automatické skrytie ostáva **60 sekúnd**,
+- po manuálnom prepnutí sa 60 s timer reštartuje,
+- `••• → Trasy` ich znovu otvorí na 60 s.
+
+Testovaný preview:
+- `dpl_Gp4mwm4cG6dLXh4XEauvLyiYCdTu`
+- preview vs production source: 16/16 zhodných, rozdiely 0.
+
+Rollback:
+- `dpl_HuM6uhGntoq9GfVPbqfvyLkWcezt`
+
+Produkcia `tesla-sk` ostala nezmenená:
+- `dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`
+
+Detail:
+[ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md](ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md)
