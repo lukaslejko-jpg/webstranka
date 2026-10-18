@@ -1,37 +1,60 @@
-# Vercel source manifest
+# Vercel source manifest — current LAB
 
-Backend/source súbory používané pri aktuálnej vetve aplikácie.
+Aktualizované: 2026-10-18 večer
+
+Main LAB:
+- project: `tesla-sk-waze-lab`
+- deployment: `dpl_HuM6uhGntoq9GfVPbqfvyLkWcezt`
+- tested preview: `dpl_41S9ENJffykDfRVipeyUoKnSBjFe`
+- preview/production source differences: 0
 
 | Súbor | SHA |
 |---|---|
 | api/app.py | d0e46b558522efe8833124489a9c531fbd5a686b |
 | api/availability.js | 8c4a57a818f4f233782d2eabca4eb7be90bf93f5 |
 | api/chargers.js | f414515d86284be67295b389da5627566f908c33 |
-| api/events.js | 64ecf3c1b351b0952d1050fcddc6c6f95e59d765 |
+| api/events.js | 6a2883de808ea81759dc20c870e7f6fbe28f406b |
+| api/lab-main.js | 75151318f10ceeb09b3a1cf810a7953d3438d90a |
+| api/lab_login.js | 9ee85a2cbb4e1529da75556ad9bb466096b6b10a |
+| api/nav-icon-v8.js | b6f926a89dbe8319307747a8905df1d804f99c32 |
+| api/phone.js | b665e358b9744e957e17873336eff95f55e71de7 |
 | api/send-destination.js | 194d174b95ee7362cad39eb243f5f470eabd6c18 |
 | api/traffic.js | 38316d02e5c7d590e7aa3dd5d79acfe552b178a5 |
 | api/tts.js | 82122fa66e44bbb5297413b8335e3abf1538ba05 |
-| api/waze-data-dense.js | 8511a3eea916f8c6d6f96f084d295d0a921b381f |
-| api/waze-data.js | 2f3e0528c1e64c3cc5dc9e0d162b91aeaec4fc33 |
-| api/waze-drive.js | 6c2c81fc0e54f9a4c64e79d8ebc4b6dc8fc89aad |
-| api/waze-route-dense.js | f56505dee6dde919ebe3b8be72f2441b68cea956 |
+| api/waze-drive.js | f2458c596b45df7fd2726a401d15f2d93dbac364 |
+| api/waze-route-dense.js | 010897850b9b83b1d9a88ca787be9c5305139541 |
 | pyproject.toml | 62a769eaaaff00770fad6ffbe3061c9e7b895c20 |
 | requirements.txt | e360767e5bc1819b03aa3e99ae756f93a65b1263 |
+| vercel.json | 482f189b69a90a400b689661a14ee104ed4074ae |
 
-Python dependencies:
-- `pywaze==1.2.4`
-- `curl_cffi>=0.13.0`
+## Raw Waze helper
+
+- project: `tesla-sk-waze-lab-raw`
+- project ID: `prj_XG565Yr7EZfez0xC63sBwfB5rXYZ`
+- deployment: `dpl_DGUF8GaKECvNK5bVJ9vfN1SzfhBy`
+- alias: `https://tesla-sk-waze-lab-raw.vercel.app/`
+- source app.py snapshot SHA: `074572364dcd7a96af3038fc4a8b3f55d6dee88f`
+- pyproject: `62a769eaaaff00770fad6ffbe3061c9e7b895c20`
+- requirements: `e360767e5bc1819b03aa3e99ae756f93a65b1263`
 
 ## Povinný release audit
 
-Pred prepnutím aliasu na nový deployment:
+Pred ďalším production release:
 
-1. GET `/` → 200 login page.
-2. Prihlásený klient → 200, nie 508.
-3. Skontrolovať GPS markery.
-4. GET `/api/waze-route-dense` → 200 a `geometrySource=waze-routing-coords`.
-5. GET `/api/tts?text=Test` → 200 audio/mpeg.
-6. GET `/phone.html?room=TEST1234` → 200.
-7. QR panel musí vyskočiť po kliknutí na Prepojiť mobil.
-8. Overiť `••• → Trasy`.
-9. Až potom priradiť alias `tesla-sk-waze-lab.vercel.app`.
+1. Zapísať aktuálny rollback deployment.
+2. Preview build.
+3. GET `/` → login 200.
+4. Overiť GPS klientsku logiku voči read-only `tesla-sk`.
+5. GET `/api/waze-route-dense` → 200, `waze-routing-coords`, hustá geometry.
+6. Overiť alternatívy a lane guidance.
+7. GET `/api/waze-drive` → 200, `degraded:false`.
+8. GET `/api/events` → 200, `degraded:false`.
+9. GET `/api/traffic` → 200.
+10. GET `/api/tts?text=Test` → 200 audio/mpeg.
+11. GET `/phone.html?room=TEST1234` → 200 + relay + role=phone + dest.
+12. GET `/api/chargers` a `/api/availability` → 200.
+13. GET `/nav-icon-v8.png` → 200 image/png.
+14. Porovnať preview vs production source SHA; očakávaný rozdiel 0.
+15. Až potom uzavrieť dokumentáciu.
+
+Produkcia `tesla-sk` sa pri tomto procese nesmie meniť bez výslovného povolenia používateľa.
