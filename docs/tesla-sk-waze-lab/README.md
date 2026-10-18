@@ -27,3 +27,15 @@ Dokumentácia samostatnej LAB navigačnej aplikácie:
 6. UI a funkcie mimo zadanej zmeny nemeníme.
 
 Podrobný stav je v [CURRENT_STATE.md](CURRENT_STATE.md).
+
+
+## Aktuálny clean LAB checkpoint
+
+Po GPS diagnostike 2026-10-18 bol LAB prestavaný na jeden samostatný deployment bez historického runtime proxy reťazca.
+
+- current deployment: `dpl_75KudV7ypV5rohArwwMiWB6Z4RU9`
+- GPS: rovnaký mechanizmus ako read-only produkcia `tesla-sk`
+- detail: [CLEAN_LAB_GPS_2026-10-18.md](CLEAN_LAB_GPS_2026-10-18.md)
+- recovery: [SAFE_CHECKPOINT.md](SAFE_CHECKPOINT.md)
+
+Produkciu `tesla-sk` pri LAB práci nemeniť bez výslovného súhlasu používateľa.
