@@ -39,3 +39,18 @@ Po GPS diagnostike 2026-10-18 bol LAB prestavaný na jeden samostatný deploymen
 - recovery: [SAFE_CHECKPOINT.md](SAFE_CHECKPOINT.md)
 
 Produkciu `tesla-sk` pri LAB práci nemeniť bez výslovného súhlasu používateľa.
+
+
+## Kompletný audit po clean rebuild
+
+Aktuálny produkčný LAB po kompletnom audite:
+- deployment: `dpl_HuM6uhGntoq9GfVPbqfvyLkWcezt`
+- tested preview: `dpl_41S9ENJffykDfRVipeyUoKnSBjFe`
+- source rozdiely preview/production: 0
+- raw Waze helper: `tesla-sk-waze-lab-raw`
+
+Kompletné výsledky:
+[FULL_AUDIT_CLEAN_LAB_2026-10-18.md](FULL_AUDIT_CLEAN_LAB_2026-10-18.md)
+
+Aktuálny recovery bod:
+[SAFE_CHECKPOINT.md](SAFE_CHECKPOINT.md)
