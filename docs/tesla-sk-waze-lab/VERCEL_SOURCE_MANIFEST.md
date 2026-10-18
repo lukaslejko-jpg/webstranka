@@ -4,8 +4,8 @@ Aktualizované: 2026-10-18 večer
 
 Main LAB:
 - project: `tesla-sk-waze-lab`
-- deployment: `dpl_2FT7pyPFTHy9cHmExEgYq95AewGY`
-- tested preview: `dpl_F259eNqB4GmudK113QcbQQWk6cve`
+- deployment: `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+- tested preview: `dpl_DRRt8WZG1BGVsuFkqf8bPeXwV3h8`
 - preview/production source differences: 0
 
 | Súbor | SHA |
@@ -22,7 +22,7 @@ Main LAB:
 | api/traffic.js | 38316d02e5c7d590e7aa3dd5d79acfe552b178a5 |
 | api/tts.js | 82122fa66e44bbb5297413b8335e3abf1538ba05 |
 | api/waze-drive.js | f2458c596b45df7fd2726a401d15f2d93dbac364 |
-| api/waze-route-dense.js | b12aa98ea35452888c0f855f58664627e280daa8 |
+| api/waze-route-dense.js | a1f8757ed4a8c7acf76e8bd273cbe10b84ebc5c0 |
 | pyproject.toml | 62a769eaaaff00770fad6ffbe3061c9e7b895c20 |
 | requirements.txt | e360767e5bc1819b03aa3e99ae756f93a65b1263 |
 | vercel.json | 482f189b69a90a400b689661a14ee104ed4074ae |
