@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_79yKXi6QWM5x1xgUyDMMLyyE2LhX`
-- URL: `tesla-sk-waze-86zla04xy-lukaslejko-9932s-projects.vercel.app`
+- `dpl_2FT7pyPFTHy9cHmExEgYq95AewGY`
+- URL: `tesla-sk-waze-d8grm0h2u-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -156,3 +156,26 @@ Povinné UI pravidlo pre alternatívne trasy:
 
 Detail:
 [ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md](ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md)
+
+
+## DEMJATA START SAFE POINT — 2026-10-18
+
+Aktuálny recovery bod:
+- main LAB: `dpl_2FT7pyPFTHy9cHmExEgYq95AewGY`
+- tested preview: `dpl_F259eNqB4GmudK113QcbQQWk6cve`
+- rollback: `dpl_79yKXi6QWM5x1xgUyDMMLyyE2LhX`
+
+Povinné pravidlo pre dense route štart:
+- ak raw Waze full-route feed vynechá prvý segment,
+- použiť Waze-only connector `start → first anchor`,
+- potom Waze-only tail `first anchor → destination`,
+- bez OSRM,
+- bez routovania z mapového stredu.
+
+Konkrétny test:
+Demjata 307 → Vranovská 41, Prešov
+- `geometry.startRepair:true`
+- prvý dense bod = presný štart `21.310617,49.100883`
+
+Detail:
+[DEMJATA_ROUTE_START_FIX_2026-10-18.md](DEMJATA_ROUTE_START_FIX_2026-10-18.md)
