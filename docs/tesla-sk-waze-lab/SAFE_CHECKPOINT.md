@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_EBFzNLmryk9vGohQwELE8BLMZqVT`
-- URL: `tesla-sk-waze-hykt6l3wk-lukaslejko-9932s-projects.vercel.app`
+- `dpl_75KudV7ypV5rohArwwMiWB6Z4RU9`
+- URL: `tesla-sk-waze-64rq0ob1y-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -98,3 +98,23 @@ Stačí obnoviť:
 
 A pokračovať z aktuálnych aliasov.
 
+
+
+## CLEAN ARCHITECTURE CHECKPOINT — 2026-10-18 večer
+
+Od tohto bodu je zakázané obnoviť starý runtime proxy reťazec:
+`gps-fix → gp8xt426q → lab-page → lbvp4ivdx`.
+
+Aktuálny root:
+`/` → `/api/lab-main`.
+
+GPS:
+`watchPosition → onFix → animateTo → M.setCar → followCar`.
+
+Produkcia `tesla-sk` je iba read-only referencia. Pri tejto oprave ostala na:
+`dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`.
+
+Rollback bezprostredne pred clean rebuild:
+`dpl_75PStRH3V6kMuBCnJiXZMeDQA9s4`.
+
+Podrobnosti: [CLEAN_LAB_GPS_2026-10-18.md](CLEAN_LAB_GPS_2026-10-18.md)
