@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_HuM6uhGntoq9GfVPbqfvyLkWcezt`
-- URL: `tesla-sk-waze-a23b6g8nj-lukaslejko-9932s-projects.vercel.app`
+- `dpl_79yKXi6QWM5x1xgUyDMMLyyE2LhX`
+- URL: `tesla-sk-waze-86zla04xy-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -136,3 +136,23 @@ Produkcia `tesla-sk` je stále read-only referencia a pri tomto release ostala:
 
 Audit report:
 [FULL_AUDIT_CLEAN_LAB_2026-10-18.md](FULL_AUDIT_CLEAN_LAB_2026-10-18.md)
+
+
+## ROUTE UI SAFE POINT — 2026-10-18
+
+Aktuálny route UI checkpoint:
+- main LAB: `dpl_79yKXi6QWM5x1xgUyDMMLyyE2LhX`
+- tested preview: `dpl_Gp4mwm4cG6dLXh4XEauvLyiYCdTu`
+- preview vs production: 16/16 source files zhodných
+- rollback: `dpl_HuM6uhGntoq9GfVPbqfvyLkWcezt`
+
+Povinné UI pravidlo pre alternatívne trasy:
+- iba samostatné tlačidlá,
+- dole nad trip/ETA panelom,
+- bez spoločného čierneho panelu,
+- auto-hide 60000 ms,
+- po manuálnom prepnutí reset na 60000 ms,
+- po skrytí znovu otvoriť iba cez `••• → Trasy`.
+
+Detail:
+[ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md](ROUTE_ALTERNATIVES_UI_FIX_2026-10-18.md)
