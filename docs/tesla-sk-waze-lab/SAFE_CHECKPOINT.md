@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_92bcPeKpMLuXXAYSbsq4ACC7Yi9z`
-- URL: `tesla-sk-waze-6elz415o8-lukaslejko-9932s-projects.vercel.app`
+- `dpl_Do9x8bnASfyGaGWHQbZqwmxcbtzp`
+- URL: `tesla-sk-waze-o0ro9niff-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -402,3 +402,22 @@ Voice diagnostics:
 
 Detail:
 [ROBUST_VOICE_RELEASE_2026-10-19.md](ROBUST_VOICE_RELEASE_2026-10-19.md)
+
+
+## LAST DRIVE NAVIGATION SAFE POINT — 2026-10-19
+
+Aktuálny recovery bod:
+- main LAB: `dpl_Do9x8bnASfyGaGWHQbZqwmxcbtzp`
+- tested preview: `dpl_5hUeoqRpGVYGDt1zZSPPcwFVSxSu`
+- immediate rollback: `dpl_92bcPeKpMLuXXAYSbsq4ACC7Yi9z`
+
+Povinné pravidlá:
+- voice/music/GPS sections musia zostať identické pri ďalších navigation zásahoch,
+- raw Waze geometry sa delí podľa Waze step distance,
+- zero-distance step nesmie pridávať route geometry,
+- displayed route nesmie začínať umelou spojnicou z CAR,
+- committed turn first-fix reroute pravidlá sa nesmú odstrániť bez field-test dôvodu,
+- `Dorazili ste do cieľa` patrí iba skutočnému arrive().
+
+Detail:
+[LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md](LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md)
