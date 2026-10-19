@@ -230,3 +230,26 @@ Rollback:
 
 Detail:
 [ROBUST_VOICE_RELEASE_2026-10-19.md](ROBUST_VOICE_RELEASE_2026-10-19.md)
+
+
+## Last-drive navigation fix — 2026-10-19
+
+Aktuálny LAB:
+- deployment: `dpl_Do9x8bnASfyGaGWHQbZqwmxcbtzp`
+- preview: `dpl_5hUeoqRpGVYGDt1zZSPPcwFVSxSu`
+
+Opravené:
+- route geometry podľa raw Waze + cumulative step distance,
+- odstránený 26 m → 160 m prvý krok,
+- odstránená extra geometria nulového arrive kroku,
+- žiadny CAR → stale-route rubber band,
+- first-fix reroute pri reálnom odbočení,
+- premature arrival banner.
+
+Hlas zostal nedotknutý.
+
+Rollback:
+- `dpl_92bcPeKpMLuXXAYSbsq4ACC7Yi9z`
+
+Detail:
+[LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md](LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md)
