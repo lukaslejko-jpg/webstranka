@@ -196,3 +196,27 @@ Pravidlo:
 
 Detail:
 [TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md](TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md)
+
+## NAVIGATION GUIDANCE SAFE POINT — 2026-10-19
+
+Aktuálny recovery bod po oprave horného navigačného okna:
+- main LAB: `dpl_BkqdtjLCUHttGozS4pYyivFjZ3Q5`
+- tested clean preview: `dpl_9une1vS8WzqSo36dTKTYPENxHfvm`
+- preview vs production: **16/16 source files zhodných**
+- rollback pred release: `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+
+Povinné pravidlá, ktoré sa pri ďalších zmenách nesmú stratiť:
+- navigačné pokyny v hornom banneri/TTS sú po slovensky,
+- aktuálny manéver sa nesmie prepnúť na ďalší pred fyzickým prejdením uzla,
+- prechod nastane až po dvoch spoľahlivých GPS fixoch za adaptívnym pass bufferom,
+- do 25 m zobraziť `Teraz`,
+- zvýraznenie jazdných pruhov vychádza výlučne z Waze `clientLaneSet`,
+- pri reroute sa nesmie kresliť trasa za vozidlom,
+- spodný trip progress sa pri reroute/zmene alternatívy nesmie resetovať na nulu,
+- pri reroute zachovať zvolený index Waze alternatívy, ak stále existuje,
+- WebAudio hlas navigácie používa efektívny gain 1.33× pri UI 100 %,
+- backend Waze/GPS/events/traffic/QR/chargers/TTS ostáva mimo tejto UI opravy.
+
+Detail:
+[NAV_GUIDANCE_FIX_2026-10-19.md](NAV_GUIDANCE_FIX_2026-10-19.md)
+
