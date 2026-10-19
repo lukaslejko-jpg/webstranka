@@ -4,8 +4,8 @@ Aktualizované: 2026-10-19
 
 Main LAB:
 - project: `tesla-sk-waze-lab`
-- deployment: `dpl_92bcPeKpMLuXXAYSbsq4ACC7Yi9z`
-- tested preview: `dpl_8CHythJdAckfH5U5p7jU1dw8JqSs`
+- deployment: `dpl_Do9x8bnASfyGaGWHQbZqwmxcbtzp`
+- tested preview: `dpl_5hUeoqRpGVYGDt1zZSPPcwFVSxSu`
 - preview/production source differences: 0
 
 | Súbor | SHA |
@@ -14,7 +14,7 @@ Main LAB:
 | api/availability.js | 8c4a57a818f4f233782d2eabca4eb7be90bf93f5 |
 | api/chargers.js | f414515d86284be67295b389da5627566f908c33 |
 | api/events.js | 6a2883de808ea81759dc20c870e7f6fbe28f406b |
-| api/lab-main.js | 94b31ccaffa3981694380e2eb6da5984ca815d1f |
+| api/lab-main.js | 0f89af1ddceda3273302c40137c4ef3ffbc603bc |
 | api/lab_login.js | 9ee85a2cbb4e1529da75556ad9bb466096b6b10a |
 | api/nav-icon-v8.js | b6f926a89dbe8319307747a8905df1d804f99c32 |
 | api/phone.js | b665e358b9744e957e17873336eff95f55e71de7 |
@@ -22,7 +22,7 @@ Main LAB:
 | api/traffic.js | 38316d02e5c7d590e7aa3dd5d79acfe552b178a5 |
 | api/tts.js | 82122fa66e44bbb5297413b8335e3abf1538ba05 |
 | api/waze-drive.js | f2458c596b45df7fd2726a401d15f2d93dbac364 |
-| api/waze-route-dense.js | 5cb25a987ff7e293564d50aef53908c638352aa3 |
+| api/waze-route-dense.js | 058fcd14f0cbd0307fc2cbb1130458a2f5b3c02d |
 | pyproject.toml | 62a769eaaaff00770fad6ffbe3061c9e7b895c20 |
 | requirements.txt | e360767e5bc1819b03aa3e99ae756f93a65b1263 |
 | vercel.json | 482f189b69a90a400b689661a14ee104ed4074ae |
