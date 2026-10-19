@@ -190,3 +190,24 @@ Rollback:
 
 Detail:
 [ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md](ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md)
+
+
+## Voice repair — 2026-10-19
+
+Aktuálny LAB:
+- deployment: `dpl_F3AYtpP4EVsggkFmDjDBtAT6mJ4E`
+- preview: `dpl_DRpdPfjx1Dvz8tmwBq7QzaUrZJba`
+
+Opravené:
+- stale `voice=false` migration,
+- Test hlasu,
+- test hlasitosti,
+- potvrdenie po zapnutí hlasu.
+
+Po nasadení treba aktívnu Tesla stránku raz obnoviť.
+
+Rollback:
+- `dpl_78MAGdYSkmdQPCmj8dmMGGhy845y`
+
+Detail:
+[VOICE_REPAIR_RELEASE_2026-10-19.md](VOICE_REPAIR_RELEASE_2026-10-19.md)
