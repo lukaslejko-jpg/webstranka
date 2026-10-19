@@ -172,3 +172,21 @@ Rollback:
 
 Detail:
 [NAVIGATION_REGRESSION_RELEASE_2026-10-19.md](NAVIGATION_REGRESSION_RELEASE_2026-10-19.md)
+
+
+## Route geometry + arrow follow — 2026-10-19
+
+Aktuálny LAB:
+- deployment: `dpl_78MAGdYSkmdQPCmj8dmMGGhy845y`
+- preview: `dpl_E19YhpX6cDqDmV2SK6juBh742VY1`
+
+Opravené:
+- Demjata loop spôsobená neprimeraným OSRM first-step fallbackom,
+- 13 km Waze route už nevytvára ~15 km klientsku polyline,
+- šípka/map follow sa správa rovnako s cieľom aj bez cieľa.
+
+Rollback:
+- `dpl_HoBiGtoSipY7PUJJ9ziXJspoGnKb`
+
+Detail:
+[ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md](ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md)
