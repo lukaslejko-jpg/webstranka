@@ -93,3 +93,15 @@ Pri chýbajúcej raw Waze geometrii prvého kroku sa iba tento krátky úsek kre
 
 Detail:
 [TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md](TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md)
+
+
+## Off-route: bez modrej „gumy“
+
+Aktuálny LAB:
+- deployment: `dpl_GCVfCs9ZT2H5DD9g79R8V3RxtbbW`
+- preview: `dpl_BcsXKRmQ9ceigoNjC8kL345T9XK9`
+
+Pri odbočení mimo aktívnej trasy sa stará modrá línia okamžite odpojí od auta a zostane skrytá počas reroute.
+
+Detail:
+[OFF_ROUTE_NO_RUBBER_BAND_2026-10-19.md](OFF_ROUTE_NO_RUBBER_BAND_2026-10-19.md)
