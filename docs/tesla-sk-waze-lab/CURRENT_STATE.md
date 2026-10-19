@@ -519,3 +519,57 @@ Produkcia `tesla-sk` ostala nezmenená:
 
 Detail:
 [ROLLBACK_OFF_ROUTE_2026-10-19.md](ROLLBACK_OFF_ROUTE_2026-10-19.md)
+
+
+## NAVIGATION REGRESSION HARDENED RELEASE — 2026-10-19
+
+Táto sekcia je aktuálny source of truth pre navigačný klient.
+
+Aktuálny LAB production:
+- deployment: `dpl_D7gQPdESJBUyAPi6v7JsnHE1fXpj`
+- URL: `tesla-sk-waze-237e9vz92-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+- target: production
+
+Povinný rollback:
+- `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
+
+Testovací preview:
+- logic tests: `dpl_6kMy1Z9FRuNFb2xBcFecZXp5dBEM`
+- client integrity audit: `dpl_37PfEiU4xgsARxVuZ1h9beNVui6w`
+- clean RC: `dpl_CtvxtxFyAquvrQ9a99UfsvSMiCtt`
+
+Výsledky:
+- nav regression: **20/20 PASS**
+- browser JS compile: PASS
+- normalized client diff mimo povolených navigačných blokov: IDENTICKÝ
+- music/GPS/QR preserved: PASS
+- RC → production source differences: **0**
+- backend production regression: PASS
+
+Aktuálne správanie:
+- off-route route sa od auta odpojí bez modrej gumy,
+- 2 spoľahlivé fixy / strong deviation spustia reroute,
+- global 6 s reroute throttle,
+- parallel-road progress plausibility guard,
+- rerouting banner bez starého manévru,
+- failed reroute ostáva detached,
+- arrival vyžaduje fyzickú blízkosť cieľa,
+- pri arrival žiadne `Potom` ani lane guidance,
+- fork/merge/ramp/continue/end-of-road/arrival-side navigácia po slovensky.
+
+Zachované bez zmeny:
+- GPS `watchPosition` s produkčnou logikou,
+- hudba `https://music-p45f.onrender.com/`,
+- QR/pair relay,
+- 60 s alternatívne Trasy,
+- Waze dense backend,
+- POLICE / ROAD_CLOSED,
+- traffic, TTS, chargers, availability.
+
+Produkcia `tesla-sk` ostala nezmenená:
+- `dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`
+
+Detail:
+[NAV_REGRESSION_RELEASE_2026-10-19.md](NAV_REGRESSION_RELEASE_2026-10-19.md)
