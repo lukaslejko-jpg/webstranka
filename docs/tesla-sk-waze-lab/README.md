@@ -144,3 +144,31 @@ Opravené:
 
 Detail:
 [NAV_REGRESSION_RELEASE_2026-10-19.md](NAV_REGRESSION_RELEASE_2026-10-19.md)
+
+
+## Tested navigation regression release — 2026-10-19
+
+Aktuálny LAB:
+- deployment: `dpl_HoBiGtoSipY7PUJJ9ziXJspoGnKb`
+- latch preview: `dpl_URvYbpPaiPTa3WNuyBaRxSB6gZ2P`
+
+Opravené a testované:
+- off-route bez modrej gumy,
+- reroute throttle,
+- parallel-road snap,
+- premature arrival,
+- `Potom` po arrival,
+- anglické maneuver texty,
+- maneuver latch: návesť zostáva až do fyzického prejdenia odbočenia.
+
+Testy:
+- 20/20 navigation regression PASS
+- 6/6 maneuver latch PASS
+- browser compile/preservation audit PASS
+
+Rollback:
+- immediate: `dpl_D7gQPdESJBUyAPi6v7JsnHE1fXpj`
+- full: `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
+
+Detail:
+[NAVIGATION_REGRESSION_RELEASE_2026-10-19.md](NAVIGATION_REGRESSION_RELEASE_2026-10-19.md)
