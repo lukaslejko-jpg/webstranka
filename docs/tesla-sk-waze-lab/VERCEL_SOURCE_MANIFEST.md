@@ -1,11 +1,11 @@
 # Vercel source manifest — current LAB
 
-Aktualizované: 2026-10-19 ráno
+Aktualizované: 2026-10-19
 
 Main LAB:
 - project: `tesla-sk-waze-lab`
-- deployment: `dpl_Hsf76xmRRT8FkS4GLiUhVxAiRsUa`
-- tested preview: `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+- deployment: `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
+- tested preview: `dpl_9BdE8squRojdMXNuoozoXURnduUT`
 - preview/production source differences: 0
 
 | Súbor | SHA |
@@ -14,7 +14,7 @@ Main LAB:
 | api/availability.js | 8c4a57a818f4f233782d2eabca4eb7be90bf93f5 |
 | api/chargers.js | f414515d86284be67295b389da5627566f908c33 |
 | api/events.js | 6a2883de808ea81759dc20c870e7f6fbe28f406b |
-| api/lab-main.js | 0e51df4c2b17baf40977d78bbb96c336b06946b8 |
+| api/lab-main.js | ec3c480d9667e3c183434ab9e777a90268494eb2 |
 | api/lab_login.js | 9ee85a2cbb4e1529da75556ad9bb466096b6b10a |
 | api/nav-icon-v8.js | b6f926a89dbe8319307747a8905df1d804f99c32 |
 | api/phone.js | b665e358b9744e957e17873336eff95f55e71de7 |
@@ -29,8 +29,10 @@ Main LAB:
 
 ## Current rollback checkpoint
 
-- previous functional production: `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
-- navigation release details: [NAV_GUIDANCE_FIX_2026-10-19.md](NAV_GUIDANCE_FIX_2026-10-19.md)
+- previous functional production: `dpl_Hsf76xmRRT8FkS4GLiUhVxAiRsUa`
+- current isolated change: music source only
+- production music: `https://music-p45f.onrender.com/`
+- release details: [MUSIC_SOURCE_PARITY_2026-10-19.md](MUSIC_SOURCE_PARITY_2026-10-19.md)
 
 ## Raw Waze helper
 
