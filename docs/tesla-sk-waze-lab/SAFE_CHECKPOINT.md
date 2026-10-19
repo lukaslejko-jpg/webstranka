@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
-- URL: `tesla-sk-waze-eg42b9324-lukaslejko-9932s-projects.vercel.app`
+- `dpl_D7gQPdESJBUyAPi6v7JsnHE1fXpj`
+- URL: `tesla-sk-waze-237e9vz92-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -275,3 +275,44 @@ Povinné pravidlo:
 
 Detail:
 [MUSIC_SOURCE_PARITY_2026-10-19.md](MUSIC_SOURCE_PARITY_2026-10-19.md)
+
+
+## NAVIGATION REGRESSION SAFE POINT — 2026-10-19
+
+Aktuálny recovery bod:
+- main LAB: `dpl_D7gQPdESJBUyAPi6v7JsnHE1fXpj`
+- clean RC: `dpl_CtvxtxFyAquvrQ9a99UfsvSMiCtt`
+- production vs RC source differences: 0
+
+Povinný rollback pred týmto release:
+- `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
+
+Pred production prešlo:
+- 20/20 navigation regression tests,
+- browser JS compile,
+- normalized full-client integrity audit,
+- music/GPS/QR exact preservation,
+- dense/drive/events/traffic/phone/TTS/chargers/availability/icon regression.
+
+Chránené pravidlá:
+- žiadne modré spojenie auta späť na starú route počas off-route,
+- stará route môže zostať zobrazená iba od projected snap pointu dopredu,
+- 2 reliable fixes alebo strong deviation → reroute,
+- 6 s global reroute throttle,
+- parallel-road snap musí byť progress-plausible,
+- arrival iba pri fyzickej blízkosti cieľa,
+- arrive nesmie zobrazovať `Potom`,
+- navigačné pokyny fork/merge/ramp/continue/end-of-road musia byť slovenské.
+
+Zachovať bez zásahu:
+- `MUSIC_URL=https://music-p45f.onrender.com/`
+- GPS `watchPosition`,
+- QR/pair relay,
+- 60 s alternatívne Trasy,
+- Waze alerts/lane/traffic.
+
+Produkcia `tesla-sk` je read-only referencia a ostáva:
+`dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`.
+
+Detail:
+[NAV_REGRESSION_RELEASE_2026-10-19.md](NAV_REGRESSION_RELEASE_2026-10-19.md)
