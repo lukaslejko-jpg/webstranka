@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
-- URL: `tesla-sk-waze-51jw8u27h-lukaslejko-9932s-projects.vercel.app`
+- `dpl_GCVfCs9ZT2H5DD9g79R8V3RxtbbW`
+- URL: `tesla-sk-waze-hvixu0fta-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -220,3 +220,21 @@ Povinné pravidlá, ktoré sa pri ďalších zmenách nesmú stratiť:
 Detail:
 [NAV_GUIDANCE_FIX_2026-10-19.md](NAV_GUIDANCE_FIX_2026-10-19.md)
 
+
+
+## OFF-ROUTE VISUAL SAFE POINT — 2026-10-19
+
+Aktuálny recovery bod:
+- main LAB: `dpl_GCVfCs9ZT2H5DD9g79R8V3RxtbbW`
+- tested preview: `dpl_BcsXKRmQ9ceigoNjC8kL345T9XK9`
+- rollback: `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+
+Povinné správanie:
+- prvý spoľahlivý off-route fix → okamžité `M.clearRoute()`,
+- počas `offVisual/routing` žiadne `M.setRoute([pos,...oldRoute])`,
+- GPS šum môže starú trasu obnoviť,
+- potvrdený odklon → Waze reroute,
+- novú modrú trasu zobrazí až nový `setRoute()`.
+
+Detail:
+[OFF_ROUTE_NO_RUBBER_BAND_2026-10-19.md](OFF_ROUTE_NO_RUBBER_BAND_2026-10-19.md)
