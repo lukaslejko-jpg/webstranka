@@ -1,6 +1,6 @@
 # SAFE CHECKPOINT — Tesla SK Waze LAB
 
-Aktualizované: 2026-10-18
+Aktualizované: 2026-10-19
 
 ## SOURCE OF TRUTH
 
@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_Hsf76xmRRT8FkS4GLiUhVxAiRsUa`
-- URL: `tesla-sk-waze-d8e6cklzt-lukaslejko-9932s-projects.vercel.app`
+- `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
+- URL: `tesla-sk-waze-eg42b9324-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -254,3 +254,24 @@ Jeho off-route vizuálna zmena bola revertovaná po regresnej analýze.
 
 Detail:
 [ROLLBACK_OFF_ROUTE_2026-10-19.md](ROLLBACK_OFF_ROUTE_2026-10-19.md)
+
+
+## MUSIC SOURCE PARITY SAFE POINT — 2026-10-19
+
+Aktuálny recovery bod po izolovanej výmene zdroja hudby:
+- main LAB: `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
+- tested preview: `dpl_9BdE8squRojdMXNuoozoXURnduUT`
+- rollback: `dpl_Hsf76xmRRT8FkS4GLiUhVxAiRsUa`
+- `api/lab-main.js`: `ec3c480d9667e3c183434ab9e777a90268494eb2`
+- ostatných 15/16 source SHA bez zmeny
+
+Hudba:
+- produkčný zdroj: `https://music-p45f.onrender.com/`
+- starý zdroj `music-mobile-307.onrender.com/?mobile=1` sa už nepoužíva.
+
+Povinné pravidlo:
+- zachovať existujúci `musicOverlay`, `musicGrab`, iframe lifecycle a zatváranie/minimalizáciu,
+- pri hudobnej zmene nemeníť GPS/Waze/reroute/TTS/QR/traffic/chargers ani navigačný renderer.
+
+Detail:
+[MUSIC_SOURCE_PARITY_2026-10-19.md](MUSIC_SOURCE_PARITY_2026-10-19.md)
