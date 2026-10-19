@@ -211,3 +211,22 @@ Rollback:
 
 Detail:
 [VOICE_REPAIR_RELEASE_2026-10-19.md](VOICE_REPAIR_RELEASE_2026-10-19.md)
+
+
+## Robust voice fallback — 2026-10-19
+
+Aktuálny LAB:
+- deployment: `dpl_92bcPeKpMLuXXAYSbsq4ACC7Yi9z`
+- preview: `dpl_8CHythJdAckfH5U5p7jU1dw8JqSs`
+
+Playback:
+- WebAudio primary,
+- HTMLAudio fallback,
+- speechSynthesis fallback,
+- diagnostika `/api/voice-diag`.
+
+Rollback:
+- `dpl_F3AYtpP4EVsggkFmDjDBtAT6mJ4E`
+
+Detail:
+[ROBUST_VOICE_RELEASE_2026-10-19.md](ROBUST_VOICE_RELEASE_2026-10-19.md)
