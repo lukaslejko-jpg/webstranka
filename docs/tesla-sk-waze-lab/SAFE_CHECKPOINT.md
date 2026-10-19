@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_D7gQPdESJBUyAPi6v7JsnHE1fXpj`
-- URL: `tesla-sk-waze-237e9vz92-lukaslejko-9932s-projects.vercel.app`
+- `dpl_HoBiGtoSipY7PUJJ9ziXJspoGnKb`
+- URL: `tesla-sk-waze-7k4sp2wcq-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -316,3 +316,33 @@ Produkcia `tesla-sk` je read-only referencia a ostáva:
 
 Detail:
 [NAV_REGRESSION_RELEASE_2026-10-19.md](NAV_REGRESSION_RELEASE_2026-10-19.md)
+
+
+## TESTED NAVIGATION SAFE POINT — 2026-10-19
+
+Aktuálny checkpoint:
+- main LAB: `dpl_HoBiGtoSipY7PUJJ9ziXJspoGnKb`
+- tested latch preview: `dpl_URvYbpPaiPTa3WNuyBaRxSB6gZ2P`
+- production lab-main SHA = preview lab-main SHA:
+  `9de6566d7efcc56db1cb58e4f37eef77b0ef1dc4`
+
+Rollback úrovne:
+1. immediate rollback pred maneuver latch:
+   `dpl_D7gQPdESJBUyAPi6v7JsnHE1fXpj`
+2. full rollback pred dnešným navigation regression balíkom:
+   `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
+
+Povinné zachovať:
+- GPS `watchPosition`, `maximumAge:1000`
+- music `https://music-p45f.onrender.com/`
+- QR/phone relay
+- alternatives 60000 ms
+- Waze alerts / lane guidance
+- off-route detached route nesmie začínať v CAR
+- arrival musí byť potvrdený fyzickou vzdialenosťou
+- `arrive` nesmie zobrazovať `Potom`
+- banner nesmie preskočiť na ďalší manéver iba kvôli route snapu
+- maneuver latch sa uvoľní až po fyzickom prejdení alebo 100 m fail-safe.
+
+Detail:
+[NAVIGATION_REGRESSION_RELEASE_2026-10-19.md](NAVIGATION_REGRESSION_RELEASE_2026-10-19.md)
