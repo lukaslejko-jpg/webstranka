@@ -1,11 +1,11 @@
 # Vercel source manifest — current LAB
 
-Aktualizované: 2026-10-18 večer
+Aktualizované: 2026-10-19 ráno
 
 Main LAB:
 - project: `tesla-sk-waze-lab`
-- deployment: `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
-- tested preview: `dpl_DRRt8WZG1BGVsuFkqf8bPeXwV3h8`
+- deployment: `dpl_BkqdtjLCUHttGozS4pYyivFjZ3Q5`
+- tested preview: `dpl_9une1vS8WzqSo36dTKTYPENxHfvm`
 - preview/production source differences: 0
 
 | Súbor | SHA |
@@ -14,7 +14,7 @@ Main LAB:
 | api/availability.js | 8c4a57a818f4f233782d2eabca4eb7be90bf93f5 |
 | api/chargers.js | f414515d86284be67295b389da5627566f908c33 |
 | api/events.js | 6a2883de808ea81759dc20c870e7f6fbe28f406b |
-| api/lab-main.js | 0e51df4c2b17baf40977d78bbb96c336b06946b8 |
+| api/lab-main.js | 0fabc71381a1aee3e17c9280703ec3409fa81d9f |
 | api/lab_login.js | 9ee85a2cbb4e1529da75556ad9bb466096b6b10a |
 | api/nav-icon-v8.js | b6f926a89dbe8319307747a8905df1d804f99c32 |
 | api/phone.js | b665e358b9744e957e17873336eff95f55e71de7 |
@@ -26,6 +26,11 @@ Main LAB:
 | pyproject.toml | 62a769eaaaff00770fad6ffbe3061c9e7b895c20 |
 | requirements.txt | e360767e5bc1819b03aa3e99ae756f93a65b1263 |
 | vercel.json | 482f189b69a90a400b689661a14ee104ed4074ae |
+
+## Current rollback checkpoint
+
+- previous functional production: `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+- navigation release details: [NAV_GUIDANCE_FIX_2026-10-19.md](NAV_GUIDANCE_FIX_2026-10-19.md)
 
 ## Raw Waze helper
 
