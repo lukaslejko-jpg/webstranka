@@ -490,3 +490,32 @@ Produkcia `tesla-sk` ostala nezmenená:
 
 Detail:
 [ROLLBACK_OFF_ROUTE_2026-10-19.md](ROLLBACK_OFF_ROUTE_2026-10-19.md)
+
+
+## ROLLBACK OFF-ROUTE RELEASE — 2026-10-19
+
+Aktuálny LAB production:
+- deployment: `dpl_Hsf76xmRRT8FkS4GLiUhVxAiRsUa`
+- URL: `tesla-sk-waze-d8e6cklzt-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+- source: redeploy
+
+Aktuálny obsah je byte-for-byte zhodný s rollback zdrojom:
+- `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+- source differences: 0
+
+Revertovaný release:
+- `dpl_GCVfCs9ZT2H5DD9g79R8V3RxtbbW`
+- nepoužívať ako recovery checkpoint.
+
+Po rollbaku:
+- root 200
+- dense route 200
+- waze-drive 200
+
+Produkcia `tesla-sk` ostala nezmenená:
+- `dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`
+
+Detail:
+[ROLLBACK_OFF_ROUTE_2026-10-19.md](ROLLBACK_OFF_ROUTE_2026-10-19.md)
