@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_F3AYtpP4EVsggkFmDjDBtAT6mJ4E`
-- URL: `tesla-sk-waze-ktywbwuhq-lukaslejko-9932s-projects.vercel.app`
+- `dpl_92bcPeKpMLuXXAYSbsq4ACC7Yi9z`
+- URL: `tesla-sk-waze-6elz415o8-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -382,3 +382,23 @@ Povinné pravidlá:
 
 Detail:
 [VOICE_REPAIR_RELEASE_2026-10-19.md](VOICE_REPAIR_RELEASE_2026-10-19.md)
+
+
+## ROBUST VOICE SAFE POINT — 2026-10-19
+
+Aktuálny recovery bod:
+- main LAB: `dpl_92bcPeKpMLuXXAYSbsq4ACC7Yi9z`
+- tested preview: `dpl_8CHythJdAckfH5U5p7jU1dw8JqSs`
+- immediate rollback: `dpl_F3AYtpP4EVsggkFmDjDBtAT6mJ4E`
+
+Playback order:
+1. WebAudio
+2. persistent HTMLAudio fallback
+3. speechSynthesis fallback
+
+Voice diagnostics:
+- `/api/voice-diag`
+- no GPS/destination/spoken text logged.
+
+Detail:
+[ROBUST_VOICE_RELEASE_2026-10-19.md](ROBUST_VOICE_RELEASE_2026-10-19.md)
