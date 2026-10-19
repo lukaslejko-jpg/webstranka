@@ -118,3 +118,29 @@ Revertovaný a nepoužívať:
 
 Detail:
 [ROLLBACK_OFF_ROUTE_2026-10-19.md](ROLLBACK_OFF_ROUTE_2026-10-19.md)
+
+
+## Navigation regression hardened — 2026-10-19
+
+Aktuálny LAB:
+- production: `dpl_D7gQPdESJBUyAPi6v7JsnHE1fXpj`
+- clean RC: `dpl_CtvxtxFyAquvrQ9a99UfsvSMiCtt`
+- rollback: `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
+
+Pred nasadením:
+- 20/20 navigačných regresných testov PASS,
+- browser JS compile PASS,
+- full-client normalized diff PASS,
+- music/GPS/QR zachované,
+- služby a konkrétne route samples PASS.
+
+Opravené:
+- off-route bez modrej gumy za autom,
+- reroute storm throttle,
+- parallel-road snap guard,
+- predčasný arrival,
+- `Potom` pri arrival,
+- anglické fork/merge/ramp/continue texty.
+
+Detail:
+[NAV_REGRESSION_RELEASE_2026-10-19.md](NAV_REGRESSION_RELEASE_2026-10-19.md)
