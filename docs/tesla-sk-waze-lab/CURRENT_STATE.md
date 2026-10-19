@@ -642,3 +642,34 @@ Immediate rollback:
 
 Detail:
 [ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md](ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md)
+
+
+## VOICE REPAIR RELEASE — 2026-10-19
+
+Aktuálny LAB production:
+- deployment: `dpl_F3AYtpP4EVsggkFmDjDBtAT6mJ4E`
+- URL: `tesla-sk-waze-ktywbwuhq-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+
+Opravené:
+- jednorazový repair starého `voice=false`,
+- `Test hlasu` už funguje aj pri vypnutom voice state,
+- test hlasitosti používa force playback,
+- po ručnom zapnutí sa ozve `Hlas navigácie zapnutý`.
+
+Zmenený iba:
+- `api/lab-main.js`
+
+Testy:
+- voice 7/7 PASS
+- full navigation 16/16 PASS
+- browser compile PASS
+- normalized diff mimo voice IDENTICAL
+- production služby PASS
+
+Rollback:
+- `dpl_78MAGdYSkmdQPCmj8dmMGGhy845y`
+
+Detail:
+[VOICE_REPAIR_RELEASE_2026-10-19.md](VOICE_REPAIR_RELEASE_2026-10-19.md)
