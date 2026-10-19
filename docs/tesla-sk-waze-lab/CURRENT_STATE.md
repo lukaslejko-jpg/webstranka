@@ -673,3 +673,28 @@ Rollback:
 
 Detail:
 [VOICE_REPAIR_RELEASE_2026-10-19.md](VOICE_REPAIR_RELEASE_2026-10-19.md)
+
+
+## ROBUST VOICE FALLBACK — 2026-10-19
+
+Aktuálny LAB production:
+- deployment: `dpl_92bcPeKpMLuXXAYSbsq4ACC7Yi9z`
+- URL: `tesla-sk-waze-6elz415o8-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+
+Hlas:
+- TTS request z Tesly potvrdený,
+- TTS payload aktuálny vs AQ3 identický,
+- problém izolovaný na playback/decode/context fallback,
+- WebAudio ostáva primárny,
+- pridaný persistentný HTMLAudio fallback,
+- následne speechSynthesis fallback,
+- repeated user-gesture unlock,
+- voice diagnostics cez `/api/voice-diag`.
+
+Rollback:
+- `dpl_F3AYtpP4EVsggkFmDjDBtAT6mJ4E`
+
+Detail:
+[ROBUST_VOICE_RELEASE_2026-10-19.md](ROBUST_VOICE_RELEASE_2026-10-19.md)
