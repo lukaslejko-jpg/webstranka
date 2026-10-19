@@ -4,8 +4,8 @@ Aktualizované: 2026-10-19
 
 Main LAB:
 - project: `tesla-sk-waze-lab`
-- deployment: `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
-- tested preview: `dpl_9BdE8squRojdMXNuoozoXURnduUT`
+- deployment: `dpl_D7gQPdESJBUyAPi6v7JsnHE1fXpj`
+- tested preview: `dpl_CtvxtxFyAquvrQ9a99UfsvSMiCtt`
 - preview/production source differences: 0
 
 | Súbor | SHA |
@@ -14,7 +14,7 @@ Main LAB:
 | api/availability.js | 8c4a57a818f4f233782d2eabca4eb7be90bf93f5 |
 | api/chargers.js | f414515d86284be67295b389da5627566f908c33 |
 | api/events.js | 6a2883de808ea81759dc20c870e7f6fbe28f406b |
-| api/lab-main.js | ec3c480d9667e3c183434ab9e777a90268494eb2 |
+| api/lab-main.js | 9f8606f184c77bcd56d5fe5dc82f49a30284def4 |
 | api/lab_login.js | 9ee85a2cbb4e1529da75556ad9bb466096b6b10a |
 | api/nav-icon-v8.js | b6f926a89dbe8319307747a8905df1d804f99c32 |
 | api/phone.js | b665e358b9744e957e17873336eff95f55e71de7 |
@@ -65,3 +65,14 @@ Pred ďalším production release:
 15. Až potom uzavrieť dokumentáciu.
 
 Produkcia `tesla-sk` sa pri tomto procese nesmie meniť bez výslovného povolenia používateľa.
+
+
+## Navigation regression release 2026-10-19
+
+- logic test preview: `dpl_6kMy1Z9FRuNFb2xBcFecZXp5dBEM`
+- client audit preview: `dpl_37PfEiU4xgsARxVuZ1h9beNVui6w`
+- clean RC: `dpl_CtvxtxFyAquvrQ9a99UfsvSMiCtt`
+- production: `dpl_D7gQPdESJBUyAPi6v7JsnHE1fXpj`
+- rollback: `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
+- RC vs production source differences: 0
+- production source file count: 16
