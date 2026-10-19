@@ -610,3 +610,35 @@ Produkcia `tesla-sk` ostala nezmenená:
 
 Detail:
 [NAVIGATION_REGRESSION_RELEASE_2026-10-19.md](NAVIGATION_REGRESSION_RELEASE_2026-10-19.md)
+
+
+## ROUTE GEOMETRY + ARROW FOLLOW — 2026-10-19
+
+Aktuálny LAB production:
+- deployment: `dpl_78MAGdYSkmdQPCmj8dmMGGhy845y`
+- URL: `tesla-sk-waze-ksbobqnt2-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+
+Opravené:
+- odstránená Demjata loop/inflation chyba prvého OSRM kroku,
+- Demjata route 12 952 m vs polyline 13 161 m (ratio 1.016),
+- first step `waze-raw-sane` 1 100 m vs Waze 1 131 m,
+- arrow/map follow sa správa rovnako s route aj bez route.
+
+Zachované:
+- maneuver latch,
+- off-route no-rubber-band,
+- reroute throttle,
+- arrival guard,
+- slovenské maneuver texty,
+- GPS watchPosition/maxAge1000,
+- production music,
+- QR/phone,
+- alerts/lane/alternatives.
+
+Immediate rollback:
+- `dpl_HoBiGtoSipY7PUJJ9ziXJspoGnKb`
+
+Detail:
+[ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md](ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md)
