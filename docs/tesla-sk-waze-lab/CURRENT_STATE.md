@@ -433,3 +433,31 @@ Produkcia `tesla-sk` ostala read-only a nezmenená:
 
 Detail:
 [TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md](TESLA_SK_FIRST_STEP_PARITY_2026-10-18.md)
+
+
+## OFF-ROUTE NO-RUBBER-BAND — 2026-10-19
+
+Aktuálny LAB production:
+- deployment: `dpl_GCVfCs9ZT2H5DD9g79R8V3RxtbbW`
+- URL: `tesla-sk-waze-hvixu0fta-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+
+Izolovaná zmena:
+- menil sa iba `api/lab-main.js`,
+- pri prvom spoľahlivom odklone sa stará modrá trasa okamžite skryje,
+- počas reroute sa už nesmie kresliť spojenie `pos → oldRoute`,
+- pri GPS šume sa stará trasa môže obnoviť,
+- po úspešnom Waze reroute nová trasa nahradí starú atomicky.
+
+Testovaný preview:
+- `dpl_BcsXKRmQ9ceigoNjC8kL345T9XK9`
+
+Rollback:
+- `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+
+Produkcia `tesla-sk` ostala nezmenená:
+- `dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`
+
+Detail:
+[OFF_ROUTE_NO_RUBBER_BAND_2026-10-19.md](OFF_ROUTE_NO_RUBBER_BAND_2026-10-19.md)
