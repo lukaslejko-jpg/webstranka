@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_GCVfCs9ZT2H5DD9g79R8V3RxtbbW`
-- URL: `tesla-sk-waze-hvixu0fta-lukaslejko-9932s-projects.vercel.app`
+- `dpl_Hsf76xmRRT8FkS4GLiUhVxAiRsUa`
+- URL: `tesla-sk-waze-d8e6cklzt-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -238,3 +238,19 @@ Povinné správanie:
 
 Detail:
 [OFF_ROUTE_NO_RUBBER_BAND_2026-10-19.md](OFF_ROUTE_NO_RUBBER_BAND_2026-10-19.md)
+
+
+## OFF-ROUTE ROLLBACK SAFE POINT — 2026-10-19
+
+Aktuálny recovery bod:
+- main LAB: `dpl_Hsf76xmRRT8FkS4GLiUhVxAiRsUa`
+- source-identical rollback base: `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+- source differences: 0
+
+Zakázaný recovery bod:
+- `dpl_GCVfCs9ZT2H5DD9g79R8V3RxtbbW`
+
+Jeho off-route vizuálna zmena bola revertovaná po regresnej analýze.
+
+Detail:
+[ROLLBACK_OFF_ROUTE_2026-10-19.md](ROLLBACK_OFF_ROUTE_2026-10-19.md)
