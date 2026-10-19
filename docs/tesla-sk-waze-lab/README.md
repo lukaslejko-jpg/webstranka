@@ -105,3 +105,16 @@ Pri odbočení mimo aktívnej trasy sa stará modrá línia okamžite odpojí od
 
 Detail:
 [OFF_ROUTE_NO_RUBBER_BAND_2026-10-19.md](OFF_ROUTE_NO_RUBBER_BAND_2026-10-19.md)
+
+
+## Rollback off-route release
+
+Aktuálny LAB:
+- deployment: `dpl_Hsf76xmRRT8FkS4GLiUhVxAiRsUa`
+- source-identical s `dpl_AQ3tTDpTAhJiRqBEmTa8cbYgHdn6`
+
+Revertovaný a nepoužívať:
+- `dpl_GCVfCs9ZT2H5DD9g79R8V3RxtbbW`
+
+Detail:
+[ROLLBACK_OFF_ROUTE_2026-10-19.md](ROLLBACK_OFF_ROUTE_2026-10-19.md)
