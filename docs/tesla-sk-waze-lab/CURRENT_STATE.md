@@ -698,3 +698,28 @@ Rollback:
 
 Detail:
 [ROBUST_VOICE_RELEASE_2026-10-19.md](ROBUST_VOICE_RELEASE_2026-10-19.md)
+
+
+## LAST DRIVE NAVIGATION FIX — 2026-10-19
+
+Aktuálny LAB production:
+- deployment: `dpl_Do9x8bnASfyGaGWHQbZqwmxcbtzp`
+- URL: `tesla-sk-waze-o0ro9niff-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+
+Opravené podľa poslednej reálnej jazdy:
+- raw Waze geometry delená podľa deklarovaných Waze step vzdialeností,
+- 26 m krok už nie je kreslený ako 160 m,
+- nulový duplicitný arrive krok nepridáva extra geometriu,
+- žiadny umelý CAR → route connector,
+- reálne odbočenie môže spustiť reroute na prvom spoľahlivom fixe,
+- predčasný arrive banner už nepíše `Dorazili ste do cieľa`.
+
+Voice/music/GPS sekcie zostali byte-identical.
+
+Rollback:
+- `dpl_92bcPeKpMLuXXAYSbsq4ACC7Yi9z`
+
+Detail:
+[LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md](LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md)
