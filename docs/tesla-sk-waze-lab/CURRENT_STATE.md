@@ -573,3 +573,40 @@ Produkcia `tesla-sk` ostala nezmenená:
 
 Detail:
 [NAV_REGRESSION_RELEASE_2026-10-19.md](NAV_REGRESSION_RELEASE_2026-10-19.md)
+
+
+## TESTED NAVIGATION REGRESSION RELEASE — 2026-10-19
+
+Aktuálny LAB production:
+- deployment: `dpl_HoBiGtoSipY7PUJJ9ziXJspoGnKb`
+- URL: `tesla-sk-waze-7k4sp2wcq-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+
+Release obsahuje:
+- off-route bez modrej gumy CAR → oldRoute,
+- global 6 s reroute throttle,
+- parallel-road snap protection,
+- arrival guard podľa fyzickej vzdialenosti,
+- žiadne `Potom` po arrival,
+- slovenské fork/merge/ramp/continue/end-of-road texty,
+- maneuver latch: návesť ostáva až do fyzického prejdenia odbočenia,
+- do 15 m banner zobrazuje `Teraz`.
+
+Testy:
+- navigation regression 20/20 PASS,
+- maneuver latch 6/6 PASS,
+- browser JS compile PASS,
+- preserved GPS/music/QR/relay/alternatives/alerts/lane PASS.
+
+Immediate rollback:
+- `dpl_D7gQPdESJBUyAPi6v7JsnHE1fXpj`
+
+Full pre-change rollback:
+- `dpl_GektN1TN3bfWiu63wPGz6LuR9oPS`
+
+Produkcia `tesla-sk` ostala nezmenená:
+- `dpl_CzSmztcBiqLUhiMCBzCFed8xeEma`
+
+Detail:
+[NAVIGATION_REGRESSION_RELEASE_2026-10-19.md](NAVIGATION_REGRESSION_RELEASE_2026-10-19.md)
