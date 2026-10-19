@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_78MAGdYSkmdQPCmj8dmMGGhy845y`
-- URL: `tesla-sk-waze-ksbobqnt2-lukaslejko-9932s-projects.vercel.app`
+- `dpl_F3AYtpP4EVsggkFmDjDBtAT6mJ4E`
+- URL: `tesla-sk-waze-ktywbwuhq-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -364,3 +364,21 @@ Povinné pravidlá:
 
 Detail:
 [ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md](ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md)
+
+
+## VOICE REPAIR SAFE POINT — 2026-10-19
+
+Aktuálny recovery bod:
+- main LAB: `dpl_F3AYtpP4EVsggkFmDjDBtAT6mJ4E`
+- tested voice preview: `dpl_DRpdPfjx1Dvz8tmwBq7QzaUrZJba`
+- immediate rollback: `dpl_78MAGdYSkmdQPCmj8dmMGGhy845y`
+
+Povinné pravidlá:
+- voice repair migration iba raz,
+- neskoršie explicitné vypnutie hlasu sa rešpektuje,
+- test/potvrdenie hlasu používa force mode,
+- mirror ostáva bez navigačného hlasu,
+- všetko mimo voice sekcie musí zostať identické.
+
+Detail:
+[VOICE_REPAIR_RELEASE_2026-10-19.md](VOICE_REPAIR_RELEASE_2026-10-19.md)
