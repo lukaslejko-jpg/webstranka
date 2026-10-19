@@ -4,8 +4,8 @@ Aktualizované: 2026-10-19
 
 Main LAB:
 - project: `tesla-sk-waze-lab`
-- deployment: `dpl_F3AYtpP4EVsggkFmDjDBtAT6mJ4E`
-- tested preview: `dpl_DRpdPfjx1Dvz8tmwBq7QzaUrZJba`
+- deployment: `dpl_92bcPeKpMLuXXAYSbsq4ACC7Yi9z`
+- tested preview: `dpl_8CHythJdAckfH5U5p7jU1dw8JqSs`
 - preview/production source differences: 0
 
 | Súbor | SHA |
@@ -14,7 +14,7 @@ Main LAB:
 | api/availability.js | 8c4a57a818f4f233782d2eabca4eb7be90bf93f5 |
 | api/chargers.js | f414515d86284be67295b389da5627566f908c33 |
 | api/events.js | 6a2883de808ea81759dc20c870e7f6fbe28f406b |
-| api/lab-main.js | 1f3d4f91140ede90dfc9729f8aa12b1fe1d793d9 |
+| api/lab-main.js | 94b31ccaffa3981694380e2eb6da5984ca815d1f |
 | api/lab_login.js | 9ee85a2cbb4e1529da75556ad9bb466096b6b10a |
 | api/nav-icon-v8.js | b6f926a89dbe8319307747a8905df1d804f99c32 |
 | api/phone.js | b665e358b9744e957e17873336eff95f55e71de7 |
@@ -91,3 +91,5 @@ Full pre-navigation rollback:
 
 Test report:
 [NAVIGATION_REGRESSION_RELEASE_2026-10-19.md](NAVIGATION_REGRESSION_RELEASE_2026-10-19.md)
+
+| api/voice-diag.js | 4fad989c36f5494e7d0ee299cae4e012ab23a318 |
