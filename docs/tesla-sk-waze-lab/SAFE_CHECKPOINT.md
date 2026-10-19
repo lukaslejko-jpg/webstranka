@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_HoBiGtoSipY7PUJJ9ziXJspoGnKb`
-- URL: `tesla-sk-waze-7k4sp2wcq-lukaslejko-9932s-projects.vercel.app`
+- `dpl_78MAGdYSkmdQPCmj8dmMGGhy845y`
+- URL: `tesla-sk-waze-ksbobqnt2-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -346,3 +346,21 @@ Povinné zachovať:
 
 Detail:
 [NAVIGATION_REGRESSION_RELEASE_2026-10-19.md](NAVIGATION_REGRESSION_RELEASE_2026-10-19.md)
+
+
+## ROUTE GEOMETRY + ARROW FOLLOW SAFE POINT — 2026-10-19
+
+Aktuálny recovery bod:
+- main LAB: `dpl_78MAGdYSkmdQPCmj8dmMGGhy845y`
+- tested preview: `dpl_E19YhpX6cDqDmV2SK6juBh742VY1`
+- immediate rollback: `dpl_HoBiGtoSipY7PUJJ9ziXJspoGnKb`
+
+Povinné pravidlá:
+- OSRM first-step fallback sa nesmie akceptovať, ak dĺžkou výrazne nesedí na Waze step distance.
+- Demjata regression target: total polyline ratio približne 1.0, bez slučky.
+- followCar sa nesmie vetviť podľa existencie `route`.
+- arrow/map follow s cieľom aj bez cieľa musí používať rovnaký heading-up/north-up behavior.
+- maneuver latch, off-route, arrival guard, hudba, QR, Waze alerts a lane guidance sa pri tejto oprave nemenia.
+
+Detail:
+[ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md](ROUTE_GEOMETRY_ARROW_RELEASE_2026-10-19.md)
