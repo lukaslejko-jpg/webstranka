@@ -750,3 +750,28 @@ Rollback:
 
 Detail:
 [TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md](TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md)
+
+
+## TRIP PANEL REROUTE AUDIT — 2026-10-20
+
+Audit potvrdil, že spodný panel sa po úspešnom reroute počíta kompletne z novej route:
+- nový remaining distance,
+- nový remaining time,
+- nový ETA,
+- progress proti novému route.total.
+
+Reálne body:
+- 05:33:19 → 05:33:25: +86 m / +5 s
+- 07:14:52 → 07:14:59: -58 m / -8 s
+
+Deterministic regression:
+- 6/6 PASS
+
+Production code change:
+- none
+
+Current production remains:
+- `dpl_3F1A6qb5vZTxbfcjWJTWeMj7e2Wm`
+
+Detail:
+[TRIP_PANEL_REROUTE_AUDIT_2026-10-20.md](TRIP_PANEL_REROUTE_AUDIT_2026-10-20.md)
