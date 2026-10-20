@@ -723,3 +723,30 @@ Rollback:
 
 Detail:
 [LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md](LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md)
+
+
+## TODAY LAST DRIVE REROUTE HYSTERESIS — 2026-10-20
+
+Aktuálny LAB production:
+- deployment: `dpl_3F1A6qb5vZTxbfcjWJTWeMj7e2Wm`
+- URL: `tesla-sk-waze-aorbayvj9-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+
+Opravené podľa poslednej jazdy:
+- prvý reálny odklon ostáva okamžitý,
+- po prijatí reroute sa blokuje opakované prepočítavanie tej istej opačne začínajúcej Waze route,
+- 30 s hold pri >=100° heading mismatch,
+- 12 s normal reroute hold,
+- 10 s initial opposite-route hold,
+- 6 s sparse-geometry initial hold,
+- emergency >250 m môže hold obísť,
+- first-fix heading detection iba na local gap <=120 m.
+
+Voice/music/GPS sekcie zostali byte-identical.
+
+Rollback:
+- `dpl_Do9x8bnASfyGaGWHQbZqwmxcbtzp`
+
+Detail:
+[TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md](TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md)
