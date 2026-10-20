@@ -775,3 +775,36 @@ Current production remains:
 
 Detail:
 [TRIP_PANEL_REROUTE_AUDIT_2026-10-20.md](TRIP_PANEL_REROUTE_AUDIT_2026-10-20.md)
+
+
+## TRIP PROGRESS CARRY RESTORED — 2026-10-20
+
+Aktuálny LAB production:
+- deployment: `dpl_AP8X3Zag6D6RyqUXHAMYGQ9j7svA`
+- URL: `tesla-sk-waze-4av6x8vjx-lukaslejko-9932s-projects.vercel.app`
+- alias: `https://tesla-sk-waze-lab.vercel.app/`
+- state: READY
+
+Obnovené chránené pravidlo z `NAV_GUIDANCE_FIX_2026-10-19.md`:
+- reroute/alternative switch = pokračovanie tej istej jazdy,
+- remaining distance/time/ETA = z NOVEJ route,
+- trip progress = carry-forward, NESMIE resetovať na 0,
+- nový cieľ = progress od 0,
+- manuálna alternatíva pre rovnaký cieľ = progress pokračuje,
+- zvolený Waze alternative index sa pri reroute zachová, ak stále existuje.
+
+Testy:
+- trip carry 12/12 PASS
+- isolation audit PASS
+- voice/music/GPS byte-identical
+- hysteresis/no-rubber/latch/arrival/QR/alerts preserved
+- full services PASS
+
+Rollback:
+- `dpl_3F1A6qb5vZTxbfcjWJTWeMj7e2Wm`
+
+Dôležité:
+- `TRIP_PANEL_REROUTE_AUDIT_2026-10-20.md` je označený ako SUPERSEDED, pretože jeho záver o resete progressu bol chybný.
+
+Detail:
+[TRIP_PROGRESS_CARRY_RESTORE_2026-10-20.md](TRIP_PROGRESS_CARRY_RESTORE_2026-10-20.md)
