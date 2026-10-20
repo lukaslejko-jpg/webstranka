@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_Do9x8bnASfyGaGWHQbZqwmxcbtzp`
-- URL: `tesla-sk-waze-o0ro9niff-lukaslejko-9932s-projects.vercel.app`
+- `dpl_3F1A6qb5vZTxbfcjWJTWeMj7e2Wm`
+- URL: `tesla-sk-waze-aorbayvj9-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -421,3 +421,23 @@ Povinné pravidlá:
 
 Detail:
 [LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md](LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md)
+
+
+## TODAY REROUTE HYSTERESIS SAFE POINT — 2026-10-20
+
+Aktuálny recovery bod:
+- main LAB: `dpl_3F1A6qb5vZTxbfcjWJTWeMj7e2Wm`
+- tested preview: `dpl_GJgPrDMiyVcbGv4616E5TMYAUinB`
+- immediate rollback: `dpl_Do9x8bnASfyGaGWHQbZqwmxcbtzp`
+
+Povinné zachovať:
+- voice/music/GPS byte-identical pri ďalších navigation zásahoch,
+- no CAR → stale-route connector,
+- arrival safety,
+- maneuver latch,
+- first immediate reroute,
+- post-reroute stabilization/hysteresis,
+- emergency >250 m bypass.
+
+Detail:
+[TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md](TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md)
