@@ -253,3 +253,23 @@ Rollback:
 
 Detail:
 [LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md](LAST_DRIVE_NAV_FIX_RELEASE_2026-10-19.md)
+
+
+## Today last-drive reroute hysteresis — 2026-10-20
+
+Aktuálny LAB:
+- deployment: `dpl_3F1A6qb5vZTxbfcjWJTWeMj7e2Wm`
+- preview: `dpl_GJgPrDMiyVcbGv4616E5TMYAUinB`
+
+Opravené:
+- repeated 6-second reroute loops po prijatí Waze route, ktorá začína opačným smerom,
+- stabilizačné hold okná podľa heading mismatch,
+- first-fix heading reroute nepoužíva sparse local geometry.
+
+Hlas, hudba, GPS, dense Waze geometria a ostatné služby zostali nedotknuté.
+
+Rollback:
+- `dpl_Do9x8bnASfyGaGWHQbZqwmxcbtzp`
+
+Detail:
+[TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md](TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md)
