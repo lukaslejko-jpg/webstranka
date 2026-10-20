@@ -24,8 +24,8 @@ Projekt:
 - project ID: `prj_ehViWi0r8gYe226ofNZqneWzeE32`
 
 Aktuálny production deployment:
-- `dpl_3F1A6qb5vZTxbfcjWJTWeMj7e2Wm`
-- URL: `tesla-sk-waze-aorbayvj9-lukaslejko-9932s-projects.vercel.app`
+- `dpl_AP8X3Zag6D6RyqUXHAMYGQ9j7svA`
+- URL: `tesla-sk-waze-4av6x8vjx-lukaslejko-9932s-projects.vercel.app`
 - state: READY
 - target: production
 
@@ -441,3 +441,25 @@ Povinné zachovať:
 
 Detail:
 [TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md](TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md)
+
+
+## TRIP PROGRESS CARRY SAFE POINT — 2026-10-20
+
+Aktuálny recovery bod:
+- main LAB: `dpl_AP8X3Zag6D6RyqUXHAMYGQ9j7svA`
+- tested preview: `dpl_HWUXeWE14H4bW8qr3RbbR52JTFhY`
+- immediate rollback: `dpl_3F1A6qb5vZTxbfcjWJTWeMj7e2Wm`
+
+Povinné pravidlo:
+- reroute/alternative switch je continuation of same trip,
+- remaining ETA/time/distance sa prepočítajú z novej route,
+- progress bar sa NESMIE resetovať na nulu,
+- `progressBase` + `carriedProgress` sa nesmú odstrániť,
+- new destination resetuje progress,
+- selected Waze alternative index sa pri reroute zachová, ak existuje.
+
+Zakázané:
+- nepoužiť `TRIP_PANEL_REROUTE_AUDIT_2026-10-20.md` ako source of truth pre reset progressu; tento audit je superseded.
+
+Detail:
+[TRIP_PROGRESS_CARRY_RESTORE_2026-10-20.md](TRIP_PROGRESS_CARRY_RESTORE_2026-10-20.md)
