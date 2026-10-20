@@ -4,8 +4,8 @@ Aktualizované: 2026-10-19
 
 Main LAB:
 - project: `tesla-sk-waze-lab`
-- deployment: `dpl_Do9x8bnASfyGaGWHQbZqwmxcbtzp`
-- tested preview: `dpl_5hUeoqRpGVYGDt1zZSPPcwFVSxSu`
+- deployment: `dpl_3F1A6qb5vZTxbfcjWJTWeMj7e2Wm`
+- tested preview: `dpl_GJgPrDMiyVcbGv4616E5TMYAUinB`
 - preview/production source differences: 0
 
 | Súbor | SHA |
@@ -14,7 +14,7 @@ Main LAB:
 | api/availability.js | 8c4a57a818f4f233782d2eabca4eb7be90bf93f5 |
 | api/chargers.js | f414515d86284be67295b389da5627566f908c33 |
 | api/events.js | 6a2883de808ea81759dc20c870e7f6fbe28f406b |
-| api/lab-main.js | 0f89af1ddceda3273302c40137c4ef3ffbc603bc |
+| api/lab-main.js | 64527d66fc45931d3c8d044fb968d88c3e129b06 |
 | api/lab_login.js | 9ee85a2cbb4e1529da75556ad9bb466096b6b10a |
 | api/nav-icon-v8.js | b6f926a89dbe8319307747a8905df1d804f99c32 |
 | api/phone.js | b665e358b9744e957e17873336eff95f55e71de7 |
