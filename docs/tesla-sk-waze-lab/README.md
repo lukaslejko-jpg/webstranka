@@ -273,3 +273,15 @@ Rollback:
 
 Detail:
 [TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md](TODAY_REROUTE_HYSTERESIS_RELEASE_2026-10-20.md)
+
+
+## Trip panel reroute audit — 2026-10-20
+
+Overené bez code change:
+- spodný panel sa po reroute prepočíta z novej route,
+- distance/time/ETA/progress sa nepokračujú zo starej trasy,
+- regression 6/6 PASS,
+- production ostáva `dpl_3F1A6qb5vZTxbfcjWJTWeMj7e2Wm`.
+
+Detail:
+[TRIP_PANEL_REROUTE_AUDIT_2026-10-20.md](TRIP_PANEL_REROUTE_AUDIT_2026-10-20.md)
