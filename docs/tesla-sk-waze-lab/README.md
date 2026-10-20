@@ -285,3 +285,31 @@ Overené bez code change:
 
 Detail:
 [TRIP_PANEL_REROUTE_AUDIT_2026-10-20.md](TRIP_PANEL_REROUTE_AUDIT_2026-10-20.md)
+
+
+## Trip progress carry restore — 2026-10-20
+
+Aktuálny LAB:
+- deployment: `dpl_AP8X3Zag6D6RyqUXHAMYGQ9j7svA`
+- preview: `dpl_HWUXeWE14H4bW8qr3RbbR52JTFhY`
+
+Správne reroute správanie:
+- nový remaining distance/time/ETA z novej Waze route,
+- spodný progress pokračuje z pôvodnej jazdy,
+- progress sa pri reroute ani prepnutí alternatívy nesmie resetovať na 0,
+- nový cieľ resetuje progress,
+- selected alternative index sa pri reroute zachová.
+
+Testy:
+- 12/12 trip carry PASS
+- isolation audit PASS
+- full services PASS
+
+Rollback:
+- `dpl_3F1A6qb5vZTxbfcjWJTWeMj7e2Wm`
+
+Poznámka:
+- starý `TRIP_PANEL_REROUTE_AUDIT_2026-10-20.md` je superseded.
+
+Detail:
+[TRIP_PROGRESS_CARRY_RESTORE_2026-10-20.md](TRIP_PROGRESS_CARRY_RESTORE_2026-10-20.md)
