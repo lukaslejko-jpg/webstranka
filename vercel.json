@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/jaroslava", "destination": "https://jobdues-jaroslava-wallet.vercel.app" },
+    { "source": "/lukas", "destination": "https://jobdues-lukas-wallet.vercel.app" },
+    { "source": "/zuzana", "destination": "https://jobdues-zuzana-wallet.vercel.app" }
+  ]
 }
