@@ -1,0 +1,61 @@
+name: Promote approved Music v168
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  statuses: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TEAM_ID: team_dev6vKKH2V0qxtGe0uy6GpT6
+      TEAM_SLUG: lukaslejko-9932s-projects
+      MAIN_PROJECT_ID: prj_3UUsvRZV5rzNI7Qdkt4LzBYWEPwe
+      APPROVED_DPL: dpl_Cy4GCgxJcFivhpkKj88oMQUEHmEr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm install --global vercel@59.25.4
+      - name: Authenticate
+        env: { GH_STATUS_TOKEN: "${{ github.token }}" }
+        run: |
+          set -euo pipefail
+          LOG=/tmp/a; timeout 300 vercel login --github >"$LOG" 2>&1 & PID=$!
+          for _ in $(seq 1 60); do URL="$(grep -Eo 'https://vercel\.com/oauth/device\?user_code=[A-Z0-9-]+' "$LOG" 2>/dev/null|tail -n1||true)"; [ -n "$URL" ]&&break; sleep 1; done
+          CODE="${URL##*user_code=}"
+          node - "$CODE" "$URL" <<'NODE' >/tmp/s.json
+          const [code,url]=process.argv.slice(2);process.stdout.write(JSON.stringify({state:'pending',context:'promote-approved-v168-auth',description:'Vercel code: '+code,target_url:url}));
+          NODE
+          curl -fsS -X POST -H "Authorization: Bearer $GH_STATUS_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" --data-binary @/tmp/s.json >/dev/null
+          wait "$PID"
+      - name: Copy approved immutable deployment files
+        run: |
+          set -euo pipefail
+          vercel api "/v6/deployments/$APPROVED_DPL/files?teamId=$TEAM_ID" > /tmp/files.json
+          node - <<'NODE'
+          const fs=require('fs'),d=JSON.parse(fs.readFileSync('/tmp/files.json','utf8'));
+          const files=Array.isArray(d)?d:(d.files||[]);
+          fs.writeFileSync('/tmp/manifest.json',JSON.stringify(files));
+          NODE
+          mkdir -p /tmp/prod
+          node - <<'NODE'
+          const fs=require('fs'),cp=require('child_process'),files=JSON.parse(fs.readFileSync('/tmp/manifest.json','utf8'));
+          for(const f of files){if(!f.name||!f.uid)continue;const out='/tmp/prod/'+f.name;fs.mkdirSync(require('path').dirname(out),{recursive:true});cp.execFileSync('vercel',['api','/v8/deployments/'+process.env.APPROVED_DPL+'/files/'+f.uid+'?teamId='+process.env.TEAM_ID],{stdio:['ignore',fs.openSync('/tmp/raw','w'),'inherit']});const d=JSON.parse(fs.readFileSync('/tmp/raw','utf8')),b=d.data??d.content??d;fs.writeFileSync(out,Buffer.from(b,'base64'))}
+          NODE
+      - name: Deploy candidate to main project
+        id: dep
+        working-directory: /tmp/prod
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$TEAM_ID" "$MAIN_PROJECT_ID" > .vercel/project.json
+          URL="$(vercel deploy --archive=tgz --scope "$TEAM_SLUG")"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+      - name: Verify and promote
+        run: |
+          set -euo pipefail
+          URL="${{ steps.dep.outputs.url }}"
+          vercel curl "/" --deployment "$URL" --scope "$TEAM_SLUG" > /tmp/root
+          grep -Fq 'content="168-test"' /tmp/root
+          vercel alias set "$URL" "tesla-waze-piped.vercel.app" --scope "$TEAM_SLUG"
