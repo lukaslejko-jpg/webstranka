@@ -1,0 +1,1 @@
+export default async function h(req,res){try{const q=new URLSearchParams();for(const [k,v] of Object.entries(req.query||{}))if(v!=null)q.set(k,String(v));const r=await fetch('https://music-qr-test.vercel.app/api/youtube-search?'+q.toString());res.status(r.status).send(await r.text())}catch(e){res.status(502).json({error:'search_proxy_failed'})}}

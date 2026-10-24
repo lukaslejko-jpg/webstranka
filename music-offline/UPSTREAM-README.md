@@ -1,0 +1,82 @@
+# 📼 Kasette
+
+A 100% offline, client-side music player PWA.
+
+[![CI](https://github.com/nico-alvz/kasette/actions/workflows/ci.yml/badge.svg)](https://github.com/nico-alvz/kasette/actions/workflows/ci.yml)
+[![Deploy to GitHub Pages](https://github.com/nico-alvz/kasette/actions/workflows/pages.yml/badge.svg)](https://github.com/nico-alvz/kasette/actions/workflows/pages.yml)
+[![Latest release](https://img.shields.io/github/v/release/nico-alvz/kasette)](https://github.com/nico-alvz/kasette/releases)
+[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD--3--Clause-blue.svg)](./LICENSE)
+[![Star this repo](https://img.shields.io/github/stars/nico-alvz/kasette?style=social)](https://github.com/nico-alvz/kasette)
+
+Kasette plays the music files already on your device. Import them once and
+everything else (tags, cover art, playlists, playback) happens locally: no
+accounts, no servers, no analytics, no network requests, ever.
+
+## Features
+
+- Import local audio files (mp3, flac, m4a, ogg, opus, wav, aac)
+- Client-side ID3/FLAC tag and embedded cover art parsing, no dependencies
+- Browse all songs directly, with optional playlists enabled in Settings
+- Light theme by default, with a dark mode and multiple accent colors
+- Export your whole library (songs, art, playlists) to a single backup file, and restore it later. You can pick a USB-C drive as the destination if your browser offers it
+- Background playback via the Media Session API, with lock screen and notification controls
+- English, Latin American Spanish, Brazilian Portuguese, French, German, and Simplified Chinese
+- Offline-first PWA, installable on desktop and mobile
+- Android app via Capacitor
+
+## Screenshots
+
+Screenshots use a demonstration library.
+
+<p>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1-home.png" alt="Home with recently played songs" width="200">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2-library.png" alt="Music library" width="200">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3-player.png" alt="Now playing controls" width="200">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4-settings.png" alt="Theme and language settings" width="200">
+</p>
+
+## Use it now
+
+Open [nico-alvz.github.io/kasette](https://nico-alvz.github.io/kasette/) in your
+browser. To install it as an app, use your browser's install prompt, usually
+in the address bar or the browser menu.
+
+## Download the Android app
+
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/com.kasette.app/)
+
+You can also grab the APK straight from [Releases](https://github.com/nico-alvz/kasette/releases).
+Since Kasette isn't distributed through the Play Store, installing that APK
+directly requires enabling "install from unknown sources" for your browser or
+file manager.
+
+## Build from source
+
+```bash
+git clone https://github.com/nico-alvz/kasette.git
+cd kasette
+npm install
+
+# Web
+npm run dev
+
+# Android
+npx cap add android
+npm run cap:sync
+npm run cap:android   # opens the project in Android Studio
+```
+
+## Tech stack
+
+- Vanilla JavaScript, ES modules. No framework, no build step
+- IndexedDB for audio and art storage
+- Web Audio and Media Session API for playback and background controls
+- [Capacitor](https://capacitorjs.com/) for the Android wrapper
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## License
+
+BSD-3-Clause. See [LICENSE](./LICENSE).
