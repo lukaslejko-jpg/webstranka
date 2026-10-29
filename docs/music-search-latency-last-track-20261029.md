@@ -1,0 +1,3 @@
+# Search latency and last track restoration
+
+Render logs before fix: first-page elapsed 36900ms and 46040ms with InnerTube upstream_timeout; sequential fallback compounded delay. Preview only: race InnerTube (6.5s) and yt-search (9.5s), respond on first fulfilled result; subsequent continuation preserved. Last selected video ID/title/artist already persisted in localStorage; restore that selection and attempt playback when YouTube IFrame ready. iOS user gesture/autoplay restrictions can block automatic sound and are not bypassed. No changes to production or QR. Validate search speed, nonempty first page, iPhone autoplay, desktop, QR and security audit before release.
