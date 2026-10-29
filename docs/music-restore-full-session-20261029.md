@@ -1,0 +1,3 @@
+# Restore full Music session, test only
+
+Compared production tesla-app.js (~31KB) with preview (~16KB). Production implements `persistSession`, `restoreSession`, saved search feed and queue, and startup restore. Preview had only `STORE.last` and its startup player attempt. Reintroduced selection snapshot with search query, selected category, displayed results, queue, index, shuffle/repeat and last track restore. This is a minimal bridge, not complete copy of production feed engine. Search latency provider racing remains; do not claim speed gain without measurement. QR and production untouched. Verify restoring query+queue and autoplay subject to iOS restrictions before promotion.
