@@ -1,0 +1,3 @@
+Music mini controls isolated change 2026-10-29.
+Approved baseline commit a236ffe2436e4f8bee7d855b465617e404b90413, Render dep-dbhlkiegekts73bk529g. Frozen at checkpoint/music-working-20261029.
+Change only CSS when mobile miniPlayer is active: reveal existing prev, play/pause, next, shuffle, repeat buttons next to truncated song title, and reserve QR space. Existing JS handlers, API routes, search, player and production are unchanged. New separate preview deployment required before any use. Must verify click actions and playback, mobile portrait/landscape and QR overlap. Not certified until end-to-end tests pass.
