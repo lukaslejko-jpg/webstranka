@@ -1,0 +1,4 @@
+# For You discovery test - 2026-10-29
+Baseline: mini controls candidate 326fde04c19f52c608da904fc800084976a3efb0. Freeze prior test services and production.
+Scope: only For You navigation behavior in public/tesla-app.js, recommending similar artists, current-year music and genre mixes, avoiding up to 300 previously recommended IDs and up to 60 recent plays. User search and backend, miniplayer, QR and stored queue behavior remain unchanged except when switching to For You.
+Results are a heuristic based on YouTube search, NOT verified actual new releases or personalized YouTube data. In case of no usable results, show a clear empty state. Test: DJ jany seed, repeated For You visits and dedupe, rapid navigation, API response latency, player control and QR before any production release. Current candidate not yet E2E verified. Do not call it production ready.
