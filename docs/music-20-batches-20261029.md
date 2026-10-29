@@ -1,0 +1,3 @@
+# Music test: progressive 20-result batches
+
+Only isolated Render preview. Frontend now draws up to 20 unique results immediately after the first upstream API response, then reveals additional results in 20-item batches (350ms), fetching subsequent continuation pages in background. Target 100 unique results if upstream returns enough. No production/QR changes. A cold Render startup and upstream YouTube latency remain before the first results; this change cannot guarantee zero wait. Validate search 'haloween music', no duplicate results, pagination, iPhone playback, QR, and switching queries before production approval.
