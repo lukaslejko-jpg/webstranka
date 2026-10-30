@@ -1,0 +1,1 @@
+Baseline LIVE music-tesla-seek5 deploy dep-dbi9i9c9v7es7392v8ug, SHA 702816809d6bfabc95b2e3540c7a0e7f1f42ed70. Requested only expanded controls move from top to bottom, directly below seek and above Tesla dock. Change CSS only index.html, do not touch JS/server/QR/background. Need Tesla physical check. Rollback baseline preserved.
