@@ -1,0 +1,1 @@
+Baseline LIVE music-tesla-bottom6 commit cb8697821ae0e2814caab290c5ebbdfc46881dd1. Only CSS override for expanded playback controls: fixed bottom 77px above Tesla bottom bar. No JS, backend or other app changes. UI validation on actual Tesla remains required. Source checkpoint preserved.
